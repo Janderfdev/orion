@@ -697,7 +697,9 @@ const VOICE = (() => {
     const u = new SpeechSynthesisUtterance(text);
     if (!vReady) refreshCache();
     if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = 'pt-BR';
-    u.rate = 0.94; u.pitch = 0.86; u.volume = 1.0;
+    // timbre masculino neutro/jovem: rate perto do natural e pitch levemente
+    // acima do padrão (evita o efeito "grave/robótico" da configuração anterior)
+    u.rate = 1.02; u.pitch = 1.08; u.volume = 1.0;
     u.onstart = () => { if (onStart) onStart(); };
     u.onend = () => { if (onEnd) onEnd(); };
     u.onerror = () => { if (onEnd) onEnd(); };
