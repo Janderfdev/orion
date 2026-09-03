@@ -17,7 +17,7 @@
 
 ORION AI is a modern Artificial Intelligence Assistant created with the goal of becoming an intelligent, elegant and futuristic AI companion.
 
-Unlike traditional chatbots, ORION AI focuses on creating an immersive experience through a living interface inspired by the Orion Constellation.
+Unlike traditional chatbots, ORION AI focuses on creating an immersive experience through a living interface inspired by the Orion Constellation and J.A.R.V.I.S
 
 The project is being developed over several years as my main Artificial Intelligence portfolio.
 
