@@ -301,15 +301,617 @@ html,body{
 
 <div class="version-tag">VERSÃO V5.5.0</div>
 
-<!-- ═══════ Módulos — ordem importa (dependências primeiro) ═══════ -->
-<script src="constellation.js"></script>
-<script src="visual-state.js"></script>
-<script src="orb.js"></script>
-<script src="audio.js"></script>
-<script src="voice.js"></script>
-<script src="core.js"></script>
-<script src="settings.js"></script>
-<script src="app.js"></script>
+<!-- ═══════ Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) ═══════ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   constellation.js
+   Dados da Constelação de Órion desenhada dentro da Orb:
+   as 7 estrelas nomeadas e as linhas finas que as conectam.
+   Nenhuma lógica de desenho vive aqui — apenas os dados,
+   consumidos por orb.js.
+   ═══════════════════════════════════════════════════════════════ */
+const CONSTELLATION = (() => {
+  // posições normalizadas (0..1) dentro do círculo da Orb
+  const STARS = [
+    { id: 'betelgeuse', x: 0.30, y: 0.22, r: 2.6, tw: 0.0 },
+    { id: 'bellatrix',  x: 0.69, y: 0.20, r: 2.0, tw: 0.7 },
+    { id: 'mintaka',    x: 0.40, y: 0.50, r: 1.5, tw: 1.4 },
+    { id: 'alnilam',    x: 0.50, y: 0.52, r: 1.6, tw: 2.1 },
+    { id: 'alnitak',    x: 0.60, y: 0.545, r: 1.5, tw: 2.8 },
+    { id: 'saiph',      x: 0.34, y: 0.81, r: 1.9, tw: 3.5 },
+    { id: 'rigel',      x: 0.63, y: 0.84, r: 2.5, tw: 4.2 },
+  ];
+
+  const LINES = [
+    ['betelgeuse', 'bellatrix'],
+    ['betelgeuse', 'alnitak'],
+    ['bellatrix', 'mintaka'],
+    ['mintaka', 'alnilam'],
+    ['alnilam', 'alnitak'],
+    ['alnitak', 'saiph'],
+    ['mintaka', 'rigel'],
+    ['saiph', 'rigel'],
+  ];
+
+  return { STARS, LINES };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   visual-state.js
+   Máquina de estados visuais da Orb:
+
+     STANDBY → LISTENING → THINKING → SPEAKING (respondendo) → STANDBY
+     (qualquer estado) → ERROR → STANDBY
+
+   Cada estado define:
+     amp    — intensidade da respiração/ondulação interna
+     rot    — velocidade de rotação da constelação/halo
+     bright — brilho geral
+     cls    — classe CSS aplicada à .orb (efeitos de borda/sombra)
+     color  — a cor neon própria do estado (a Orb muda de matiz aqui,
+              diferente da versão anterior de identidade única)
+
+   orb.js lê essa configuração e faz a transição gradual entre estados.
+   ═══════════════════════════════════════════════════════════════ */
+const VISUAL_STATE = (() => {
+  const CFG = {
+    standby: {
+      amp: 1.00, rot: 1.00, bright: 1.00, cls: '',
+      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' }, // Roxo Neon Escuro
+    },
+    listening: {
+      amp: 1.20, rot: 1.55, bright: 1.18, cls: 'st-listening',
+      color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' }, // Azul Neon Escuro
+    },
+    thinking: {
+      amp: 1.12, rot: 2.10, bright: 1.06, cls: 'st-thinking',
+      color: { a: '#0e7490', b: '#134e4a', c: '#2dd4bf' }, // entre azul e verde escuro
+    },
+    speaking: {
+      amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking',
+      color: { a: '#15803d', b: '#14532d', c: '#4ade80' }, // Verde Neon Escuro
+    },
+    error: {
+      amp: 0.80, rot: 0.50, bright: 0.62, cls: 'st-error',
+      color: { a: '#b91c1c', b: '#7f1d1d', c: '#f87171' }, // Vermelho Neon Escuro
+    },
+  };
+
+  const ALIAS = {
+    idle: 'standby', standby: 'standby',
+    listening: 'listening', thinking: 'thinking',
+    speaking: 'speaking', error: 'error',
+  };
+
+  let current = 'standby';
+
+  function apply(name) {
+    current = ALIAS[name] || 'standby';
+    return CFG[current];
+  }
+
+  function get() {
+    return current;
+  }
+
+  function config(name) {
+    return CFG[ALIAS[name] || current];
+  }
+
+  return { apply, get, config };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   orb.js
+   Motor visual da Orb: respiração, halo, partículas ambientes,
+   profundidade, e a Constelação de Órion desenhada em canvas.
+
+   A cor da Orb é interpolada suavemente (lerp) quadro a quadro em
+   direção à cor-alvo do estado atual (definida em visual-state.js),
+   tanto no canvas quanto nas variáveis CSS (--core-a/b/c) — é isso
+   que garante a transição gradual entre estados pedida na missão.
+   ═══════════════════════════════════════════════════════════════ */
+const ORB = (() => {
+  const canvas = document.getElementById('orbCanvas');
+  const ctx = canvas.getContext('2d');
+  const orbEl = document.getElementById('orb');
+  const haloEl = document.getElementById('halo');
+  const root = document.documentElement;
+
+  let amp = 1, targetAmp = 1;
+  let rotSpeed = 1, targetRot = 1;
+  let bright = 1, targetBright = 1;
+  let constAngle = 0;
+  let hovered = false;
+  let currentState = 'standby';
+
+  const { STARS, LINES } = CONSTELLATION;
+
+  /* partículas ambientes — motas de luz à deriva dentro da Orb */
+  const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+    a: Math.random() * Math.PI * 2,
+    r: 0.30 + Math.random() * 0.62,
+    spd: 0.06 + Math.random() * 0.10,
+    size: 0.5 + Math.random() * 1.1,
+    phase: Math.random() * Math.PI * 2,
+    dir: i % 2 === 0 ? 1 : -1,
+  }));
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16),
+    };
+  }
+  function hexToRgbTriple(c) {
+    return { a: hexToRgb(c.a), b: hexToRgb(c.b), c: hexToRgb(c.c) };
+  }
+  function rgbToHex(o) {
+    const h = n => Math.round(n).toString(16).padStart(2, '0');
+    return `#${h(o.r)}${h(o.g)}${h(o.b)}`;
+  }
+  function lerpRgb(from, to, t) {
+    return { r: from.r + (to.r - from.r) * t, g: from.g + (to.g - from.g) * t, b: from.b + (to.b - from.b) * t };
+  }
+  function rgba(o, a) {
+    return `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
+  }
+
+  let colorNow = hexToRgbTriple(VISUAL_STATE.config('standby').color);
+  let colorTarget = hexToRgbTriple(VISUAL_STATE.config('standby').color);
+
+  function resize() {
+    const s = orbEl.offsetWidth;
+    canvas.width = s;
+    canvas.height = s;
+  }
+
+  function applyStateClass(cls) {
+    orbEl.classList.remove('st-listening', 'st-thinking', 'st-speaking', 'st-error');
+    if (cls) orbEl.classList.add(cls);
+  }
+
+  function setState(name) {
+    const cfg = VISUAL_STATE.apply(name);
+    currentState = VISUAL_STATE.get();
+    targetAmp = cfg.amp;
+    targetRot = cfg.rot;
+    targetBright = cfg.bright;
+    colorTarget = hexToRgbTriple(cfg.color);
+    applyStateClass(cfg.cls);
+    haloEl.classList.toggle('fast', ['listening', 'speaking', 'thinking'].includes(currentState));
+    document.getElementById('orbZone').classList.toggle('speaking', currentState === 'speaking');
+  }
+
+  function setHover(on) {
+    hovered = on;
+  }
+
+  function pressEffect() {
+    orbEl.classList.add('pressed');
+    setTimeout(() => orbEl.classList.remove('pressed'), 150);
+  }
+
+  function draw(ts) {
+    const W = canvas.width, H = canvas.height, R = W / 2;
+    if (W === 0) { requestAnimationFrame(draw); return; }
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.clip();
+
+    amp += (targetAmp - amp) * 0.035;
+    rotSpeed += (targetRot - rotSpeed) * 0.035;
+    bright += (targetBright - bright) * 0.05;
+    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, 0.035);
+    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, 0.035);
+    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, 0.035);
+
+    // propaga a cor tween-ada para o CSS (halo, box-shadow, wave-rings)
+    root.style.setProperty('--core-a', rgbToHex(colorNow.a));
+    root.style.setProperty('--core-b', rgbToHex(colorNow.b));
+    root.style.setProperty('--core-c', rgbToHex(colorNow.c));
+
+    const hoverBoost = hovered ? 1.08 : 1.0;
+    constAngle += 0.00042 * rotSpeed * (hovered ? 1.12 : 1);
+    const b = bright * hoverBoost;
+
+    const bg = ctx.createRadialGradient(R * 0.78, R * 0.58, 0, R, R, R);
+    bg.addColorStop(0, rgba(colorNow.a, 0.34 * b));
+    bg.addColorStop(0.55, rgba(colorNow.b, 0.42 * b));
+    bg.addColorStop(1, 'rgba(0,0,2,0.94)');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    const t = ts * 0.00016;
+    [0, 1].forEach(i => {
+      const ang = t * (0.6 + i * 0.35) + i * Math.PI;
+      const cx = R + Math.cos(ang) * R * 0.22;
+      const cy = R + Math.sin(ang * 1.15) * R * 0.22;
+      const rad = R * (0.62 * amp) * (i === 0 ? 1 : 0.72);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      g.addColorStop(0, rgba(colorNow.c, 0.16 * b));
+      g.addColorStop(0.5, rgba(colorNow.a, 0.08 * b));
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
+    });
+
+    PARTICLES.forEach(p => {
+      const ang = p.a + t * p.spd * 6 * p.dir;
+      const rad = R * p.r;
+      const px = R + Math.cos(ang) * rad;
+      const py = R + Math.sin(ang) * rad;
+      const tw = 0.35 + 0.45 * Math.sin(t * 2.6 + p.phase);
+      ctx.fillStyle = rgba(colorNow.c, 0.55 * tw * b);
+      ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
+    });
+
+    const cos = Math.cos(constAngle), sin = Math.sin(constAngle);
+    const scale = R * 0.86;
+    const proj = {};
+    STARS.forEach(s => {
+      const lx = (s.x - 0.5) * scale, ly = (s.y - 0.5) * scale;
+      const rx = lx * cos - ly * sin, ry = lx * sin + ly * cos;
+      proj[s.id] = { x: R + rx, y: R + ry };
+    });
+
+    ctx.lineWidth = 0.7;
+    LINES.forEach(([a, c], i) => {
+      const pa = proj[a], pc = proj[c];
+      const pulse = (0.16 + 0.10 * Math.sin(t * 2.2 + i * 0.9)) * b;
+      ctx.strokeStyle = rgba(colorNow.c, pulse);
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pc.x, pc.y); ctx.stroke();
+    });
+
+    STARS.forEach(s => {
+      const p = proj[s.id];
+      const twk = (0.55 + 0.45 * Math.sin(t * 3.0 + s.tw * 2.4)) * b;
+      const rad = s.r * (0.9 + amp * 0.18);
+      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad * 5.5);
+      glow.addColorStop(0, `rgba(255,255,255,${0.85 * twk})`);
+      glow.addColorStop(0.22, rgba(colorNow.c, 0.55 * twk));
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rad * 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${0.9 * twk})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rad * 0.7, 0, Math.PI * 2); ctx.fill();
+    });
+
+    if (currentState === 'thinking') {
+      const a2 = t * 4.4;
+      const sx = R + Math.cos(a2) * R * 0.72, sy = R + Math.sin(a2) * R * 0.72;
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, R * 0.10);
+      g.addColorStop(0, rgba(colorNow.c, 0.7 * b)); g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, R * 0.10, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,4,0.72)');
+    ctx.fillStyle = vig;
+    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+    requestAnimationFrame(draw);
+  }
+
+  function init() {
+    resize();
+    window.addEventListener('resize', resize);
+    requestAnimationFrame(draw);
+  }
+
+  return { init, setState, setHover, pressEffect };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   audio.js
+   Sons discretos e futuristas via Web Audio nativa — sem samples
+   externos. Um tom por evento: init, ativação, escuta, resposta, erro.
+   ═══════════════════════════════════════════════════════════════ */
+const SOUND = (() => {
+  let actx = null;
+  function ctxRef() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, type, gainPeak, delay = 0, glideTo = null) {
+    const c = ctxRef();
+    const osc = c.createOscillator(), gain = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + delay + dur);
+    gain.gain.setValueAtTime(0.0001, c.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, c.currentTime + delay + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + delay + dur);
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(c.currentTime + delay); osc.stop(c.currentTime + delay + dur + 0.02);
+  }
+  return {
+    init: () => tone(520, 0.10, 'sine', 0.035, 0, 700),
+    activate: () => tone(560, 0.10, 'sine', 0.045, 0, 780),
+    listen: () => tone(700, 0.09, 'sine', 0.04, 0, 920),
+    answer: () => tone(480, 0.11, 'sine', 0.045, 0, 340),
+    error: () => tone(300, 0.16, 'triangle', 0.05, 0, 160),
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   voice.js
+   Voz nativa do navegador apenas — SpeechRecognition (escuta) e
+   SpeechSynthesis (fala). Nenhuma IA externa, nenhuma ponte com
+   modelo local, nenhum banco de memória.
+   ═══════════════════════════════════════════════════════════════ */
+const VOICE = (() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const synth = window.speechSynthesis;
+  let rec = null, isRec = false, onRes = null, onSt = null, cachedV = null, vReady = false;
+  const MALE_H = ['male', 'masculin', 'daniel', 'felipe', 'ricardo', 'antonio', 'diego', 'fred', 'george', 'guy', 'david', 'mark', 'alex', 'matthew'];
+  const PREM_H = ['neural', 'premium', 'enhanced', 'natural', 'wavenet', 'online'];
+
+  function scoreVoice(v) {
+    const n = v.name.toLowerCase(); let s = 0;
+    const isPTBR = v.lang?.toLowerCase() === 'pt-br', isPT = v.lang?.toLowerCase().startsWith('pt'), isEN = v.lang?.toLowerCase().startsWith('en');
+    if (isPTBR) s += 50; else if (isPT) s += 30; else if (isEN) s += 10; else return -1;
+    if (MALE_H.some(h => n.includes(h))) s += 40;
+    if (PREM_H.some(h => n.includes(h))) s += 20;
+    if (v.localService) s += 8;
+    return s;
+  }
+  function pickVoice() {
+    const vs = synth.getVoices(); if (!vs.length) return null;
+    let best = null, bS = -Infinity; vs.forEach(v => { const s = scoreVoice(v); if (s > bS) { bS = s; best = v; } });
+    return best || vs.find(v => v.lang?.toLowerCase().startsWith('pt')) || vs[0];
+  }
+  function refreshCache() { const v = pickVoice(); if (v) { cachedV = v; vReady = true; } }
+
+  function init(cbs) {
+    onRes = cbs.onResult; onSt = cbs.onStateChange;
+    if (synth) { refreshCache(); if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = refreshCache; }
+    if (!SR) return;
+    rec = new SR();
+    rec.lang = 'pt-BR'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.onstart = () => { isRec = true; onSt('listening'); };
+    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' ? 'standby' : 'error'); };
+    rec.onend = () => { if (isRec) { isRec = false; onSt('standby'); } };
+    rec.onresult = e => {
+      let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
+      if (fin.trim()) { isRec = false; onRes(fin.trim()); }
+    };
+  }
+  function startListening() { if (!rec || isRec) return false; try { rec.start(); return true; } catch (e) { return false; } }
+  function stopListening() { if (rec && isRec) { rec.stop(); isRec = false; } }
+
+  function speak(text, onStart, onEnd) {
+    if (!synth) { if (onEnd) onEnd(); return; }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if (!vReady) refreshCache();
+    if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = 'pt-BR';
+    u.rate = 0.94; u.pitch = 0.86; u.volume = 1.0;
+    u.onstart = () => { if (onStart) onStart(); };
+    u.onend = () => { if (onEnd) onEnd(); };
+    u.onerror = () => { if (onEnd) onEnd(); };
+    synth.speak(u);
+  }
+  function stopSpeaking() { if (synth) synth.cancel(); }
+
+  return { init, startListening, stopListening, speak, stopSpeaking, isAvailable: !!SR };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   core.js
+   Raciocínio local do ORION — apenas padrões e respostas locais,
+   sem chamada a IA externa.
+   ═══════════════════════════════════════════════════════════════ */
+const CORE = (() => {
+  const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  const CMDS = [
+    { m: /\b(olá|oi|bom dia|boa tarde|boa noite|hello)\b/i, h: () => rand(['Sistemas operacionais. Como posso auxiliá-lo?', 'Pronto. O que precisa?', 'Online e a postos.']) },
+    { m: /quem[é\s]+(você|vc)/i, h: () => 'Sou o ORION — uma inteligência construída por Jander para observar, responder e auxiliar.' },
+    { m: /\b(obrigad[ao]|valeu|thanks)\b/i, h: () => rand(['Para isso estou aqui.', 'Sempre às ordens.']) },
+    { m: /\b(tchau|até logo|adeus|bye)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
+    { m: /(que horas|que hora)/i, h: () => { const n = new Date(); return `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`; } },
+    { m: /(que dia|data de hoje)/i, h: () => { const n = new Date(); return `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`; } },
+    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 5.5.0.' },
+    { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
+  ];
+
+  function process(userText) {
+    for (const cmd of CMDS) { if (cmd.m.test(userText)) { const r = cmd.h(userText); if (r) return r; } }
+    return rand([
+      'Ainda estou em fase Beta e não tenho uma resposta elaborada para isso.',
+      'Essa função ainda não está disponível nesta versão.',
+      'Registrei sua solicitação, mas ainda não sei responder a isso.',
+    ]);
+  }
+
+  return { process };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   settings.js
+   Configurações não aparecem na interface principal. O painel é
+   construído sob demanda e só é acessível via Ctrl+, (Esc fecha).
+   Emite eventos 'orion-setting' que app.js escuta para ligar/desligar
+   voz e som.
+   ═══════════════════════════════════════════════════════════════ */
+const SETTINGS = (() => {
+  let panel = null;
+  let open = false;
+
+  function build() {
+    panel = document.createElement('div');
+    panel.id = 'settingsPanel';
+    panel.innerHTML = `
+      <div class="settings-card">
+        <p class="settings-title">Configurações</p>
+        <div class="settings-row">
+          <span>Voz</span>
+          <button id="toggleVoice" class="settings-toggle" data-on="true">Ativada</button>
+        </div>
+        <div class="settings-row">
+          <span>Sons</span>
+          <button id="toggleSound" class="settings-toggle" data-on="true">Ativados</button>
+        </div>
+        <p class="settings-hint">Ctrl + , para fechar</p>
+      </div>`;
+    document.body.appendChild(panel);
+
+    panel.querySelector('#toggleVoice').addEventListener('click', e => {
+      const on = e.target.dataset.on === 'true';
+      e.target.dataset.on = (!on).toString();
+      e.target.textContent = !on ? 'Ativada' : 'Desativada';
+      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'voice', value: !on } }));
+    });
+    panel.querySelector('#toggleSound').addEventListener('click', e => {
+      const on = e.target.dataset.on === 'true';
+      e.target.dataset.on = (!on).toString();
+      e.target.textContent = !on ? 'Ativados' : 'Desativados';
+      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'sound', value: !on } }));
+    });
+  }
+
+  function toggle() {
+    if (!panel) build();
+    open = !open;
+    panel.classList.toggle('open', open);
+  }
+
+  function init() {
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === ',') {
+        e.preventDefault();
+        toggle();
+      } else if (e.key === 'Escape' && open) {
+        toggle();
+      }
+    });
+  }
+
+  return { init };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   app.js
+   Shell da aplicação: dispara o boot, conduz o fluxo
+   STANDBY → LISTENING → THINKING → SPEAKING → STANDBY (com ERROR
+   acessível de qualquer estado) e liga ORB, VOICE, SOUND, CORE e
+   SETTINGS entre si.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  const bootEl = document.getElementById('boot');
+  const bootStatus = document.getElementById('bootStatus');
+  const appEl = document.getElementById('app');
+  const orbZone = document.getElementById('orbZone');
+  const statusText = document.getElementById('statusText');
+  const hintText = document.getElementById('hintText');
+
+  let curState = 'standby';
+  let statusTimer = null;
+  let hintShown = true;
+  let voiceEnabled = true;
+  let soundEnabled = true;
+
+  /* ── boot sequence — registrado ANTES de qualquer coisa que possa
+     falhar (ex.: um módulo que não carregou), para que a tela de
+     boot NUNCA fique presa mesmo se outro módulo der erro abaixo ── */
+  const bootLines = ['inicializando', 'conectando ao núcleo', 'sistemas online'];
+  let bi = 0;
+  const bootIv = setInterval(() => {
+    bootStatus.style.opacity = '0';
+    setTimeout(() => { bootStatus.textContent = bootLines[bi]; bootStatus.style.opacity = '1'; }, 220);
+    bi++;
+    if (bi >= bootLines.length) clearInterval(bootIv);
+  }, 620);
+
+  setTimeout(() => {
+    bootEl.classList.add('out');
+    try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init falhou:', err); }
+    setTimeout(() => {
+      bootEl.style.display = 'none';
+      appEl.classList.add('on');
+      setTimeout(() => flash('ORION ONLINE', 3200), 300);
+    }, 1000);
+  }, 2100);
+
+  function flash(msg, ms = 2600) {
+    clearTimeout(statusTimer);
+    statusText.textContent = msg;
+    requestAnimationFrame(() => statusText.classList.add('show'));
+    statusTimer = setTimeout(() => statusText.classList.remove('show'), ms);
+  }
+
+  function hideHint() {
+    if (!hintShown) return;
+    hintShown = false;
+    hintText.style.opacity = '0';
+  }
+
+  function setState(name, msg) {
+    curState = name;
+    try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState falhou:', err); }
+    const MSG = { standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', speaking: '', error: 'Não compreendi.' };
+    const m = msg !== undefined ? msg : MSG[name];
+    if (m) flash(m, name === 'error' ? 2200 : 2400);
+  }
+
+  function handle(text) {
+    if (!text || !text.trim()) { setState('standby'); return; }
+    setState('thinking');
+    setTimeout(() => {
+      const reply = CORE.process(text);
+      setState('speaking', reply.length > 46 ? 'Respondendo…' : reply);
+      if (soundEnabled) SOUND.answer();
+      VOICE.speak(reply, () => {}, () => setState('standby'));
+    }, 320);
+  }
+
+  try {
+    VOICE.init({
+      onResult: text => { handle(text); },
+      onStateChange: (s) => {
+        if (s === 'listening') { setState('listening'); if (soundEnabled) SOUND.listen(); }
+        else if (s === 'error') { setState('error'); if (soundEnabled) SOUND.error(); }
+        else setState('standby');
+      },
+    });
+  } catch (err) { console.error('[ORION] VOICE.init falhou:', err); }
+
+  function activate() {
+    hideHint();
+    if (curState === 'speaking') { VOICE.stopSpeaking(); setState('standby'); return; }
+    if (curState === 'listening') { VOICE.stopListening(); setState('standby'); return; }
+    if (curState !== 'standby') return;
+    if (!voiceEnabled) { setState('error', 'Voz desativada nas configurações.'); setTimeout(() => setState('standby', ''), 2400); return; }
+    if (!VOICE.isAvailable) { setState('error', 'Voz indisponível neste navegador.'); setTimeout(() => setState('standby', ''), 2600); return; }
+    ORB.pressEffect();
+    if (soundEnabled) SOUND.activate();
+    if (!VOICE.startListening()) { setState('error', 'Microfone indisponível.'); setTimeout(() => setState('standby', ''), 2200); }
+  }
+
+  orbZone.addEventListener('click', activate);
+  orbZone.addEventListener('touchstart', e => { e.preventDefault(); activate(); }, { passive: false });
+  orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (e) {} });
+  orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (e) {} });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !e.target.matches('input,textarea')) { e.preventDefault(); activate(); }
+  });
+
+  window.addEventListener('orion-setting', e => {
+    if (e.detail.key === 'voice') voiceEnabled = e.detail.value;
+    if (e.detail.key === 'sound') soundEnabled = e.detail.value;
+  });
+
+  try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
+  try { SETTINGS.init(); } catch (err) { console.error('[ORION] SETTINGS.init falhou:', err); }
+})();
+</script>
+
+  YHWH
 
 </body>
 </html>
