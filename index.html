@@ -311,39 +311,6 @@ html,body{
 <!-- ═══════ Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) ═══════ -->
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   constellation.js
-   Dados da Constelação de Órion desenhada dentro da Orb:
-   as 7 estrelas nomeadas e as linhas finas que as conectam.
-   Nenhuma lógica de desenho vive aqui — apenas os dados,
-   consumidos por orb.js.
-   ═══════════════════════════════════════════════════════════════ */
-const CONSTELLATION = (() => {
-  // posições normalizadas (0..1) dentro do círculo da Orb
-  const STARS = [
-    { id: 'betelgeuse', x: 0.30, y: 0.22, r: 2.6, tw: 0.0 },
-    { id: 'bellatrix',  x: 0.69, y: 0.20, r: 2.0, tw: 0.7 },
-    { id: 'mintaka',    x: 0.40, y: 0.50, r: 1.5, tw: 1.4 },
-    { id: 'alnilam',    x: 0.50, y: 0.52, r: 1.6, tw: 2.1 },
-    { id: 'alnitak',    x: 0.60, y: 0.545, r: 1.5, tw: 2.8 },
-    { id: 'saiph',      x: 0.34, y: 0.81, r: 1.9, tw: 3.5 },
-    { id: 'rigel',      x: 0.63, y: 0.84, r: 2.5, tw: 4.2 },
-  ];
-
-  const LINES = [
-    ['betelgeuse', 'bellatrix'],
-    ['betelgeuse', 'alnitak'],
-    ['bellatrix', 'mintaka'],
-    ['mintaka', 'alnilam'],
-    ['alnilam', 'alnitak'],
-    ['alnitak', 'saiph'],
-    ['mintaka', 'rigel'],
-    ['saiph', 'rigel'],
-  ];
-
-  return { STARS, LINES };
-})();
-
-/* ═══════════════════════════════════════════════════════════════
    visual-state.js
    Máquina de estados visuais da Orb:
 
@@ -371,8 +338,11 @@ const VISUAL_STATE = (() => {
       color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' }, // Azul Neon Escuro
     },
     thinking: {
-      amp: 1.12, rot: 2.10, bright: 1.06, cls: 'st-thinking',
-      color: { a: '#0e7490', b: '#134e4a', c: '#2dd4bf' }, // entre azul e verde escuro
+      // sem cor própria: a missão define só 4 estados principais
+      // (roxo/azul/verde/vermelho). THINKING reaproveita o roxo do
+      // STANDBY, apenas com um pouco mais de atividade interna.
+      amp: 1.14, rot: 1.75, bright: 1.05, cls: 'st-thinking',
+      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' },
     },
     speaking: {
       amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking',
@@ -410,8 +380,10 @@ const VISUAL_STATE = (() => {
 
 /* ═══════════════════════════════════════════════════════════════
    orb.js
-   Motor visual da Orb: respiração, halo, partículas ambientes,
-   profundidade, e a Constelação de Órion desenhada em canvas.
+   Motor visual da Orb — minimalista por design: respiração, halo,
+   poucas partículas ambientes e um núcleo de energia interno.
+   Sem elementos decorativos além do necessário para transmitir
+   "há uma inteligência viva aqui dentro".
 
    A cor da Orb é interpolada suavemente (lerp) quadro a quadro em
    direção à cor-alvo do estado atual (definida em visual-state.js),
@@ -428,14 +400,13 @@ const ORB = (() => {
   let amp = 1, targetAmp = 1;
   let rotSpeed = 1, targetRot = 1;
   let bright = 1, targetBright = 1;
-  let constAngle = 0;
+  let coreAngle = 0;
   let hovered = false;
   let currentState = 'standby';
 
-  const { STARS, LINES } = CONSTELLATION;
-
-  /* partículas ambientes — motas de luz à deriva dentro da Orb */
-  const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  /* poucas motas de luz à deriva dentro da Orb — o suficiente para dar
+     sensação de profundidade sem virar um "visualizador de efeitos" */
+  const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
     a: Math.random() * Math.PI * 2,
     r: 0.30 + Math.random() * 0.62,
     spd: 0.06 + Math.random() * 0.10,
@@ -521,7 +492,7 @@ const ORB = (() => {
     root.style.setProperty('--core-c', rgbToHex(colorNow.c));
 
     const hoverBoost = hovered ? 1.08 : 1.0;
-    constAngle += 0.00042 * rotSpeed * (hovered ? 1.12 : 1);
+    coreAngle += 0.00042 * rotSpeed * (hovered ? 1.12 : 1);
     const b = bright * hoverBoost;
 
     const bg = ctx.createRadialGradient(R * 0.78, R * 0.58, 0, R, R, R);
@@ -531,18 +502,18 @@ const ORB = (() => {
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
     const t = ts * 0.00016;
-    [0, 1].forEach(i => {
-      const ang = t * (0.6 + i * 0.35) + i * Math.PI;
-      const cx = R + Math.cos(ang) * R * 0.22;
-      const cy = R + Math.sin(ang * 1.15) * R * 0.22;
-      const rad = R * (0.62 * amp) * (i === 0 ? 1 : 0.72);
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      g.addColorStop(0, rgba(colorNow.c, 0.16 * b));
-      g.addColorStop(0.5, rgba(colorNow.a, 0.08 * b));
-      g.addColorStop(1, 'transparent');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
-    });
+
+    // núcleo único de energia — o "coração" da inteligência, se move
+    // discretamente e pulsa com a amplitude do estado atual
+    const cx = R + Math.cos(coreAngle) * R * 0.16;
+    const cy = R + Math.sin(coreAngle * 1.2) * R * 0.16;
+    const coreRad = R * 0.66 * amp;
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRad);
+    core.addColorStop(0, rgba(colorNow.c, 0.20 * b));
+    core.addColorStop(0.5, rgba(colorNow.a, 0.10 * b));
+    core.addColorStop(1, 'transparent');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(cx, cy, coreRad, 0, Math.PI * 2); ctx.fill();
 
     PARTICLES.forEach(p => {
       const ang = p.a + t * p.spd * 6 * p.dir;
@@ -553,45 +524,6 @@ const ORB = (() => {
       ctx.fillStyle = rgba(colorNow.c, 0.55 * tw * b);
       ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
     });
-
-    const cos = Math.cos(constAngle), sin = Math.sin(constAngle);
-    const scale = R * 0.86;
-    const proj = {};
-    STARS.forEach(s => {
-      const lx = (s.x - 0.5) * scale, ly = (s.y - 0.5) * scale;
-      const rx = lx * cos - ly * sin, ry = lx * sin + ly * cos;
-      proj[s.id] = { x: R + rx, y: R + ry };
-    });
-
-    ctx.lineWidth = 0.7;
-    LINES.forEach(([a, c], i) => {
-      const pa = proj[a], pc = proj[c];
-      const pulse = (0.16 + 0.10 * Math.sin(t * 2.2 + i * 0.9)) * b;
-      ctx.strokeStyle = rgba(colorNow.c, pulse);
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pc.x, pc.y); ctx.stroke();
-    });
-
-    STARS.forEach(s => {
-      const p = proj[s.id];
-      const twk = (0.55 + 0.45 * Math.sin(t * 3.0 + s.tw * 2.4)) * b;
-      const rad = s.r * (0.9 + amp * 0.18);
-      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad * 5.5);
-      glow.addColorStop(0, `rgba(255,255,255,${0.85 * twk})`);
-      glow.addColorStop(0.22, rgba(colorNow.c, 0.55 * twk));
-      glow.addColorStop(1, 'transparent');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(p.x, p.y, rad * 5.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${0.9 * twk})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, rad * 0.7, 0, Math.PI * 2); ctx.fill();
-    });
-
-    if (currentState === 'thinking') {
-      const a2 = t * 4.4;
-      const sx = R + Math.cos(a2) * R * 0.72, sy = R + Math.sin(a2) * R * 0.72;
-      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, R * 0.10);
-      g.addColorStop(0, rgba(colorNow.c, 0.7 * b)); g.addColorStop(1, 'transparent');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, R * 0.10, 0, Math.PI * 2); ctx.fill();
-    }
 
     const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
     vig.addColorStop(0, 'transparent');
@@ -655,21 +587,40 @@ const VOICE = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
   let rec = null, isRec = false, onRes = null, onSt = null, cachedV = null, vReady = false;
-  const MALE_H = ['male', 'masculin', 'daniel', 'felipe', 'ricardo', 'antonio', 'diego', 'fred', 'george', 'guy', 'david', 'mark', 'alex', 'matthew'];
+  // nomes conhecidos de vozes masculinas em pt-BR/pt-PT (e alguns em en) usados
+  // por diferentes motores de TTS (Edge/Windows, macOS/iOS, Android, Chrome).
+  // Ficam em ordem de preferência: quanto mais à esquerda, mais prioridade.
+  const MALE_KNOWN = ['antonio', 'antônio', 'daniel', 'fabio', 'fábio', 'felipe', 'diego', 'ricardo', 'thiago', 'tiago', 'rodrigo', 'bruno', 'gustavo', 'lucas', 'miguel', 'paulo', 'joão', 'joao', 'pedro', 'fred', 'george', 'guy', 'david', 'mark', 'alex', 'matthew'];
+  const MALE_H = ['male', 'masculin', ...MALE_KNOWN];
+  // nomes conhecidos de vozes femininas — usados para EXCLUIR/penalizar
+  // fortemente, já que muitos sistemas só oferecem uma voz pt-BR padrão
+  // e ela costuma ser feminina (ex.: "Google português do Brasil").
+  const FEMALE_H = ['female', 'feminin', 'francisca', 'luciana', 'maria', 'fernanda', 'joana', 'helena', 'camila', 'raquel', 'vitória', 'vitoria', 'catarina', 'ines', 'inês', 'google português do brasil', 'google portuguese'];
   const PREM_H = ['neural', 'premium', 'enhanced', 'natural', 'wavenet', 'online'];
 
   function scoreVoice(v) {
     const n = v.name.toLowerCase(); let s = 0;
     const isPTBR = v.lang?.toLowerCase() === 'pt-br', isPT = v.lang?.toLowerCase().startsWith('pt'), isEN = v.lang?.toLowerCase().startsWith('en');
     if (isPTBR) s += 50; else if (isPT) s += 30; else if (isEN) s += 10; else return -1;
+    // vozes explicitamente femininas ficam praticamente descartadas
+    if (FEMALE_H.some(h => n.includes(h))) s -= 500;
+    // prioridade máxima para nomes masculinos conhecidos (voz mais jovem/neutra
+    // costuma vir nas variantes "online"/"natural" desses mesmos nomes)
+    const maleIdx = MALE_KNOWN.findIndex(h => n.includes(h));
+    if (maleIdx !== -1) s += 100 - maleIdx; // primeiros da lista pontuam mais
     if (MALE_H.some(h => n.includes(h))) s += 40;
-    if (PREM_H.some(h => n.includes(h))) s += 20;
+    if (PREM_H.some(h => n.includes(h))) s += 20; // motores "online/natural" soam mais jovens
     if (v.localService) s += 8;
     return s;
   }
   function pickVoice() {
     const vs = synth.getVoices(); if (!vs.length) return null;
     let best = null, bS = -Infinity; vs.forEach(v => { const s = scoreVoice(v); if (s > bS) { bS = s; best = v; } });
+    // se mesmo assim só sobrou uma voz feminina em pt, avisamos no console —
+    // o navegador simplesmente não tem outra voz pt instalada
+    if (best && FEMALE_H.some(h => best.name.toLowerCase().includes(h))) {
+      console.warn('[ORION] Nenhuma voz masculina em pt encontrada neste navegador/SO. Usando', best.name, 'como única opção disponível.');
+    }
     return best || vs.find(v => v.lang?.toLowerCase().startsWith('pt')) || vs[0];
   }
   function refreshCache() { const v = pickVoice(); if (v) { cachedV = v; vReady = true; } }
@@ -742,6 +693,120 @@ const CORE = (() => {
 })();
 
 /* ═══════════════════════════════════════════════════════════════
+   context.js
+   Memória curta da conversa. Guarda um pequeno histórico (limitado,
+   para não crescer sem controle) e o último "tópico" identificado,
+   permitindo resolver pronomes simples como "ele"/"isso" na pergunta
+   seguinte (ex.: "Quem criou o Python?" → "E quando ele foi criado?").
+   ═══════════════════════════════════════════════════════════════ */
+const CONTEXT = (() => {
+  const MAX_TURNS = 6;
+  let lastTopic = null;
+  let history = [];
+
+  // heurística simples: captura um substantivo próprio ou palavra-chave
+  // logo após "sobre/é/criou/o que é" etc. Não é NLP real — é um placeholder
+  // deliberadamente simples até a camada de IA real (AI_ORCHESTRATOR) assumir.
+  function extractTopic(text) {
+    const m = text.match(/(?:sobre|é o|é a|é|criou|criador de|o que é)\s+([A-Za-zÀ-ú][\wÀ-ú+#.\-]{2,})/i);
+    return m ? m[1] : null;
+  }
+
+  function resolve(text) {
+    if (!lastTopic) return text;
+    return text.replace(/\b(ele|ela|isso|aquilo)\b/gi, lastTopic);
+  }
+
+  function remember(userText, replyText) {
+    history.push({ user: userText, reply: replyText });
+    if (history.length > MAX_TURNS) history.shift();
+    const topic = extractTopic(userText);
+    if (topic) lastTopic = topic;
+  }
+
+  function get() {
+    return { lastTopic, history: history.slice() };
+  }
+
+  function reset() {
+    lastTopic = null;
+    history = [];
+  }
+
+  return { resolve, remember, get, reset };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   tool-system.js
+   Registro de ferramentas — vazio por enquanto. Existe apenas para
+   que, no futuro, o AI_ORCHESTRATOR possa chamar ferramentas
+   (pesquisa, APIs, arquivos, ações) sem precisar de nova arquitetura.
+   Nada aqui é executado nesta versão.
+   ═══════════════════════════════════════════════════════════════ */
+const TOOL_SYSTEM = (() => {
+  const tools = {};
+
+  function register(name, fn) {
+    tools[name] = fn;
+  }
+
+  function has(name) {
+    return Object.prototype.hasOwnProperty.call(tools, name);
+  }
+
+  async function run(name, args) {
+    if (!has(name)) throw new Error(`Ferramenta "${name}" não registrada.`);
+    return tools[name](args);
+  }
+
+  return { register, has, run };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   ai-orchestrator.js
+   Camada de abstração entre o CORE do ORION e o(s) provedor(es) de IA.
+
+     ORION CORE → AI ORCHESTRATOR → AI PROVIDER → MODEL
+
+   Hoje existe um único provedor local (o CORE baseado em padrões).
+   Amanhã, novos provedores (ex.: um modelo real via API) podem ser
+   registrados aqui sem alterar app.js, voice.js ou a Orb.
+   ═══════════════════════════════════════════════════════════════ */
+const AI_ORCHESTRATOR = (() => {
+  const LOCAL_PROVIDER = {
+    name: 'local-core',
+    // toda IA "de verdade" no futuro entra aqui, mantendo a mesma assinatura
+    generate: async (text, context) => CORE.process(text, context),
+  };
+
+  let provider = LOCAL_PROVIDER;
+
+  function setProvider(p) {
+    if (p && typeof p.generate === 'function') provider = p;
+  }
+
+  function getProviderName() {
+    return provider.name;
+  }
+
+  async function ask(rawText) {
+    const context = CONTEXT.get();
+    const resolvedText = CONTEXT.resolve(rawText);
+    let reply;
+    try {
+      reply = await provider.generate(resolvedText, context);
+    } catch (err) {
+      console.error('[ORION] AI_ORCHESTRATOR: provedor falhou:', err);
+      throw err;
+    }
+    CONTEXT.remember(rawText, reply);
+    return reply;
+  }
+
+  return { ask, setProvider, getProviderName };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
    settings.js
    Configurações não aparecem na interface principal. O painel é
    construído sob demanda e só é acessível via Ctrl+, (Esc fecha).
@@ -808,8 +873,8 @@ const SETTINGS = (() => {
    app.js
    Shell da aplicação: dispara o boot, conduz o fluxo
    STANDBY → LISTENING → THINKING → SPEAKING → STANDBY (com ERROR
-   acessível de qualquer estado) e liga ORB, VOICE, SOUND, CORE e
-   SETTINGS entre si.
+   acessível de qualquer estado) e liga ORB, VOICE, SOUND,
+   AI_ORCHESTRATOR (→ CONTEXT → CORE) e SETTINGS entre si.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   const bootEl = document.getElementById('boot');
@@ -868,15 +933,22 @@ const SETTINGS = (() => {
     if (m) flash(m, name === 'error' ? 2200 : 2400);
   }
 
-  function handle(text) {
+  async function handle(text) {
     if (!text || !text.trim()) { setState('standby'); return; }
     setState('thinking');
-    setTimeout(() => {
-      const reply = CORE.process(text);
+    try {
+      // AI_ORCHESTRATOR resolve o contexto da conversa e chama o
+      // provedor de IA ativo (hoje: CORE local; amanhã: outro modelo)
+      const reply = await AI_ORCHESTRATOR.ask(text);
       setState('speaking', reply.length > 46 ? 'Respondendo…' : reply);
       if (soundEnabled) SOUND.answer();
       VOICE.speak(reply, () => {}, () => setState('standby'));
-    }, 320);
+    } catch (err) {
+      console.error('[ORION] Falha ao processar:', err);
+      setState('error', 'Não consegui processar.');
+      if (soundEnabled) SOUND.error();
+      setTimeout(() => setState('standby', ''), 2200);
+    }
   }
 
   try {
