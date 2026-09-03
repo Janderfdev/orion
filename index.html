@@ -210,6 +210,12 @@ html,body{
   letter-spacing:0.22em; text-transform:uppercase;
   color:rgba(255,255,255,0.16); user-select:none; pointer-events:none;
 }
+.mark-tag{
+  position:fixed; left:18px; bottom:4px; z-index:40;
+  font-family:var(--font-mono); font-size:9px; font-weight:300;
+  letter-spacing:0.22em; text-transform:uppercase;
+  color:rgba(255,255,255,0.16); user-select:none; pointer-events:none;
+}
 
 /* ═══════ SETTINGS (Ctrl + ,) — fora da interface principal ═══════ */
 #settingsPanel{
@@ -300,6 +306,7 @@ html,body{
 </div>
 
 <div class="version-tag">VERSÃO V5.5.0</div>
+<div class="mark-tag">YHWH</div>
 
 <!-- ═══════ Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) ═══════ -->
 <script>
@@ -910,7 +917,6 @@ const SETTINGS = (() => {
   try { SETTINGS.init(); } catch (err) { console.error('[ORION] SETTINGS.init falhou:', err); }
 })();
 </script>
-  
+
 </body>
 </html>
-print("YHWH")
