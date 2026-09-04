@@ -648,9 +648,12 @@ const VOICE = (() => {
     const u = new SpeechSynthesisUtterance(text);
     if (!vReady) refreshCache();
     if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = 'pt-BR';
-    // timbre masculino neutro/jovem: rate perto do natural e pitch levemente
-    // acima do padrão (evita o efeito "grave/robótico" da configuração anterior)
-    u.rate = 1.02; u.pitch = 1.08; u.volume = 1.0;
+    // Em motores sintéticos como o eSpeak (comum no ChromeOS), não existe
+    // escolha de voz masculina/feminina — só UMA voz pt-BR — então o gênero
+    // percebido depende inteiramente do pitch. Pitch mais baixo = mais grave/
+    // masculino; rate um pouco acima do normal = soa mais jovem/ágil em vez
+    // de lento e idoso.
+    u.rate = 1.08; u.pitch = 0.55; u.volume = 1.0;
     u.onstart = () => { if (onStart) onStart(); };
     u.onend = () => { if (onEnd) onEnd(); };
     u.onerror = () => { if (onEnd) onEnd(); };
