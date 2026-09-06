@@ -885,6 +885,55 @@ const TOOL_SYSTEM = (() => {
   return { register, has, run, list };
 })();
 
+/* ── primeira ferramenta real do ORION: calculadora (READ_ONLY) ──
+   Parser de expressão aritmética simples e seguro (sem eval): só
+   dígitos, operadores básicos, parênteses, ponto decimal e espaços.
+   Existe para provar que TOOL_SYSTEM + PERMISSIONS funcionam de
+   ponta a ponta nesta versão. */
+function safeArithmetic(expr) {
+  const clean = String(expr).trim();
+  if (!/^[0-9+\-*/().,\s]+$/.test(clean)) {
+    const err = new Error('Expressão contém caracteres não permitidos.');
+    err.code = 'unexpected_input';
+    throw err;
+  }
+  const normalized = clean.replace(/,/g, '.');
+  // shunting-yard mínimo — evita Function()/eval() por segurança
+  const tokens = normalized.match(/(\d+\.?\d*|\.\d+|[+\-*/()])/g) || [];
+  const outQ = [], opQ = [];
+  const prec = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  tokens.forEach(tok => {
+    if (/^[\d.]+$/.test(tok)) outQ.push(parseFloat(tok));
+    else if (tok === '(') opQ.push(tok);
+    else if (tok === ')') { while (opQ.length && opQ[opQ.length - 1] !== '(') outQ.push(opQ.pop()); opQ.pop(); }
+    else { while (opQ.length && prec[opQ[opQ.length - 1]] >= prec[tok]) outQ.push(opQ.pop()); opQ.push(tok); }
+  });
+  while (opQ.length) outQ.push(opQ.pop());
+  const stack = [];
+  outQ.forEach(tok => {
+    if (typeof tok === 'number') { stack.push(tok); return; }
+    const b = stack.pop(), a = stack.pop();
+    if (tok === '+') stack.push(a + b);
+    else if (tok === '-') stack.push(a - b);
+    else if (tok === '*') stack.push(a * b);
+    else if (tok === '/') stack.push(a / b);
+  });
+  const result = stack.pop();
+  if (typeof result !== 'number' || Number.isNaN(result) || !Number.isFinite(result)) {
+    const err = new Error('Não foi possível calcular essa expressão.');
+    err.code = 'invalid_response';
+    throw err;
+  }
+  return result;
+}
+
+TOOL_SYSTEM.register(
+  'calculator',
+  async ({ expression }) => safeArithmetic(expression),
+  PERMISSIONS.LEVEL.READ_ONLY,
+  'Avalia expressões aritméticas simples (+-*/, parênteses).'
+);
+
 /* ═══════════════════════════════════════════════════════════════
    model-provider.js
    Abstração entre o núcleo do ORION e o(s) modelo(s) de IA.
@@ -950,11 +999,17 @@ const MODEL_PROVIDER = (() => {
 const ORCHESTRATOR = (() => {
   const MODEL_TIMEOUT_MS = 8000;
 
+  const MATH_EXPR_RE = /^[\s]*[0-9][0-9+\-*/().,\s]*[0-9)][\s]*$/;
+
   function classifyTask(text) {
-    // placeholder de classificação — hoje tudo é tratado como conversa
-    // direta com o provedor de modelo ativo. Futuramente pode retornar
-    // 'tool_call', 'research', 'file_task', etc., e mudar o roteamento.
-    return 'conversation';
+    // classificação real, porém simples: uma expressão puramente numérica
+    // (ex.: "12*(3+4)") vira 'tool_call' e é roteada para a calculadora;
+    // qualquer outra coisa continua como 'conversation' via MODEL_PROVIDER.
+    // Isso é o roteamento mínimo previsto na Fase 4/5 do plano — mais
+    // classificadores (research, file_task...) entram aqui no futuro.
+    const t = text.trim();
+    if (MATH_EXPR_RE.test(t) && /[+\-*/]/.test(t)) return { type: 'tool_call', tool: 'calculator', args: { expression: t } };
+    return { type: 'conversation' };
   }
 
   function withTimeout(promise, ms) {
@@ -990,12 +1045,17 @@ const ORCHESTRATOR = (() => {
     const context = CONTEXT.get();
     const resolvedText = CONTEXT.resolve(rawText);
 
-    LOGGER.info('request_started', { requestId, task, provider: MODEL_PROVIDER.getActiveName() });
+    LOGGER.info('request_started', { requestId, task: task.type, provider: MODEL_PROVIDER.getActiveName() });
 
     let reply;
     try {
-      reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, context), MODEL_TIMEOUT_MS);
-      reply = validate(reply);
+      if (task.type === 'tool_call') {
+        const result = await TOOL_SYSTEM.run(task.tool, task.args);
+        reply = validate(String(result));
+      } else {
+        reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, context), MODEL_TIMEOUT_MS);
+        reply = validate(reply);
+      }
     } catch (err) {
       LOGGER.error('request_failed', { requestId, error: err.message, code: err.code });
       throw err;
