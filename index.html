@@ -305,7 +305,7 @@ html,body{
 
 </div>
 
-<div class="version-tag">VERSÃO V5.5.0</div>
+<div class="version-tag">VERSÃO V7.0.0</div>
 <div class="mark-tag">YHWH</div>
 
 <!-- ═══════ Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) ═══════ -->
@@ -376,6 +376,108 @@ const VISUAL_STATE = (() => {
   }
 
   return { apply, get, config };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   logger.js  (observability)
+   Registro leve de diagnóstico: session id, request id, latência,
+   modelo/ferramenta usados e erros. Nunca grava conteúdo sensível
+   (texto bruto do usuário) em produção — apenas em modo dev.
+   ═══════════════════════════════════════════════════════════════ */
+const LOGGER = (() => {
+  const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
+  const sessionId = 'sess_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  let seq = 0;
+
+  function newRequestId() {
+    return 'req_' + (++seq) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function base(level, event, data) {
+    const entry = { t: new Date().toISOString(), level, event, sessionId, ...data };
+    if (!DEV) delete entry.rawText; // nunca persistir texto bruto fora de dev
+    const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    fn('[ORION]', entry);
+    return entry;
+  }
+
+  return {
+    sessionId,
+    newRequestId,
+    info: (event, data = {}) => base('info', event, data),
+    warn: (event, data = {}) => base('warn', event, data),
+    error: (event, data = {}) => base('error', event, data),
+    isDev: () => DEV,
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   error-handler.js
+   Ponto único de categorização e tratamento de falhas do sistema.
+   Recebe o erro cru + o estágio do pipeline onde ele ocorreu e
+   devolve: (1) uma mensagem curta apresentável na Orb/status,
+   (2) se o sistema deve voltar para STANDBY automaticamente.
+   Cobre: microfone, STT, modelo, timeout, API, resposta inválida,
+   ferramenta indisponível, rede indisponível, TTS, entrada inesperada.
+   ═══════════════════════════════════════════════════════════════ */
+const ERROR_HANDLER = (() => {
+  const MESSAGES = {
+    mic_unavailable: 'Microfone indisponível.',
+    stt_unavailable: 'Reconhecimento de voz indisponível neste navegador.',
+    model_unavailable: 'Não consegui acessar o modelo.',
+    timeout: 'A resposta demorou demais.',
+    api_error: 'Falha ao comunicar com o serviço.',
+    invalid_response: 'Recebi uma resposta inválida.',
+    tool_unavailable: 'Essa ferramenta ainda não está disponível.',
+    offline: 'Sem conexão com a internet.',
+    tts_unavailable: 'Não consigo falar a resposta agora.',
+    unexpected_input: 'Não entendi o que foi dito.',
+    unknown: 'Não consegui processar.',
+  };
+
+  function classify(err) {
+    if (!navigator.onLine) return 'offline';
+    if (!err) return 'unknown';
+    if (err.code && MESSAGES[err.code]) return err.code;
+    const msg = (err.message || String(err)).toLowerCase();
+    if (msg.includes('timeout')) return 'timeout';
+    if (msg.includes('not-allowed') || msg.includes('mic')) return 'mic_unavailable';
+    if (msg.includes('rede') || msg.includes('network')) return 'offline';
+    return 'unknown';
+  }
+
+  function handle(err, stage) {
+    const code = classify(err);
+    LOGGER.error('error_handled', { stage, code, message: err && err.message });
+    return { code, message: MESSAGES[code] || MESSAGES.unknown, recoverable: true };
+  }
+
+  return { handle, classify, MESSAGES };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   permissions.js
+   Fundamento de permissões para ferramentas (usado por TOOL_SYSTEM).
+   Nesta versão toda ferramenta registrada é READ_ONLY por padrão;
+   níveis mais altos existem apenas como contrato para o futuro —
+   nenhuma ação WRITE/EXECUTE/EXTERNAL_ACTION é executada sem
+   confirmação explícita quando essa camada for implementada.
+   ═══════════════════════════════════════════════════════════════ */
+const PERMISSIONS = (() => {
+  const LEVEL = Object.freeze({
+    READ_ONLY: 'READ_ONLY',
+    WRITE: 'WRITE',
+    EXECUTE: 'EXECUTE',
+    EXTERNAL_ACTION: 'EXTERNAL_ACTION',
+  });
+
+  // apenas READ_ONLY é autoaprovado nesta versão; qualquer coisa acima
+  // exige confirmação futura do usuário (needsConfirmation === true)
+  function needsConfirmation(level) {
+    return level !== LEVEL.READ_ONLY;
+  }
+
+  return { LEVEL, needsConfirmation };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
@@ -679,7 +781,7 @@ const CORE = (() => {
     { m: /\b(tchau|até logo|adeus|bye)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
     { m: /(que horas|que hora)/i, h: () => { const n = new Date(); return `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`; } },
     { m: /(que dia|data de hoje)/i, h: () => { const n = new Date(); return `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`; } },
-    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 5.5.0.' },
+    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 7.0.0.' },
     { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
   ];
 
@@ -747,67 +849,169 @@ const CONTEXT = (() => {
    Nada aqui é executado nesta versão.
    ═══════════════════════════════════════════════════════════════ */
 const TOOL_SYSTEM = (() => {
-  const tools = {};
+  const tools = {}; // name -> { fn, permission, description }
 
-  function register(name, fn) {
-    tools[name] = fn;
+  function register(name, fn, permission = PERMISSIONS.LEVEL.READ_ONLY, description = '') {
+    tools[name] = { fn, permission, description };
+    LOGGER.info('tool_registered', { name, permission });
   }
 
   function has(name) {
     return Object.prototype.hasOwnProperty.call(tools, name);
   }
 
-  async function run(name, args) {
-    if (!has(name)) throw new Error(`Ferramenta "${name}" não registrada.`);
-    return tools[name](args);
+  function list() {
+    return Object.entries(tools).map(([name, t]) => ({ name, permission: t.permission, description: t.description }));
   }
 
-  return { register, has, run };
+  async function run(name, args) {
+    if (!has(name)) {
+      const err = new Error(`Ferramenta "${name}" não registrada.`);
+      err.code = 'tool_unavailable';
+      throw err;
+    }
+    const tool = tools[name];
+    if (PERMISSIONS.needsConfirmation(tool.permission)) {
+      // fundação apenas: nesta versão nenhuma ferramenta com permissão
+      // acima de READ_ONLY é executada sem uma camada de confirmação,
+      // que ainda não existe na UI — bloqueia com segurança por padrão.
+      const err = new Error(`Ferramenta "${name}" requer confirmação (${tool.permission}), ainda não suportada.`);
+      err.code = 'tool_unavailable';
+      throw err;
+    }
+    return tool.fn(args);
+  }
+
+  return { register, has, run, list };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
-   ai-orchestrator.js
-   Camada de abstração entre o CORE do ORION e o(s) provedor(es) de IA.
+   model-provider.js
+   Abstração entre o núcleo do ORION e o(s) modelo(s) de IA.
+   Hoje existe um único provedor local (CORE, baseado em padrões).
+   Amanhã, provedores reais (OpenAI, Anthropic, Google, modelos
+   locais...) podem ser registrados aqui com a MESMA assinatura,
+   sem exigir mudanças no Orchestrator, na Orb ou na voz.
 
-     ORION CORE → AI ORCHESTRATOR → AI PROVIDER → MODEL
-
-   Hoje existe um único provedor local (o CORE baseado em padrões).
-   Amanhã, novos provedores (ex.: um modelo real via API) podem ser
-   registrados aqui sem alterar app.js, voice.js ou a Orb.
+     ORCHESTRATOR → MODEL_PROVIDER → modelo selecionado
    ═══════════════════════════════════════════════════════════════ */
-const AI_ORCHESTRATOR = (() => {
-  const LOCAL_PROVIDER = {
-    name: 'local-core',
-    // toda IA "de verdade" no futuro entra aqui, mantendo a mesma assinatura
-    generate: async (text, context) => CORE.process(text, context),
-  };
+const MODEL_PROVIDER = (() => {
+  const providers = {};
+  let activeName = null;
 
-  let provider = LOCAL_PROVIDER;
-
-  function setProvider(p) {
-    if (p && typeof p.generate === 'function') provider = p;
+  function register(name, providerObj) {
+    if (!providerObj || typeof providerObj.generate !== 'function') {
+      throw new Error('Provider inválido: precisa expor generate(text, context).');
+    }
+    providers[name] = providerObj;
+    if (!activeName) activeName = name; // primeiro registrado vira o padrão
+    LOGGER.info('provider_registered', { name });
   }
 
-  function getProviderName() {
-    return provider.name;
+  function setActive(name) {
+    if (!providers[name]) throw new Error(`Provider "${name}" não registrado.`);
+    activeName = name;
+    LOGGER.info('provider_switched', { name });
+  }
+
+  function getActiveName() {
+    return activeName;
+  }
+
+  async function generate(text, context) {
+    if (!activeName || !providers[activeName]) {
+      const err = new Error('Nenhum provedor de modelo ativo.');
+      err.code = 'model_unavailable';
+      throw err;
+    }
+    return providers[activeName].generate(text, context);
+  }
+
+  // provedor local baseado em padrões — hoje é o único disponível
+  register('local-core', {
+    generate: async (text, context) => CORE.process(text, context),
+  });
+
+  return { register, setActive, getActiveName, generate };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   orchestrator.js
+   Núcleo que coordena a inteligência do sistema:
+
+     User Request → Task Classification → Planning →
+     Model/Tool Selection → Execution → Validation → Final Response
+
+   Nesta versão a classificação de tarefa e o planejamento são stubs
+   deliberadamente simples (sempre "conversation" / execução direta),
+   mas o formato do pipeline já existe para permitir, no futuro, rotear
+   para ferramentas ou agentes especializados sem reescrever o núcleo.
+   ═══════════════════════════════════════════════════════════════ */
+const ORCHESTRATOR = (() => {
+  const MODEL_TIMEOUT_MS = 8000;
+
+  function classifyTask(text) {
+    // placeholder de classificação — hoje tudo é tratado como conversa
+    // direta com o provedor de modelo ativo. Futuramente pode retornar
+    // 'tool_call', 'research', 'file_task', etc., e mudar o roteamento.
+    return 'conversation';
+  }
+
+  function withTimeout(promise, ms) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        const err = new Error('Tempo de resposta esgotado.');
+        err.code = 'timeout';
+        reject(err);
+      }, ms);
+      promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+    });
+  }
+
+  function validate(reply) {
+    if (typeof reply !== 'string' || !reply.trim()) {
+      const err = new Error('Resposta vazia ou inválida do modelo.');
+      err.code = 'invalid_response';
+      throw err;
+    }
+    return reply.trim();
   }
 
   async function ask(rawText) {
-    const context = CONTEXT.get();
-    const resolvedText = CONTEXT.resolve(rawText);
-    let reply;
-    try {
-      reply = await provider.generate(resolvedText, context);
-    } catch (err) {
-      console.error('[ORION] AI_ORCHESTRATOR: provedor falhou:', err);
+    const requestId = LOGGER.newRequestId();
+    const startedAt = performance.now();
+    if (!navigator.onLine) {
+      const err = new Error('Sem conexão.');
+      err.code = 'offline';
       throw err;
     }
+
+    const task = classifyTask(rawText);
+    const context = CONTEXT.get();
+    const resolvedText = CONTEXT.resolve(rawText);
+
+    LOGGER.info('request_started', { requestId, task, provider: MODEL_PROVIDER.getActiveName() });
+
+    let reply;
+    try {
+      reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, context), MODEL_TIMEOUT_MS);
+      reply = validate(reply);
+    } catch (err) {
+      LOGGER.error('request_failed', { requestId, error: err.message, code: err.code });
+      throw err;
+    }
+
     CONTEXT.remember(rawText, reply);
+    LOGGER.info('request_completed', { requestId, latencyMs: Math.round(performance.now() - startedAt) });
     return reply;
   }
 
-  return { ask, setProvider, getProviderName };
+  return { ask, classifyTask };
 })();
+
+// alias de compatibilidade — mantém código/scripts antigos funcionando
+// caso algo externo ainda chame AI_ORCHESTRATOR.ask(...)
+const AI_ORCHESTRATOR = { ask: ORCHESTRATOR.ask, setProvider: MODEL_PROVIDER.register, getProviderName: MODEL_PROVIDER.getActiveName };
 
 /* ═══════════════════════════════════════════════════════════════
    settings.js
@@ -940,15 +1144,16 @@ const SETTINGS = (() => {
     if (!text || !text.trim()) { setState('standby'); return; }
     setState('thinking');
     try {
-      // AI_ORCHESTRATOR resolve o contexto da conversa e chama o
-      // provedor de IA ativo (hoje: CORE local; amanhã: outro modelo)
-      const reply = await AI_ORCHESTRATOR.ask(text);
+      // ORCHESTRATOR classifica a tarefa, resolve o contexto da conversa,
+      // aplica timeout/validação e chama o MODEL_PROVIDER ativo
+      // (hoje: CORE local; amanhã: outro modelo, sem mudar este arquivo).
+      const reply = await ORCHESTRATOR.ask(text);
       setState('speaking', reply.length > 46 ? 'Respondendo…' : reply);
       if (soundEnabled) SOUND.answer();
       VOICE.speak(reply, () => {}, () => setState('standby'));
     } catch (err) {
-      console.error('[ORION] Falha ao processar:', err);
-      setState('error', 'Não consegui processar.');
+      const handled = ERROR_HANDLER.handle(err, 'orchestrator');
+      setState('error', handled.message);
       if (soundEnabled) SOUND.error();
       setTimeout(() => setState('standby', ''), 2200);
     }
@@ -974,8 +1179,14 @@ const SETTINGS = (() => {
     if (!VOICE.isAvailable) { setState('error', 'Voz indisponível neste navegador.'); setTimeout(() => setState('standby', ''), 2600); return; }
     ORB.pressEffect();
     if (soundEnabled) SOUND.activate();
-    if (!VOICE.startListening()) { setState('error', 'Microfone indisponível.'); setTimeout(() => setState('standby', ''), 2200); }
+    if (!VOICE.startListening()) {
+      const handled = ERROR_HANDLER.handle({ code: 'mic_unavailable' }, 'voice');
+      setState('error', handled.message);
+      setTimeout(() => setState('standby', ''), 2200);
+    }
   }
+
+  LOGGER.info('session_started', { sessionId: LOGGER.sessionId, sttAvailable: VOICE.isAvailable });
 
   orbZone.addEventListener('click', activate);
   orbZone.addEventListener('touchstart', e => { e.preventDefault(); activate(); }, { passive: false });
