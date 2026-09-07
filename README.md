@@ -5,7 +5,7 @@
 ### A next-generation Artificial Intelligence Assistant inspired by the Orion Constellation.
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)
-![Version](https://img.shields.io/badge/Version-3.0.0-purple?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-3.0-purple?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-In%20Development-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)
 
