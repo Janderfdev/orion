@@ -118,7 +118,7 @@ html,body{
 .orb-zone:hover .halo{ animation-duration:16s; opacity:0.72; filter:brightness(1.18); }
 @keyframes halospin{ to{ transform:rotate(360deg); } }
 
-/* anéis de energia — aparecem enquanto o ORION ouve ou fala (presença viva) */
+/* anéis de energia — só aparecem enquanto o ORION fala */
 .wave-ring{
   position:absolute; left:50%; top:50%; border-radius:50%;
   width:var(--orb); height:var(--orb);
@@ -126,9 +126,9 @@ html,body{
   border:1px solid color-mix(in srgb, var(--core-c) 70%, transparent);
   opacity:0; pointer-events:none;
 }
-.orb-zone.active-waves .wave-ring{ animation:wave-out 2.4s ease-out infinite; }
-.orb-zone.active-waves .wave-ring:nth-child(2){ animation-delay:0.8s; }
-.orb-zone.active-waves .wave-ring:nth-child(3){ animation-delay:1.6s; }
+.orb-zone.speaking .wave-ring{ animation:wave-out 2.4s ease-out infinite; }
+.orb-zone.speaking .wave-ring:nth-child(2){ animation-delay:0.8s; }
+.orb-zone.speaking .wave-ring:nth-child(3){ animation-delay:1.6s; }
 @keyframes wave-out{
   0%{ transform:translate(-50%,-50%) scale(1); opacity:0.55; }
   100%{ transform:translate(-50%,-50%) scale(1.55); opacity:0; }
@@ -277,7 +277,7 @@ html,body{
 
   <div class="header">
     <div class="header-dot"></div>
-    <span class="header-word">Orion AI</span>
+    <span class="header-word">ORION AI</span>
     <div class="header-dot"></div>
   </div>
 
@@ -337,12 +337,11 @@ const VISUAL_STATE = (() => {
       color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' }, // Azul Neon Escuro
     },
     thinking: {
-      // PROCESSING tem cor própria: mistura Azul/Roxo Neon Escuro
-      // (entre o azul do LISTENING e o roxo do STANDBY), como pedido
-      // na especificação da V3.2.0 — sinaliza visualmente que o
-      // ORION saiu da escuta e está processando internamente.
-      amp: 1.14, rot: 1.75, bright: 1.08, cls: 'st-thinking',
-      color: { a: '#4338ca', b: '#3730a3', c: '#818cf8' }, // Azul/Roxo Neon Escuro
+      // sem cor própria: a missão define só 4 estados principais
+      // (roxo/azul/verde/vermelho). THINKING reaproveita o roxo do
+      // STANDBY, apenas com um pouco mais de atividade interna.
+      amp: 1.14, rot: 1.75, bright: 1.05, cls: 'st-thinking',
+      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' },
     },
     speaking: {
       amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking',
@@ -499,22 +498,12 @@ const ORB = (() => {
   const haloEl = document.getElementById('halo');
   const root = document.documentElement;
 
-  let amp = 1, baseAmpTarget = 1;
+  let amp = 1, targetAmp = 1;
   let rotSpeed = 1, targetRot = 1;
   let bright = 1, targetBright = 1;
   let coreAngle = 0;
   let hovered = false;
   let currentState = 'standby';
-
-  // ── reatividade de voz "de verdade" (V3.2.0) ──
-  // liveBoost: nível contínuo (0..1) vindo do microfone real durante LISTENING
-  //   (ver AUDIO_ANALYSIS). speakPulse: pulso curto disparado a cada limite de
-  //   palavra/caractere da fala sintetizada (evento 'boundary' do TTS), já que
-  //   o navegador não expõe o áudio bruto da SpeechSynthesis para um analyser.
-  //   Ambos decaem sozinhos a cada quadro — nenhum dos dois precisa ser
-  //   "desligado" explicitamente, o que evita saltos visuais.
-  let liveBoost = 0;
-  let speakPulse = 0;
 
   /* poucas motas de luz à deriva dentro da Orb — o suficiente para dar
      sensação de profundidade sem virar um "visualizador de efeitos" */
@@ -566,17 +555,13 @@ const ORB = (() => {
   function setState(name) {
     const cfg = VISUAL_STATE.apply(name);
     currentState = VISUAL_STATE.get();
-    baseAmpTarget = cfg.amp;
+    targetAmp = cfg.amp;
     targetRot = cfg.rot;
     targetBright = cfg.bright;
     colorTarget = hexToRgbTriple(cfg.color);
     applyStateClass(cfg.cls);
     haloEl.classList.toggle('fast', ['listening', 'speaking', 'thinking'].includes(currentState));
-    document.getElementById('orbZone').classList.toggle('active-waves', currentState === 'speaking' || currentState === 'listening');
-    // ao sair de LISTENING/SPEAKING, qualquer reatividade de voz pendente
-    // deve relaxar suavemente em vez de ficar "presa" num valor antigo
-    if (currentState !== 'listening') liveBoost = 0;
-    if (currentState !== 'speaking') speakPulse = 0;
+    document.getElementById('orbZone').classList.toggle('speaking', currentState === 'speaking');
   }
 
   function setHover(on) {
@@ -588,20 +573,6 @@ const ORB = (() => {
     setTimeout(() => orbEl.classList.remove('pressed'), 150);
   }
 
-  // nível 0..1 de volume real do microfone, alimentado pelo AUDIO_ANALYSIS
-  // enquanto o estado é LISTENING — modula a amplitude sem exagero (plano
-  // pede reação "proporcional e elegante", nunca um equalizador exagerado).
-  function setAmplitude(level) {
-    liveBoost = Math.max(0, Math.min(1, level)) * 0.5;
-  }
-
-  // pulso curto e decrescente, disparado a cada palavra da fala sintetizada,
-  // simulando "pulso sincronizado com a saída de voz" mesmo sem acesso ao
-  // áudio bruto do TTS do navegador.
-  function pulseSpeak() {
-    speakPulse = Math.min(1, speakPulse + 0.6);
-  }
-
   function draw(ts) {
     const W = canvas.width, H = canvas.height, R = W / 2;
     if (W === 0) { requestAnimationFrame(draw); return; }
@@ -609,9 +580,7 @@ const ORB = (() => {
     ctx.save();
     ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.clip();
 
-    const wantedAmp = baseAmpTarget + liveBoost + speakPulse * 0.35;
-    amp += (wantedAmp - amp) * 0.07;
-    speakPulse *= 0.86; // pulso de fala decai rápido, quadro a quadro
+    amp += (targetAmp - amp) * 0.035;
     rotSpeed += (targetRot - rotSpeed) * 0.035;
     bright += (targetBright - bright) * 0.05;
     colorNow.a = lerpRgb(colorNow.a, colorTarget.a, 0.035);
@@ -673,7 +642,7 @@ const ORB = (() => {
     requestAnimationFrame(draw);
   }
 
-  return { init, setState, setHover, pressEffect, setAmplitude, pulseSpeak };
+  return { init, setState, setHover, pressEffect };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
@@ -707,62 +676,6 @@ const SOUND = (() => {
     answer: () => tone(480, 0.11, 'sine', 0.045, 0, 340),
     error: () => tone(300, 0.16, 'triangle', 0.05, 0, 160),
   };
-})();
-
-/* ═══════════════════════════════════════════════════════════════
-   audio-analysis.js  (V3.2.0)
-   Reatividade real da Orb ao volume do microfone durante LISTENING,
-   conforme pedido na especificação ("a Orb deve reagir ao áudio real
-   quando tecnicamente possível"). Usa um segundo stream de mídia
-   (independente do SpeechRecognition) só para leitura de amplitude —
-   nunca grava, nunca envia a nenhum lugar, só lê o nível em memória.
-   Falha graciosamente: se o navegador negar o microfone para este
-   fim, o reconhecimento de voz continua funcionando normalmente,
-   apenas sem a reatividade visual extra.
-   ═══════════════════════════════════════════════════════════════ */
-const AUDIO_ANALYSIS = (() => {
-  let stream = null, actx = null, analyser = null, data = null, rafId = null, onLevel = null;
-
-  async function start(onLevelCb) {
-    if (analyser) return true; // já ativo
-    onLevel = onLevelCb;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-      const src = actx.createMediaStreamSource(stream);
-      analyser = actx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.78;
-      src.connect(analyser);
-      data = new Uint8Array(analyser.frequencyBinCount);
-      loop();
-      return true;
-    } catch (err) {
-      LOGGER.warn('audio_analysis_unavailable', { message: err && err.message });
-      stop();
-      return false;
-    }
-  }
-
-  function loop() {
-    if (!analyser) return;
-    analyser.getByteTimeDomainData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
-    const rms = Math.sqrt(sum / data.length);
-    if (onLevel) onLevel(Math.min(1, rms * 3.4)); // ganho para tornar a fala normal bem visível
-    rafId = requestAnimationFrame(loop);
-  }
-
-  function stop() {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = null;
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    if (actx) { actx.close().catch(() => {}); actx = null; }
-    analyser = null; data = null; onLevel = null;
-  }
-
-  return { start, stop, isActive: () => !!analyser };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
@@ -830,7 +743,7 @@ const VOICE = (() => {
   function startListening() { if (!rec || isRec) return false; try { rec.start(); return true; } catch (e) { return false; } }
   function stopListening() { if (rec && isRec) { rec.stop(); isRec = false; } }
 
-  function speak(text, onStart, onEnd, onBoundary) {
+  function speak(text, onStart, onEnd) {
     if (!synth) { if (onEnd) onEnd(); return; }
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -845,10 +758,6 @@ const VOICE = (() => {
     u.onstart = () => { if (onStart) onStart(); };
     u.onend = () => { if (onEnd) onEnd(); };
     u.onerror = () => { if (onEnd) onEnd(); };
-    // 'boundary' dispara a cada palavra/caractere em navegadores que
-    // suportam (ex.: Chrome) — usado para pulsar a Orb no ritmo da fala,
-    // já que o áudio bruto do TTS não é exposto a um AnalyserNode real.
-    if (onBoundary) u.onboundary = onBoundary;
     synth.speak(u);
   }
   function stopSpeaking() { if (synth) synth.cancel(); }
@@ -864,53 +773,21 @@ const VOICE = (() => {
 const CORE = (() => {
   const rand = arr => arr[Math.floor(Math.random() * arr.length)];
 
-  // saudação sensível ao horário real do dispositivo — em vez de sempre
-  // responder de forma genérica a um "oi"/"olá", o ORION soa mais atento
-  // ao contexto (parte do refinamento de "comunicação" da V3.2.0).
-  function timeGreeting() {
-    const h = new Date().getHours();
-    if (h < 6) return 'Boa madrugada. Sistemas operacionais.';
-    if (h < 12) return 'Bom dia. Como posso ajudar?';
-    if (h < 18) return 'Boa tarde. O que precisa?';
-    return 'Boa noite. Estou ouvindo.';
-  }
-
-  const CAPABILITIES = [
-    'contar as horas e a data de hoje',
-    'resolver contas matemáticas simples, como "12 vezes 8" ou "45 mais 3"',
-    'manter o fio da conversa por algumas perguntas seguidas',
-  ];
-
   const CMDS = [
-    // saudações explícitas de horário respeitam o que a pessoa disse;
-    // um "oi"/"olá" genérico usa a saudação sensível ao horário real.
-    { m: /\bbom dia\b/i, h: () => rand(['Bom dia. Como posso ajudar?', 'Bom dia. Pronto para o que precisar.']) },
-    { m: /\bboa tarde\b/i, h: () => rand(['Boa tarde. O que precisa?', 'Boa tarde. Estou ouvindo.']) },
-    { m: /\bboa noite\b/i, h: () => rand(['Boa noite. Como posso ajudar?', 'Boa noite. Estou por aqui.']) },
-    { m: /\b(olá|oi|hello|e aí|eae)\b/i, h: () => timeGreeting() },
-
-    { m: /\b(ajuda|o que (você|vc) (faz|sabe fazer)|suas (capacidades|funções)|no que (você|vc) pode ajudar)\b/i,
-      h: () => `Por enquanto eu consigo ${CAPABILITIES.join(', ')}. Mais funções chegam nas próximas versões.` },
-
-    { m: /qual\s+(é\s+)?(o\s+)?seu nome/i, h: () => 'Meu nome é ORION.' },
-    { m: /quem\s+(te\s+)?(criou|desenvolveu|fez\s+você|fez\s+vc)/i, h: () => 'Fui criado por Jander.' },
+    { m: /\b(olá|oi|bom dia|boa tarde|boa noite|hello)\b/i, h: () => rand(['Sistemas operacionais. Como posso auxiliá-lo?', 'Pronto. O que precisa?', 'Online e a postos.']) },
     { m: /quem[é\s]+(você|vc)/i, h: () => 'Sou o ORION — uma inteligência construída por Jander para observar, responder e auxiliar.' },
-
-    { m: /\b(obrigad[ao]|valeu|thanks|thank you)\b/i, h: () => rand(['Para isso estou aqui.', 'Sempre às ordens.', 'Disponha.']) },
-    { m: /\b(tchau|até logo|adeus|bye|até mais)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
-    { m: /\b(cancela|cancelar|para|pare|deixa (pra|para) lá)\b/i, h: () => rand(['Certo, cancelado.', 'Sem problemas, deixando de lado.']) },
-
+    { m: /\b(obrigad[ao]|valeu|thanks)\b/i, h: () => rand(['Para isso estou aqui.', 'Sempre às ordens.']) },
+    { m: /\b(tchau|até logo|adeus|bye)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
     { m: /(que horas|que hora)/i, h: () => { const n = new Date(); return `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`; } },
     { m: /(que dia|data de hoje)/i, h: () => { const n = new Date(); return `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`; } },
-
-    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 3.2.0.' },
+    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 7.0.0.' },
     { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
   ];
 
   function process(userText) {
     for (const cmd of CMDS) { if (cmd.m.test(userText)) { const r = cmd.h(userText); if (r) return r; } }
     return rand([
-      'Ainda estou em fase Beta e não tenho uma resposta elaborada para isso. Pergunte "o que você sabe fazer" para ver minhas funções atuais.',
+      'Ainda estou em fase Beta e não tenho uma resposta elaborada para isso.',
       'Essa função ainda não está disponível nesta versão.',
       'Registrei sua solicitação, mas ainda não sei responder a isso.',
     ]);
@@ -941,10 +818,7 @@ const CONTEXT = (() => {
 
   function resolve(text) {
     if (!lastTopic) return text;
-    // usa uma função substituidora (não a string direta) para que um tópico
-    // contendo sequências como "$&" ou "$1" nunca seja interpretado como
-    // padrão especial de substituição do String.replace — bug corrigido na V3.2.0
-    return text.replace(/\b(ele|ela|isso|aquilo)\b/gi, () => lastTopic);
+    return text.replace(/\b(ele|ela|isso|aquilo)\b/gi, lastTopic);
   }
 
   function remember(userText, replyText) {
@@ -1258,11 +1132,7 @@ const SETTINGS = (() => {
     });
   }
 
-  function isOpen() {
-    return open;
-  }
-
-  return { init, isOpen };
+  return { init };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1290,15 +1160,13 @@ const SETTINGS = (() => {
      falhar (ex.: um módulo que não carregou), para que a tela de
      boot NUNCA fique presa mesmo se outro módulo der erro abaixo ── */
   const bootLines = ['inicializando', 'conectando ao núcleo', 'sistemas online'];
-  const BOOT_STEP_MS = 650;
-  const BOOT_HOLD_MS = 550; // tempo extra para a última linha ficar visível antes do fade
   let bi = 0;
   const bootIv = setInterval(() => {
     bootStatus.style.opacity = '0';
     setTimeout(() => { bootStatus.textContent = bootLines[bi]; bootStatus.style.opacity = '1'; }, 220);
     bi++;
     if (bi >= bootLines.length) clearInterval(bootIv);
-  }, BOOT_STEP_MS);
+  }, 620);
 
   setTimeout(() => {
     bootEl.classList.add('out');
@@ -1308,7 +1176,7 @@ const SETTINGS = (() => {
       appEl.classList.add('on');
       setTimeout(() => flash('ORION ONLINE', 3200), 300);
     }, 1000);
-  }, bootLines.length * BOOT_STEP_MS + BOOT_HOLD_MS);
+  }, 2100);
 
   function flash(msg, ms = 2600) {
     clearTimeout(statusTimer);
@@ -1324,22 +1192,11 @@ const SETTINGS = (() => {
   }
 
   function setState(name, msg) {
-    const prevState = curState;
     curState = name;
     try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState falhou:', err); }
     const MSG = { standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', speaking: '', error: 'Não compreendi.' };
     const m = msg !== undefined ? msg : MSG[name];
     if (m) flash(m, name === 'error' ? 2200 : 2400);
-
-    // reatividade de microfone real (V3.2.0): só liga a captura de amplitude
-    // enquanto o estado é LISTENING, e sempre desliga ao sair dele — nunca
-    // deixa um stream de áudio aberto sem necessidade.
-    if (name === 'listening' && prevState !== 'listening') {
-      AUDIO_ANALYSIS.start(level => { try { ORB.setAmplitude(level); } catch (e) {} });
-    } else if (prevState === 'listening' && name !== 'listening') {
-      AUDIO_ANALYSIS.stop();
-      try { ORB.setAmplitude(0); } catch (e) {}
-    }
   }
 
   async function handle(text) {
@@ -1352,7 +1209,7 @@ const SETTINGS = (() => {
       const reply = await ORCHESTRATOR.ask(text);
       setState('speaking', reply.length > 46 ? 'Respondendo…' : reply);
       if (soundEnabled) SOUND.answer();
-      VOICE.speak(reply, () => {}, () => setState('standby'), () => { try { ORB.pulseSpeak(); } catch (e) {} });
+      VOICE.speak(reply, () => {}, () => setState('standby'));
     } catch (err) {
       const handled = ERROR_HANDLER.handle(err, 'orchestrator');
       setState('error', handled.message);
@@ -1395,7 +1252,7 @@ const SETTINGS = (() => {
   orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (e) {} });
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (e) {} });
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !e.target.matches('input,textarea') && !SETTINGS.isOpen()) { e.preventDefault(); activate(); }
+    if (e.code === 'Space' && !e.target.matches('input,textarea')) { e.preventDefault(); activate(); }
   });
 
   window.addEventListener('orion-setting', e => {
