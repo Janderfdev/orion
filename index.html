@@ -733,7 +733,7 @@ const VOICE = (() => {
     rec = new SR();
     rec.lang = 'pt-BR'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
     rec.onstart = () => { isRec = true; onSt('listening'); };
-    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' ? 'standby' : 'error'); };
+    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' ? 'standby' : 'error', e.error); };
     rec.onend = () => { if (isRec) { isRec = false; onSt('standby'); } };
     rec.onresult = e => {
       let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
@@ -780,7 +780,7 @@ const CORE = (() => {
     { m: /\b(tchau|até logo|adeus|bye)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
     { m: /(que horas|que hora)/i, h: () => { const n = new Date(); return `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`; } },
     { m: /(que dia|data de hoje)/i, h: () => { const n = new Date(); return `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`; } },
-    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 7.0.0.' },
+    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 3.2.0.' },
     { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
   ];
 
@@ -1141,6 +1141,15 @@ const SETTINGS = (() => {
    STANDBY → LISTENING → THINKING → SPEAKING → STANDBY (com ERROR
    acessível de qualquer estado) e liga ORB, VOICE, SOUND,
    AI_ORCHESTRATOR (→ CONTEXT → CORE) e SETTINGS entre si.
+
+   V3.2.1 — patch de recuperação de erro: toda entrada no estado
+   ERROR agora tem, garantidamente, UMA saída de volta para STANDBY.
+   Isso é feito através de um único helper (recoverFromError) chamado
+   por TODOS os caminhos que levam a ERROR — nunca setState('error', ...)
+   é chamado sozinho, sem programar o retorno. Um contador de geração
+   (stateGen) invalida timers de recuperação antigos, então dois erros
+   seguidos ou uma nova interação do usuário nunca são atropelados por
+   um timer perdido (idempotente, sem listeners duplicados).
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   const bootEl = document.getElementById('boot');
@@ -1155,12 +1164,17 @@ const SETTINGS = (() => {
   let hintShown = true;
   let voiceEnabled = true;
   let soundEnabled = true;
+  let stateGen = 0; // incrementado a cada mudança de estado — invalida recoveries antigos
 
   /* ── boot sequence — registrado ANTES de qualquer coisa que possa
      falhar (ex.: um módulo que não carregou), para que a tela de
      boot NUNCA fique presa mesmo se outro módulo der erro abaixo ── */
   const bootLines = ['inicializando', 'conectando ao núcleo', 'sistemas online'];
-  let bi = 0;
+  // bi começa em 1 (não em 0): o HTML estático já exibe bootLines[0]
+  // ("inicializando"); começar em 0 fazia o primeiro tick repetir o
+  // mesmo texto à toa e empurrava "sistemas online" para ~2080ms,
+  // a poucos milissegundos do fade-out em 2100ms (quase invisível).
+  let bi = 1;
   const bootIv = setInterval(() => {
     bootStatus.style.opacity = '0';
     setTimeout(() => { bootStatus.textContent = bootLines[bi]; bootStatus.style.opacity = '1'; }, 220);
@@ -1191,12 +1205,34 @@ const SETTINGS = (() => {
     hintText.style.opacity = '0';
   }
 
+  // toda troca de estado passa por aqui — incrementa a "geração" atual,
+  // o que automaticamente invalida qualquer setTimeout de recuperação
+  // agendado por um estado anterior (evita reset() tardio sobrescrever
+  // uma interação nova do usuário).
   function setState(name, msg) {
     curState = name;
+    stateGen++;
     try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState falhou:', err); }
     const MSG = { standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', speaking: '', error: 'Não compreendi.' };
     const m = msg !== undefined ? msg : MSG[name];
     if (m) flash(m, name === 'error' ? 2200 : 2400);
+    return stateGen;
+  }
+
+  // ═══ ÚNICO ponto de entrada para o estado ERROR em todo o app ═══
+  // Qualquer falha (orquestrador, reconhecimento de voz, microfone,
+  // TTS) deve chamar esta função — nunca setState('error', ...) direto —
+  // para GARANTIR que existe sempre um caminho de volta a STANDBY.
+  // Isso resolve o bug da V3.2.0 em que a Orb ficava presa em vermelho.
+  function recoverFromError(message, recoveryMs = 2200) {
+    const myGen = setState('error', message);
+    if (soundEnabled) SOUND.error();
+    setTimeout(() => {
+      // só volta a STANDBY se nenhuma outra transição de estado
+      // aconteceu enquanto o timer estava rodando (idempotente e
+      // seguro mesmo se dois erros ocorrerem em sequência rápida)
+      if (stateGen === myGen && curState === 'error') setState('standby', '');
+    }, recoveryMs);
   }
 
   async function handle(text) {
@@ -1211,19 +1247,24 @@ const SETTINGS = (() => {
       if (soundEnabled) SOUND.answer();
       VOICE.speak(reply, () => {}, () => setState('standby'));
     } catch (err) {
+      // erro durante o processamento (modelo, ferramenta, timeout, rede...)
       const handled = ERROR_HANDLER.handle(err, 'orchestrator');
-      setState('error', handled.message);
-      if (soundEnabled) SOUND.error();
-      setTimeout(() => setState('standby', ''), 2200);
+      recoverFromError(handled.message);
     }
   }
 
   try {
     VOICE.init({
       onResult: text => { handle(text); },
-      onStateChange: (s) => {
+      onStateChange: (s, sttErrorCode) => {
         if (s === 'listening') { setState('listening'); if (soundEnabled) SOUND.listen(); }
-        else if (s === 'error') { setState('error'); if (soundEnabled) SOUND.error(); }
+        else if (s === 'error') {
+          // erro do reconhecimento de voz (mic bloqueado, sem áudio,
+          // rede, aborted...) — antes ficava preso aqui para sempre;
+          // agora sempre volta para STANDBY através do helper único.
+          const handled = ERROR_HANDLER.handle({ code: 'stt_unavailable', message: sttErrorCode }, 'voice-recognition');
+          recoverFromError(handled.message);
+        }
         else setState('standby');
       },
     });
@@ -1234,14 +1275,13 @@ const SETTINGS = (() => {
     if (curState === 'speaking') { VOICE.stopSpeaking(); setState('standby'); return; }
     if (curState === 'listening') { VOICE.stopListening(); setState('standby'); return; }
     if (curState !== 'standby') return;
-    if (!voiceEnabled) { setState('error', 'Voz desativada nas configurações.'); setTimeout(() => setState('standby', ''), 2400); return; }
-    if (!VOICE.isAvailable) { setState('error', 'Voz indisponível neste navegador.'); setTimeout(() => setState('standby', ''), 2600); return; }
+    if (!voiceEnabled) { recoverFromError('Voz desativada nas configurações.', 2400); return; }
+    if (!VOICE.isAvailable) { recoverFromError('Voz indisponível neste navegador.', 2600); return; }
     ORB.pressEffect();
     if (soundEnabled) SOUND.activate();
     if (!VOICE.startListening()) {
       const handled = ERROR_HANDLER.handle({ code: 'mic_unavailable' }, 'voice');
-      setState('error', handled.message);
-      setTimeout(() => setState('standby', ''), 2200);
+      recoverFromError(handled.message);
     }
   }
 
