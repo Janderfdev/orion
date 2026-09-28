@@ -92,9 +92,8 @@ html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:
 <div class="void"></div>
 <div class="orb-bleed" id="bleed"></div>
 
-<!-- Configuração: SEM segredos aqui. As API keys vivem no backend (env vars),
-     que expõe um endpoint proxy. Deixe endpoint vazio para usar só o provedor local.
-<script>window.ORION_CONFIG={endpoint:'/api/orion',defaultProvider:'claude',routes:{code:'claude',creative:'openai'}};</script> -->
+<!-- Configuração pública gerada pelo servidor (sem segredos). Em file:// ela não carrega e o ORION usa só o provider local. -->
+<script src="/orion-config.js"></script>
 
 <div id="boot">
   <p class="boot-mark">ORION AI</p>
