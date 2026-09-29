@@ -7,219 +7,138 @@
 <link rel="icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --font:'Inter',-apple-system,'Helvetica Neue',sans-serif;
-  --font-mono:'Space Grotesk','Inter',sans-serif;
-  --orb:clamp(190px,32vmin,320px); --halo:calc(var(--orb)*1.9);
-  --core-a:#6d28d9; --core-b:#4c1d95; --core-c:#a78bfa;
-}
-html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:var(--font);color:#fff;-webkit-font-smoothing:antialiased;}
-.void{position:fixed;inset:0;background:#000;z-index:0;}
-.orb-bleed{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 54%,color-mix(in srgb,var(--core-a) 10%,transparent) 0%,transparent 42%);}
-/* BOOT */
-#boot{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 1s ease;}
-#boot.out{opacity:0;pointer-events:none;}
-.boot-mark{font-family:var(--font-mono);font-size:11px;font-weight:300;letter-spacing:.62em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:56px;text-indent:.62em;}
-.boot-ring-wrap{position:relative;width:76px;height:76px;margin-bottom:46px;}
-.boot-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(167,139,250,.18);border-top-color:rgba(167,139,250,.75);animation:bootspin 1.1s linear infinite;}
-.boot-ring:nth-child(2){inset:14px;border-top-color:rgba(196,181,253,.45);animation-duration:1.6s;animation-direction:reverse;}
-@keyframes bootspin{to{transform:rotate(360deg);}}
-.boot-status{font-size:9px;font-weight:300;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.24);transition:opacity .35s ease;}
-/* APP */
-#app{position:fixed;inset:0;z-index:2;opacity:0;transition:opacity 1.1s ease;}
-#app.on{opacity:1;}
-.header{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;padding-top:clamp(28px,6vh,56px);pointer-events:none;user-select:none;}
-.header-dot{width:3px;height:3px;border-radius:50%;background:var(--core-c);box-shadow:0 0 8px var(--core-c);animation:dotbreathe 4s ease-in-out infinite;}
-@keyframes dotbreathe{0%,100%{opacity:.35;}50%{opacity:1;}}
-.header-word{font-size:11px;font-weight:200;letter-spacing:.74em;text-indent:.74em;text-transform:uppercase;color:rgba(255,255,255,.82);text-shadow:0 0 18px rgba(255,255,255,.1);}
-.stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.orb-zone{position:relative;width:var(--halo);height:var(--halo);display:flex;align-items:center;justify-content:center;cursor:pointer;}
-.halo{position:absolute;width:100%;height:100%;border-radius:50%;
-  background:conic-gradient(from 0deg,transparent 0%,color-mix(in srgb,var(--core-a) 55%,transparent) 24%,color-mix(in srgb,var(--core-b) 40%,transparent) 50%,color-mix(in srgb,var(--core-a) 45%,transparent) 74%,transparent 92%);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 1px),#fff calc(100% - 1px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 1px),#fff calc(100% - 1px));
-  animation:halospin 24s linear infinite;transition:opacity .8s ease,filter .6s ease;opacity:.55;}
-.halo.fast{animation-duration:11s;opacity:.85;}
-.orb-zone:hover .halo{animation-duration:16s;opacity:.72;filter:brightness(1.18);}
-@keyframes halospin{to{transform:rotate(360deg);}}
-.wave-ring{position:absolute;left:50%;top:50%;border-radius:50%;width:var(--orb);height:var(--orb);transform:translate(-50%,-50%);border:1px solid color-mix(in srgb,var(--core-c) 70%,transparent);opacity:0;pointer-events:none;}
-.orb-zone.speaking .wave-ring{animation:wave-out 2.6s cubic-bezier(.2,.6,.3,1) infinite;}
-.orb-zone.speaking .wave-ring:nth-child(2){animation-delay:.87s;}
-.orb-zone.speaking .wave-ring:nth-child(3){animation-delay:1.74s;}
-@keyframes wave-out{0%{transform:translate(-50%,-50%) scale(1);opacity:.55;}100%{transform:translate(-50%,-50%) scale(1.55);opacity:0;}}
-.orb{position:relative;width:var(--orb);height:var(--orb);border-radius:50%;overflow:hidden;
-  background:radial-gradient(circle at 34% 30%,color-mix(in srgb,var(--core-c) 16%,transparent) 0%,color-mix(in srgb,var(--core-a) 8%,transparent) 32%,rgba(2,2,8,.85) 68%,rgba(0,0,0,.94) 100%);
-  border:1px solid color-mix(in srgb,var(--core-a) 30%,transparent);
-  box-shadow:0 0 60px color-mix(in srgb,var(--core-a) 42%,transparent),0 0 130px color-mix(in srgb,var(--core-b) 30%,transparent),inset 0 0 70px rgba(0,0,0,.75),inset 0 0 22px color-mix(in srgb,var(--core-a) 18%,transparent),inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
-  animation:orbfloat 9s ease-in-out infinite,orbbreathe 4.6s ease-in-out infinite;
-  transition:box-shadow 1.1s ease,filter .8s ease,transform .5s cubic-bezier(.2,.7,.3,1);will-change:transform;z-index:1;}
-.orb-zone:hover .orb{filter:brightness(1.14);box-shadow:0 0 78px color-mix(in srgb,var(--core-a) 55%,transparent),0 0 150px color-mix(in srgb,var(--core-b) 38%,transparent),inset 0 0 70px rgba(0,0,0,.75),inset 0 0 26px color-mix(in srgb,var(--core-a) 24%,transparent),inset 0 1px 0 rgba(255,255,255,.14);}
-.orb.pressed{transform:scale(1.08) !important;transition:transform .15s ease;}
-@keyframes orbfloat{0%,100%{margin-top:0;}50%{margin-top:-14px;}}
-@keyframes orbbreathe{0%,100%{transform:scale(1);}50%{transform:scale(1.035);}}
-.orb.st-listening{filter:brightness(1.22);animation:orbfloat 9s ease-in-out infinite,orbbreathe 2.6s ease-in-out infinite;}
-.orb.st-thinking{filter:brightness(1.1);animation:orbfloat 9s ease-in-out infinite,orbbreathe 1.3s ease-in-out infinite;}
-.orb.st-speaking{filter:brightness(1.3);animation:orbfloat 9s ease-in-out infinite,orbbreathe 1.8s ease-in-out infinite;}
-.orb.st-error{filter:brightness(.62);animation:orberr .5s ease;}
-@keyframes orberr{0%{transform:translateX(0);}25%{transform:translateX(-7px);}55%{transform:translateX(6px);}80%{transform:translateX(-3px);}100%{transform:translateX(0);}}
-.orb-canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;mix-blend-mode:screen;}
-.glass-hi{position:absolute;top:6%;left:9%;width:44%;height:38%;border-radius:50%;background:radial-gradient(ellipse at 38% 32%,rgba(255,255,255,.24) 0%,rgba(255,255,255,.05) 46%,transparent 74%);transform:rotate(-22deg);pointer-events:none;z-index:2;}
-.glass-rim{position:absolute;bottom:6%;right:8%;width:24%;height:12%;border-radius:50%;background:radial-gradient(ellipse,rgba(255,255,255,.08) 0%,transparent 72%);pointer-events:none;z-index:2;}
-.status{position:absolute;left:0;right:0;top:calc(50% + var(--halo)/2 + 30px);display:flex;justify-content:center;pointer-events:none;}
-.status-text{font-size:10px;font-weight:300;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.55);opacity:0;transform:translateY(4px);transition:opacity .6s ease,transform .6s ease;white-space:nowrap;}
-.status-text.show{opacity:1;transform:translateY(0);}
-.hint{position:absolute;left:0;right:0;bottom:clamp(30px,7vh,64px);display:flex;justify-content:center;pointer-events:none;}
-.hint-text{font-size:9px;font-weight:200;letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.14);transition:opacity 1s ease;}
-.version-tag{position:fixed;left:18px;bottom:16px;z-index:40;font-family:var(--font-mono);font-size:9px;font-weight:300;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.16);user-select:none;pointer-events:none;}
-/* SETTINGS (Ctrl + ,) */
-#settingsPanel{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .35s ease;}
-#settingsPanel.open{opacity:1;pointer-events:auto;}
-.settings-card{width:min(280px,84vw);padding:28px 26px;border:1px solid rgba(167,139,250,.22);border-radius:14px;background:rgba(8,8,14,.92);box-shadow:0 0 60px rgba(109,40,217,.18);}
-.settings-title{font-size:10px;font-weight:300;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:22px;text-align:center;}
-.settings-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:300;color:rgba(255,255,255,.75);padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);}
-.settings-row:last-of-type{border-bottom:none;}
-.settings-toggle{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);border-radius:20px;padding:5px 12px;cursor:pointer;transition:all .25s ease;}
-.settings-toggle:hover{background:rgba(167,139,250,.18);}
-.settings-hint{margin-top:20px;text-align:center;font-size:9px;font-weight:300;letter-spacing:.2em;color:rgba(255,255,255,.22);}
-@media (prefers-reduced-motion:reduce){.orb,.halo,.boot-ring,.header-dot,.wave-ring{animation:none !important;}}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--font:'Inter',-apple-system,sans-serif;--mono:'Space Grotesk','Inter',sans-serif;--core-a:#6d28d9;--core-b:#4c1d95;--core-c:#a78bfa}
+html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:var(--font);color:#fff;-webkit-font-smoothing:antialiased}
+#boot{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 1s ease}
+#boot.out{opacity:0;pointer-events:none}
+.boot-mark{font-family:var(--mono);font-size:11px;font-weight:300;letter-spacing:.62em;text-indent:.62em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:56px}
+.boot-rings{position:relative;width:76px;height:76px;margin-bottom:46px}
+.boot-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(167,139,250,.18);border-top-color:rgba(167,139,250,.75);animation:spin 1.1s linear infinite}
+.boot-ring:nth-child(2){inset:14px;border-top-color:rgba(196,181,253,.45);animation-duration:1.6s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.boot-status{font-size:9px;font-weight:300;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.3);transition:opacity .35s}
+#app{position:fixed;inset:0;z-index:2;opacity:0;transition:opacity 1.1s ease}
+#app.on{opacity:1}
+.header{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:14px;padding-top:clamp(24px,5vh,48px);pointer-events:none;z-index:3}
+.dot{width:3px;height:3px;border-radius:50%;background:var(--core-c);box-shadow:0 0 8px var(--core-c)}
+.word{font-size:11px;font-weight:200;letter-spacing:.74em;text-indent:.74em;text-transform:uppercase;color:rgba(255,255,255,.82)}
+#zone{position:absolute;inset:0;cursor:pointer}
+#cv{position:absolute;inset:0;width:100%;height:100%}
+.status{position:absolute;left:0;right:0;bottom:clamp(120px,20vh,180px);display:flex;justify-content:center;pointer-events:none;z-index:3}
+.status-text{font-size:10px;font-weight:300;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.6);opacity:0;transform:translateY(4px);transition:opacity .6s,transform .6s;white-space:nowrap}
+.status-text.show{opacity:1;transform:none}
+.hint{position:absolute;left:0;right:0;bottom:clamp(96px,16vh,140px);display:flex;justify-content:center;pointer-events:none;z-index:3}
+.hint-text{font-size:9px;font-weight:200;letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.2);transition:opacity 1s}
+.dock{position:absolute;left:0;right:0;bottom:clamp(24px,5vh,44px);display:flex;justify-content:center;align-items:center;gap:22px;z-index:4}
+.dock button{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);background:none;border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:7px 14px;cursor:pointer;transition:all .25s}
+.dock button:hover,.dock button:focus-visible{color:#fff;border-color:var(--core-c);outline:none}
+.dock .mic{width:52px;height:52px;padding:0;border-radius:50%;border-color:var(--core-c);color:var(--core-c);display:grid;place-items:center;box-shadow:0 0 22px color-mix(in srgb,var(--core-a) 45%,transparent)}
+.mic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5}
+.ver{position:fixed;left:18px;bottom:16px;z-index:40;font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.2);pointer-events:none}
+#settings{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .35s}
+#settings.open{opacity:1;pointer-events:auto}
+.card{width:min(300px,86vw);padding:26px;border:1px solid rgba(167,139,250,.22);border-radius:14px;background:rgba(8,8,14,.94)}
+.card h2{font-size:10px;font-weight:300;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:18px;text-align:center}
+.row{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:300;color:rgba(255,255,255,.78);padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.tg{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3);border-radius:20px;padding:5px 12px;cursor:pointer}
+.card p{margin-top:16px;text-align:center;font-size:9px;letter-spacing:.2em;color:rgba(255,255,255,.28)}
+.hc .status-text,.hc .hint-text,.hc .ver{color:#fff}.hc .dock button{color:#fff;border-color:#fff}
+@media (prefers-reduced-motion:reduce){.boot-ring{animation:none}}
 </style>
 </head>
 <body>
-<div class="void"></div>
-<div class="orb-bleed" id="bleed"></div>
-
-<!-- Configuração pública gerada pelo servidor (sem segredos). Em file:// ela não carrega e o ORION usa só o provider local. -->
 <script src="/orion-config.js"></script>
-
-<div id="boot">
-  <p class="boot-mark">ORION AI</p>
-  <div class="boot-ring-wrap"><div class="boot-ring"></div><div class="boot-ring"></div></div>
-  <p class="boot-status" id="bootStatus">inicializando</p>
-</div>
-
+<div id="boot"><p class="boot-mark">ORION AI</p><div class="boot-rings"><div class="boot-ring"></div><div class="boot-ring"></div></div><p class="boot-status" id="bootStatus">initializing</p></div>
 <div id="app">
-  <div class="header"><div class="header-dot"></div><span class="header-word">ORION AI</span><div class="header-dot"></div></div>
-  <div class="stage">
-    <div class="orb-zone" id="orbZone">
-      <div class="wave-ring"></div><div class="wave-ring"></div><div class="wave-ring"></div>
-      <div class="halo" id="halo"></div>
-      <div class="orb" id="orb"><canvas class="orb-canvas" id="orbCanvas"></canvas><div class="glass-hi"></div><div class="glass-rim"></div></div>
-    </div>
-  </div>
-  <div class="status"><span class="status-text" id="statusText"></span></div>
+  <div class="header"><i class="dot"></i><span class="word">ORION AI</span><i class="dot"></i></div>
+  <div id="zone"><canvas id="cv"></canvas></div>
+  <div class="status" aria-live="polite"><span class="status-text" id="statusText"></span></div>
   <div class="hint"><span class="hint-text" id="hintText"></span></div>
+  <div class="dock">
+    <button id="btnLang" aria-label="Language"></button>
+    <button class="mic" id="btnMic" aria-label="Microphone"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button id="btnSet" aria-label="Settings">···</button>
+  </div>
 </div>
-<div class="version-tag" id="versionTag"></div>
+<div class="ver" id="ver"></div>
 
 <script>
-const ORION_VERSION = '3.5.0';
+const ORION_VERSION = '10.0 BETA';
+const BOOT_LINES = ['initializing', 'connecting to core', 'systems online']; // fixed in English
 
-/* ═══════════ config.js — só lê configuração pública; nunca guarda keys ═══════════ */
-const CONFIG = Object.assign(
-  { endpoint: '', defaultProvider: 'local', routes: {}, models: {}, timeoutMs: 15000 },
-  window.ORION_CONFIG || {}
-);
+/* ── config: public only, never keys ── */
+const CONFIG = Object.assign({ endpoint: '', defaultProvider: 'local', routes: {}, models: {}, timeoutMs: 15000 }, window.ORION_CONFIG || {});
 
-/* ═══════════ logger.js — sem texto bruto, sem chaves ═══════════ */
+/* ── logger: no raw text or secrets outside dev ── */
 const LOGGER = (() => {
   const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
-  const sessionId = 'sess_' + Math.random().toString(36).slice(2, 10);
-  let seq = 0;
-  const SENSITIVE = /(key|token|secret|authorization|text|rawText|content)/i;
-  const clean = d => Object.fromEntries(Object.entries(d).filter(([k]) => DEV || !SENSITIVE.test(k)));
-  const log = (lvl, ev, d = {}) => {
-    const fn = lvl === 'error' ? console.error : lvl === 'warn' ? console.warn : console.log;
-    fn('[ORION]', { t: new Date().toISOString(), lvl, ev, sessionId, ...clean(d) });
-  };
-  return { sessionId, newId: () => 'req_' + (++seq) + '_' + Math.random().toString(36).slice(2, 6),
-    info: (e, d) => log('info', e, d), warn: (e, d) => log('warn', e, d), error: (e, d) => log('error', e, d) };
+  const SENS = /(key|token|secret|authorization|text|content)/i; let seq = 0;
+  const clean = d => Object.fromEntries(Object.entries(d).filter(([k]) => DEV || !SENS.test(k)));
+  const log = (l, ev, d = {}) => (l === 'error' ? console.error : l === 'warn' ? console.warn : console.log)('[ORION]', { t: new Date().toISOString(), l, ev, ...clean(d) });
+  return { newId: () => 'req_' + (++seq), info: (e, d) => log('info', e, d), warn: (e, d) => log('warn', e, d), error: (e, d) => log('error', e, d) };
 })();
 
-/* ═══════════ i18n.js — todo texto do usuário mora aqui. Novo idioma = novo pack ═══════════ */
+/* ── i18n: new language = new pack ── */
 const I18N = (() => {
   const PACKS = {
-    'pt-BR': {
-      label: 'Português', speech: 'pt-BR',
-      system: 'Você é o ORION, uma inteligência criada por Jander. Responda em português do Brasil, de forma breve, clara e elegante.',
-      ui: { boot: ['inicializando', 'conectando ao núcleo', 'sistemas online'], online: 'ORION ONLINE', hint: 'toque para falar',
-        standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', responding: 'Respondendo…',
-        settings: 'Configurações', voice: 'Voz', sounds: 'Sons', language: 'Idioma', on: 'Ativada', off: 'Desativada', sOn: 'Ativados', sOff: 'Desativados',
-        close: 'Ctrl + , para fechar', version: 'VERSÃO V' },
-      err: { mic_unavailable: 'Microfone indisponível.', stt_unavailable: 'Reconhecimento de voz indisponível neste navegador.', model_unavailable: 'Não consegui acessar o modelo.',
-        timeout: 'A resposta demorou demais.', api_error: 'Falha ao comunicar com o serviço.', invalid_response: 'Recebi uma resposta inválida.',
-        tool_unavailable: 'Essa ferramenta ainda não está disponível.', offline: 'Sem conexão com a internet.', unexpected_input: 'Não entendi o que foi dito.',
-        voice_disabled: 'Voz desativada nas configurações.', unknown: 'Não consegui processar.' },
-      tools: { time: n => `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Resultado: ${v}.` },
-      route: { time: /que horas|que hora/i, date: /que dia|data de hoje/i, code: /\b(código|programar|função|script|bug)\b/i, creative: /\b(poema|história|crie|escreva)\b/i },
+    'pt-BR': { label: 'PT', speech: 'pt-BR',
+      system: 'Você é o ORION V10, assistente de voz criado por Jander. Suas respostas serão FALADAS: frases curtas e naturais, sem markdown, listas, emojis ou símbolos. Tom elegante, calmo e sutilmente espirituoso. Responda primeiro, detalhe só se pedirem. Se não souber ou não puder, diga em uma frase. Responda sempre em português do Brasil.',
+      ui: { online: 'ORION ONLINE', hint: 'toque para falar', standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', responding: 'Respondendo…',
+        settings: 'Configurações', voice: 'Voz', sound: 'Sons', hands: 'Mãos-livres', reduce: 'Reduzir animações', contrast: 'Alto contraste', captions: 'Legendas',
+        on: 'Ligado', off: 'Desligado', close: 'Ctrl + , para fechar', version: 'VERSÃO V' },
+      err: { mic_unavailable: 'Microfone indisponível.', stt_unavailable: 'Reconhecimento de voz indisponível neste navegador.', model_unavailable: 'Não consegui acessar o modelo.', timeout: 'A resposta demorou demais.', api_error: 'Falha ao comunicar com o serviço.', invalid_response: 'Recebi uma resposta inválida.', tool_unavailable: 'Essa ferramenta ainda não está disponível.', offline: 'Sem conexão com a internet.', unexpected_input: 'Não entendi o que foi dito.', voice_disabled: 'Voz desativada nas configurações.', unknown: 'Não consegui processar.' },
+      tools: { time: n => `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Resultado: ${v}.`, timerSet: (n, u) => `Timer de ${n} ${u}${n > 1 ? 's' : ''} ativado.`, timerDone: (n, u) => `Seu timer de ${n} ${u}${n > 1 ? 's' : ''} terminou.` },
+      route: { timer: /(?:timer|temporizador|cron[ôo]metro)\D*?(\d+)\s*(segundo|minuto|hora)/i, time: /que horas|que hora/i, date: /que dia|data de hoje/i, code: /\b(código|programar|função|script|bug)\b/i, creative: /\b(poema|história|crie|escreva)\b/i },
       patterns: [
         { re: /\b(olá|oi|bom dia|boa tarde|boa noite|hello)\b/i, r: ['Sistemas operacionais. Como posso auxiliá-lo?', 'Pronto. O que precisa?', 'Online e a postos.'] },
-        { re: /quem\s+(é\s+)?(você|vc)/i, r: ['Sou o ORION — uma inteligência construída por Jander para observar, responder e auxiliar.'] },
-        { re: /\b(obrigad[ao]|valeu|thanks)\b/i, r: ['Para isso estou aqui.', 'Sempre às ordens.'] },
-        { re: /\b(tchau|até logo|adeus|bye)\b/i, r: ['Retornando ao repouso. Até logo.'] },
-        { re: /(versão|build|sistema)/i, r: ['ORION AI, versão ' + ORION_VERSION + '.'] },
-        { re: /como (você\s+)?(está|vai)/i, r: ['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.'] },
-      ],
-      fallback: ['Ainda estou em fase Beta e não tenho uma resposta elaborada para isso.', 'Essa função ainda não está disponível nesta versão.', 'Registrei sua solicitação, mas ainda não sei responder a isso.'],
-    },
-    en: {
-      label: 'English', speech: 'en-US',
-      system: 'You are ORION, an intelligence built by Jander. Reply in English, briefly, clearly and with elegance.',
-      ui: { boot: ['initializing', 'connecting to core', 'systems online'], online: 'ORION ONLINE', hint: 'tap to speak',
-        standby: 'ORION online.', listening: 'Listening…', thinking: 'Thinking…', responding: 'Responding…',
-        settings: 'Settings', voice: 'Voice', sounds: 'Sounds', language: 'Language', on: 'Enabled', off: 'Disabled', sOn: 'Enabled', sOff: 'Disabled',
-        close: 'Ctrl + , to close', version: 'VERSION V' },
-      err: { mic_unavailable: 'Microphone unavailable.', stt_unavailable: 'Speech recognition is unavailable in this browser.', model_unavailable: "I couldn't reach the model.",
-        timeout: 'The response took too long.', api_error: 'Failed to reach the service.', invalid_response: 'I received an invalid response.',
-        tool_unavailable: "That tool isn't available yet.", offline: 'No internet connection.', unexpected_input: "I didn't understand that.",
-        voice_disabled: 'Voice is disabled in settings.', unknown: "I couldn't process that." },
-      tools: { time: n => `It is ${n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Today is ${n.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Result: ${v}.` },
-      route: { time: /what time/i, date: /what day|today'?s date|date today/i, code: /\b(code|program|function|script|bug)\b/i, creative: /\b(poem|story|write|create)\b/i },
+        { re: /quem\s+(é\s+)?(você|vc)/i, r: ['Sou o ORION, uma presença digital criada por Jander para observar, responder e auxiliar.'] },
+        { re: /\b(obrigad[ao]|valeu)\b/i, r: ['Para isso estou aqui.', 'Sempre às ordens.'] },
+        { re: /\b(tchau|até logo|adeus)\b/i, r: ['Retornando ao repouso. Até logo.'] },
+        { re: /(versão|build)/i, r: ['ORION AI, versão ' + ORION_VERSION + '.'] },
+        { re: /como (você\s+)?(está|vai)/i, r: ['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.'] } ],
+      fallback: ['Ainda estou em fase Beta e não tenho uma resposta elaborada para isso.', 'Essa função ainda não está disponível nesta versão.', 'Registrei sua solicitação, mas ainda não sei responder a isso.'] },
+    en: { label: 'EN', speech: 'en-US',
+      system: 'You are ORION V10, a voice assistant built by Jander. Your replies will be SPOKEN: short, natural sentences with no markdown, lists, emojis or symbols. Tone: elegant, calm, subtly witty. Answer first, elaborate only if asked. If you cannot do something, say so in one sentence. Always reply in English.',
+      ui: { online: 'ORION ONLINE', hint: 'tap to speak', standby: 'ORION online.', listening: 'Listening…', thinking: 'Thinking…', responding: 'Responding…',
+        settings: 'Settings', voice: 'Voice', sound: 'Sounds', hands: 'Hands-free', reduce: 'Reduce motion', contrast: 'High contrast', captions: 'Captions',
+        on: 'On', off: 'Off', close: 'Ctrl + , to close', version: 'VERSION V' },
+      err: { mic_unavailable: 'Microphone unavailable.', stt_unavailable: 'Speech recognition is unavailable in this browser.', model_unavailable: "I couldn't reach the model.", timeout: 'The response took too long.', api_error: 'Failed to reach the service.', invalid_response: 'I received an invalid response.', tool_unavailable: "That tool isn't available yet.", offline: 'No internet connection.', unexpected_input: "I didn't understand that.", voice_disabled: 'Voice is disabled in settings.', unknown: "I couldn't process that." },
+      tools: { time: n => `It is ${n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Today is ${n.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Result: ${v}.`, timerSet: (n, u) => `Timer set for ${n} ${u}${n > 1 ? 's' : ''}.`, timerDone: (n, u) => `Your ${n} ${u}${n > 1 ? 's' : ''} timer is done.` },
+      route: { timer: /timer\D*?(\d+)\s*(second|minute|hour)/i, time: /what time/i, date: /what day|today'?s date|date today/i, code: /\b(code|program|function|script|bug)\b/i, creative: /\b(poem|story|write|create)\b/i },
       patterns: [
         { re: /\b(hello|hi|hey|good (morning|afternoon|evening))\b/i, r: ['Systems operational. How can I assist?', 'Ready. What do you need?', 'Online and standing by.'] },
-        { re: /who\s+are\s+you/i, r: ['I am ORION — an intelligence built by Jander to observe, answer and assist.'] },
+        { re: /who\s+are\s+you/i, r: ['I am ORION, a digital presence built by Jander to observe, answer and assist.'] },
         { re: /\b(thanks|thank you)\b/i, r: ["That's what I'm here for.", 'Always at your service.'] },
         { re: /\b(bye|goodbye|see you)\b/i, r: ['Returning to rest. See you soon.'] },
         { re: /\b(version|build)\b/i, r: ['ORION AI, version ' + ORION_VERSION + '.'] },
-        { re: /how are you/i, r: ['All systems stable.', 'Running normally, thanks for asking.'] },
-      ],
-      fallback: ["I'm still in Beta and don't have an elaborate answer for that.", "That feature isn't available in this version yet.", "I logged your request, but I don't know how to answer that yet."],
-    },
+        { re: /how are you/i, r: ['All systems stable.', 'Running normally, thanks for asking.'] } ],
+      fallback: ["I'm still in Beta and don't have an elaborate answer for that.", "That feature isn't available in this version yet.", "I logged your request, but I don't know how to answer that yet."] },
   };
-  const detect = () => { const n = (navigator.language || 'pt-BR').toLowerCase(); return n.startsWith('en') ? 'en' : 'pt-BR'; };
-  let lang = detect();
+  let lang = (navigator.language || 'pt-BR').toLowerCase().startsWith('en') ? 'en' : 'pt-BR';
   try { const s = localStorage.getItem('orion.lang'); if (s && PACKS[s]) lang = s; } catch (e) {}
   const pack = () => PACKS[lang];
-  return {
-    packs: PACKS, list: () => Object.keys(PACKS), pack, get: () => lang,
+  return { packs: PACKS, list: () => Object.keys(PACKS), pack, get: () => lang,
     set(l) { if (!PACKS[l]) return; lang = l; document.documentElement.lang = l.toLowerCase(); try { localStorage.setItem('orion.lang', l); } catch (e) {} },
-    t: k => pack().ui[k] ?? k,
-    err: c => pack().err[c] || pack().err.unknown,
-  };
+    t: k => pack().ui[k] ?? k, err: c => pack().err[c] || pack().err.unknown };
 })();
 
-/* ═══════════ visual-state.js — mesma paleta da V3.2 ═══════════ */
+/* ── visual state palette ── */
 const VISUAL_STATE = (() => {
   const CFG = {
-    standby:   { amp: 1.00, rot: 1.00, bright: 1.00, cls: '', color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' } },
-    listening: { amp: 1.20, rot: 1.55, bright: 1.18, cls: 'st-listening', color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' } },
-    thinking:  { amp: 1.14, rot: 2.10, bright: 1.05, cls: 'st-thinking', color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' } },
-    speaking:  { amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking', color: { a: '#15803d', b: '#14532d', c: '#4ade80' } },
-    error:     { amp: 0.80, rot: 0.50, bright: 0.62, cls: 'st-error', color: { a: '#b91c1c', b: '#7f1d1d', c: '#f87171' } },
+    standby:   { bright: 1,    color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' } },
+    listening: { bright: 1.18, color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' } },
+    thinking:  { bright: 1.05, color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' } },
+    speaking:  { bright: 1.3,  color: { a: '#15803d', b: '#14532d', c: '#4ade80' } },
+    error:     { bright: .62,  color: { a: '#b91c1c', b: '#7f1d1d', c: '#f87171' } },
   };
-  const config = n => CFG[n] || CFG.standby;
-  return { config };
+  return { config: n => CFG[n] || CFG.standby };
 })();
 
-/* ═══════════ tools — registro extensível com permissões ═══════════ */
-const PERMISSIONS = (() => {
-  const LEVEL = Object.freeze({ READ_ONLY: 'READ_ONLY', WRITE: 'WRITE', EXECUTE: 'EXECUTE', EXTERNAL_ACTION: 'EXTERNAL_ACTION' });
-  return { LEVEL, needsConfirmation: l => l !== LEVEL.READ_ONLY };
-})();
-
+/* ── permissions + tools (registry) ── */
+const PERMISSIONS = (() => { const LEVEL = Object.freeze({ READ_ONLY: 'READ_ONLY', WRITE: 'WRITE', EXECUTE: 'EXECUTE', EXTERNAL_ACTION: 'EXTERNAL_ACTION' }); return { LEVEL, needsConfirmation: l => l !== LEVEL.READ_ONLY }; })();
 const mkErr = (code, msg) => Object.assign(new Error(msg || code), { code });
 
 function safeArithmetic(expr) {
@@ -235,11 +154,7 @@ function safeArithmetic(expr) {
   });
   while (ops.length) out.push(ops.pop());
   const st = [];
-  out.forEach(tk => {
-    if (typeof tk === 'number') return st.push(tk);
-    const b = st.pop(), a = st.pop();
-    st.push(tk === '+' ? a + b : tk === '-' ? a - b : tk === '*' ? a * b : a / b);
-  });
+  out.forEach(tk => { if (typeof tk === 'number') return st.push(tk); const b = st.pop(), a = st.pop(); st.push(tk === '+' ? a + b : tk === '-' ? a - b : tk === '*' ? a * b : a / b); });
   const r = st.pop();
   if (typeof r !== 'number' || !Number.isFinite(r)) throw mkErr('invalid_response');
   return r;
@@ -259,32 +174,27 @@ const TOOLS = (() => {
   };
   return api;
 })();
-TOOLS.register('calculator', { description: 'Arithmetic (+ - * / parentheses).', run: ({ expression }) => I18N.pack().tools.calc(safeArithmetic(expression)) });
-TOOLS.register('datetime', { description: 'Current time or date.', run: ({ kind }) => I18N.pack().tools[kind](new Date()) });
+TOOLS.register('calculator', { description: 'Arithmetic.', run: ({ expression }) => I18N.pack().tools.calc(safeArithmetic(expression)) });
+TOOLS.register('datetime', { description: 'Time or date.', run: ({ kind }) => I18N.pack().tools[kind](new Date()) });
+TOOLS.register('timer', { description: 'Voice timer.', run: ({ n, unit }) => {
+  const u = String(unit).toLowerCase()[0], ms = n * 1000 * (u === 'h' ? 3600 : u === 'm' ? 60 : 1);
+  if (!(ms > 0 && ms <= 86400000)) throw mkErr('unexpected_input');
+  setTimeout(() => window.dispatchEvent(new CustomEvent('orion-announce', { detail: I18N.pack().tools.timerDone(n, unit) })), ms);
+  return I18N.pack().tools.timerSet(n, unit);
+} });
 
-/* ═══════════ providers — o CORE só conhece a interface ModelProvider ═══════════ */
-class ModelProvider {
-  constructor(name) { this.name = name; }
-  get available() { return true; }
-  async generate() { throw mkErr('model_unavailable', 'generate() not implemented'); }
-}
+/* ── providers: CORE only knows ModelProvider ── */
+class ModelProvider { constructor(name) { this.name = name; } get available() { return true; } async generate() { throw mkErr('model_unavailable', 'generate() not implemented'); } }
 class LocalProvider extends ModelProvider {
   constructor() { super('local'); }
-  async generate({ text }) {
-    const p = I18N.pack(), rand = a => a[Math.floor(Math.random() * a.length)];
-    const hit = p.patterns.find(x => x.re.test(text));
-    return rand(hit ? hit.r : p.fallback);
-  }
+  async generate({ text }) { const p = I18N.pack(), rand = a => a[Math.floor(Math.random() * a.length)], hit = p.patterns.find(x => x.re.test(text)); return rand(hit ? hit.r : p.fallback); }
 }
-// Fornecedores remotos falam com um proxy de backend (as keys ficam no servidor, via env vars).
-class ProxyProvider extends ModelProvider {
+class ProxyProvider extends ModelProvider { // keys live on the backend (env vars), never here
   get available() { return !!CONFIG.endpoint; }
   async generate({ system, messages, signal }) {
     let res;
-    try {
-      res = await fetch(CONFIG.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-        body: JSON.stringify({ provider: this.name, model: CONFIG.models[this.name], system, messages }) });
-    } catch (e) { throw e.name === 'AbortError' ? mkErr('timeout') : mkErr('api_error', e.message); }
+    try { res = await fetch(CONFIG.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal, body: JSON.stringify({ provider: this.name, model: CONFIG.models[this.name], system, messages }) }); }
+    catch (e) { throw e.name === 'AbortError' ? mkErr('timeout') : mkErr('api_error', e.message); }
     if (!res.ok) throw mkErr('api_error', 'HTTP ' + res.status);
     const data = await res.json().catch(() => null);
     return data && data.text;
@@ -293,129 +203,92 @@ class ProxyProvider extends ModelProvider {
 class OpenAIProvider extends ProxyProvider { constructor() { super('openai'); } }
 class GeminiProvider extends ProxyProvider { constructor() { super('gemini'); } }
 class ClaudeProvider extends ProxyProvider { constructor() { super('claude'); } }
-
 const PROVIDERS = (() => {
   const map = {};
-  const api = {
-    register(p) { if (!(p instanceof ModelProvider)) throw new Error('Invalid provider'); map[p.name] = p; LOGGER.info('provider_registered', { name: p.name }); },
-    get: n => map[n],
-    // escolhe: rota configurada → padrão → qualquer remoto disponível → local
-    pick(taskType) {
-      const want = CONFIG.routes[taskType] || CONFIG.defaultProvider;
-      if (map[want] && map[want].available) return map[want];
-      return Object.values(map).find(p => p.name !== 'local' && p.available) || map.local;
-    },
-  };
+  const api = { register(p) { if (!(p instanceof ModelProvider)) throw new Error('Invalid provider'); map[p.name] = p; }, get: n => map[n],
+    pick(task) { const want = CONFIG.routes[task] || CONFIG.defaultProvider; if (map[want] && map[want].available) return map[want]; return Object.values(map).find(p => p.name !== 'local' && p.available) || map.local; } };
   [new LocalProvider(), new OpenAIProvider(), new GeminiProvider(), new ClaudeProvider()].forEach(api.register);
   return api;
 })();
 
-/* ═══════════ context.js — sessão estruturada, sem persistência ═══════════ */
+/* ── context: structured session, no persistence ── */
 class Session {
   constructor(max = 12) { this.max = max; this.items = []; }
   add(role, content, meta) { this.items.push({ role, content, ...meta }); if (this.items.length > this.max) this.items.shift(); }
-  // resultados de ferramenta entram no modelo como contexto do assistente
   messages() { return this.items.map(i => ({ role: i.role === 'user' ? 'user' : 'assistant', content: i.role === 'tool' ? `[${i.tool}] ${i.content}` : i.content })); }
   system() { return I18N.pack().system; }
   reset() { this.items = []; }
 }
 
-/* ═══════════ router.js — decide ferramenta OU provider conforme a tarefa ═══════════ */
+/* ── router: tool OR provider by task ── */
 const ROUTER = (() => {
   const MATH = /^\s*[0-9][0-9+\-*/().,\s]*[0-9)]\s*$/;
-  function route(text) {
+  return { route(text) {
     const t = text.trim(), r = I18N.pack().route;
     if (MATH.test(t) && /[+\-*/]/.test(t)) return { kind: 'tool', tool: 'calculator', args: { expression: t } };
     if (r.time.test(t)) return { kind: 'tool', tool: 'datetime', args: { kind: 'time' } };
     if (r.date.test(t)) return { kind: 'tool', tool: 'datetime', args: { kind: 'date' } };
+    const tm = t.match(r.timer); if (tm) return { kind: 'tool', tool: 'timer', args: { n: +tm[1], unit: tm[2] } };
     const type = r.code.test(t) ? 'code' : r.creative.test(t) ? 'creative' : 'chat';
     return { kind: 'model', type, provider: PROVIDERS.pick(type) };
-  }
-  return { route };
+  } };
 })();
 
-/* ═══════════ voice.js — STT e TTS nativos, atrás de uma interface simples ═══════════ */
+/* ── voice: native STT/TTS behind a small interface ── */
 const VOICE = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition, synth = window.speechSynthesis;
-  let rec = null, active = false, cached = null;
-  const MALE = ['antonio', 'antônio', 'daniel', 'fabio', 'felipe', 'ricardo', 'thiago', 'tiago', 'guy', 'david', 'mark', 'alex', 'male', 'masculin'];
-  const FEMALE = ['female', 'feminin', 'francisca', 'luciana', 'maria', 'fernanda', 'joana', 'zira', 'samantha', 'google português', 'google us'];
+  let rec = null, active = false;
+  const MALE = ['antonio', 'antônio', 'daniel', 'fabio', 'felipe', 'ricardo', 'thiago', 'tiago', 'guy', 'david', 'mark', 'alex', 'male'];
+  const FEMALE = ['female', 'feminin', 'francisca', 'luciana', 'maria', 'fernanda', 'joana', 'zira', 'samantha'];
   function pick(lang) {
-    const vs = synth ? synth.getVoices() : []; const pre = lang.slice(0, 2).toLowerCase();
-    let best = null, bs = -Infinity;
-    vs.forEach(v => {
-      const n = v.name.toLowerCase(), l = (v.lang || '').toLowerCase(); let s = 0;
+    const vs = synth ? synth.getVoices() : [], pre = lang.slice(0, 2).toLowerCase(); let best = null, bs = -Infinity;
+    vs.forEach(v => { const n = v.name.toLowerCase(), l = (v.lang || '').toLowerCase(); let s = 0;
       if (l === lang.toLowerCase()) s += 50; else if (l.startsWith(pre)) s += 30; else return;
-      if (FEMALE.some(h => n.includes(h))) s -= 500;
-      if (MALE.some(h => n.includes(h))) s += 100;
-      if (['neural', 'natural', 'online'].some(h => n.includes(h))) s += 20;
-      if (v.localService) s += 8;
-      if (s > bs) { bs = s; best = v; }
-    });
+      if (FEMALE.some(h => n.includes(h))) s -= 500; if (MALE.some(h => n.includes(h))) s += 100;
+      if (['neural', 'natural', 'online'].some(h => n.includes(h))) s += 20; if (v.localService) s += 8;
+      if (s > bs) { bs = s; best = v; } });
     return best;
   }
   return {
     available: !!SR,
     listen(lang, cb) {
-      rec = new SR(); rec.lang = lang; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
+      rec = new SR(); rec.lang = lang; rec.interimResults = false; rec.continuous = false;
       rec.onstart = () => { active = true; cb.onStart(); };
       rec.onerror = e => { active = false; cb.onError(e.error); };
       rec.onend = () => { if (active) { active = false; cb.onEnd(); } };
-      rec.onresult = e => {
-        let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
-        if (fin.trim()) { active = false; cb.onResult(fin.trim()); }
-      };
+      rec.onresult = e => { let f = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) f += e.results[i][0].transcript; if (f.trim()) { active = false; cb.onResult(f.trim()); } };
       try { rec.start(); return true; } catch (e) { return false; }
     },
     stopListening() { if (rec && active) { active = false; rec.stop(); } },
     speak(text, lang, onEnd) {
-      if (!synth) return onEnd();
-      synth.cancel();
+      if (!synth) return onEnd(); synth.cancel();
       const u = new SpeechSynthesisUtterance(text), v = pick(lang);
       if (v) { u.voice = v; u.lang = v.lang; } else u.lang = lang;
-      u.rate = 1.08; u.pitch = 0.55; u.volume = 1;
-      u.onend = u.onerror = () => onEnd();
-      synth.speak(u);
+      u.rate = 1.08; u.pitch = .55; u.onend = u.onerror = () => onEnd(); synth.speak(u);
     },
     stopSpeaking() { if (synth) synth.cancel(); },
   };
 })();
 
-/* ═══════════ core.js — ORION CORE: única fonte de verdade dos estados ═══════════
-   STT → CORE.submit → ROUTER → (TOOLS | PROVIDER) → SESSION → TTS
-   A interface apenas assina 'state' e chama toggle(); não contém lógica de negócio. */
+/* ── CORE: single source of truth for states ── */
 const CORE = (() => {
-  const session = new Session();
-  const subs = [];
-  let cur = 'standby', gen = 0, voiceOn = true;
-
+  const session = new Session(), subs = [];
+  let cur = 'standby', gen = 0, voiceOn = true, hands = false;
   const on = fn => subs.push(fn);
-  function setState(name, msg) {
-    cur = name; gen++;
-    subs.forEach(fn => { try { fn(name, msg); } catch (e) { LOGGER.error('subscriber_failed', { message: e.message }); } });
-    return gen;
-  }
-  // único caminho para ERROR — sempre agenda a volta a STANDBY
-  function fail(err, stage) {
+  function setState(name, msg) { cur = name; gen++; subs.forEach(fn => { try { fn(name, msg); } catch (e) { LOGGER.error('subscriber_failed', { message: e.message }); } }); return gen; }
+  function fail(err, stage) { // only path to ERROR; always recovers to STANDBY
     const code = err && err.code && I18N.pack().err[err.code] ? err.code : (!navigator.onLine ? 'offline' : 'unknown');
     LOGGER.error('error_handled', { stage, code, message: err && err.message });
     const my = setState('error', I18N.err(code));
-    setTimeout(() => { if (gen === my && cur === 'error') setState('standby', ''); }, 2200);
+    setTimeout(() => { if (gen === my && cur === 'error') setState('standby', ''); }, 2600);
   }
-  const timeout = (p, ms, ctl) => new Promise((res, rej) => {
-    const t = setTimeout(() => { ctl.abort(); rej(mkErr('timeout')); }, ms);
-    p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); });
-  });
-
+  const timeout = (p, ms, ctl) => new Promise((res, rej) => { const t = setTimeout(() => { ctl.abort(); rej(mkErr('timeout')); }, ms); p.then(v => { clearTimeout(t); res(v); }, e => { clearTimeout(t); rej(e); }); });
   async function think(text) {
     const id = LOGGER.newId(), t0 = performance.now(), r = ROUTER.route(text);
     LOGGER.info('request_started', { id, kind: r.kind, provider: r.provider && r.provider.name, tool: r.tool });
-    session.add('user', text);
-    let reply;
-    if (r.kind === 'tool') {
-      reply = String(await TOOLS.run(r.tool, r.args));
-      session.add('tool', reply, { tool: r.tool });
-    } else {
+    session.add('user', text); let reply;
+    if (r.kind === 'tool') { reply = String(await TOOLS.run(r.tool, r.args)); session.add('tool', reply, { tool: r.tool }); }
+    else {
       if (r.provider.name !== 'local' && !navigator.onLine) throw mkErr('offline');
       const ctl = new AbortController();
       reply = await timeout(r.provider.generate({ text, system: session.system(), messages: session.messages(), signal: ctl.signal }), CONFIG.timeoutMs, ctl);
@@ -425,18 +298,15 @@ const CORE = (() => {
     LOGGER.info('request_completed', { id, latencyMs: Math.round(performance.now() - t0) });
     return reply.trim();
   }
-
   async function submit(text) {
     if (!text || !text.trim()) return setState('standby');
-    setState('thinking', I18N.t('thinking'));
-    let reply;
+    setState('thinking', I18N.t('thinking')); let reply;
     try { reply = await think(text); } catch (e) { return fail(e, 'pipeline'); }
-    const msg = reply.length > 46 ? I18N.t('responding') : reply;
-    setState('speaking', msg);
-    if (!voiceOn) return setTimeout(() => cur === 'speaking' && setState('standby', ''), 2400);
-    VOICE.speak(reply, I18N.pack().speech, () => { if (cur === 'speaking') setState('standby', ''); });
+    setState('speaking', voiceOn || reply.length > 46 ? I18N.t('responding') : reply);
+    const done = () => { if (cur === 'speaking') { setState('standby', ''); if (hands) setTimeout(() => cur === 'standby' && toggle(), 500); } };
+    if (!voiceOn) return setTimeout(done, 2400);
+    VOICE.speak(reply, I18N.pack().speech, done);
   }
-
   function toggle() {
     if (cur === 'speaking') { VOICE.stopSpeaking(); return setState('standby', ''); }
     if (cur === 'listening') { VOICE.stopListening(); return setState('standby', ''); }
@@ -444,104 +314,155 @@ const CORE = (() => {
     if (!voiceOn) return fail(mkErr('voice_disabled'), 'toggle');
     if (!VOICE.available) return fail(mkErr('stt_unavailable'), 'toggle');
     const ok = VOICE.listen(I18N.pack().speech, {
-      onStart: () => setState('listening', I18N.t('listening')),
-      onResult: submit,
+      onStart: () => setState('listening', I18N.t('listening')), onResult: submit,
       onError: c => c === 'no-speech' ? setState('standby', '') : fail(mkErr(c === 'not-allowed' ? 'mic_unavailable' : 'stt_unavailable', c), 'stt'),
       onEnd: () => setState('standby', ''),
     });
     if (!ok) fail(mkErr('mic_unavailable'), 'toggle');
   }
-
-  return { on, submit, toggle, session, state: () => cur, setVoice: v => { voiceOn = v; }, onLangChange: () => session.reset() };
+  function announce(text) {
+    if (cur !== 'standby') return setTimeout(() => announce(text), 3000);
+    setState('speaking', I18N.t('responding'));
+    const end = () => cur === 'speaking' && setState('standby', '');
+    voiceOn ? VOICE.speak(text, I18N.pack().speech, end) : setTimeout(end, 2400);
+  }
+  return { announce, on, submit, toggle, session, state: () => cur, setHands: v => { hands = v; }, setVoice: v => { voiceOn = v; }, onLangChange: () => session.reset() };
 })();
 
-/* ═══════════ orb.js — mesma Orb, iluminação e profundidade refinadas ═══════════ */
+/* ═══ UNIVERSE — V10 Beta: a living 3D universe with a large holographic HUD ═══
+   Stars in real 3D (perspective + camera) form a sphere that morphs into a spiral galaxy.
+   Around it: concentric rings, tick scale and arcs that react to each state.
+   standby = slow breathing · listening = contracts, rings tighten · thinking = galaxy + neural links + long arcs
+   speaking = outward pulses following speech rhythm · error = dims, turns red, drifts down, then recovers. */
 const ORB = (() => {
-  const canvas = document.getElementById('orbCanvas'), ctx = canvas.getContext('2d');
-  const orbEl = document.getElementById('orb'), haloEl = document.getElementById('halo'), zone = document.getElementById('orbZone');
-  const root = document.documentElement;
-  let amp = 1, tAmp = 1, rot = 1, tRot = 1, bright = 1, tBright = 1, ang = 0, hovered = false, state = 'standby';
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), root = document.documentElement;
+  const PD = {
+    standby:   { speed: .45, spin: .10, radius: .85, turb: .04, wave: 0,  dir: -1, sag: 0,  size: 1,    gain: 1,    voice: 0, gal: 0, link: .5, zoom: 1,    ring: .6, arc: 1.3, pulse: 0 },
+    listening: { speed: .8,  spin: .22, radius: .58, turb: .05, wave: .8, dir: -1, sag: 0,  size: 1.15, gain: 1.15, voice: 0, gal: 0, link: .7, zoom: 1.07, ring: 1.1, arc: 2.3, pulse: 0 },
+    thinking:  { speed: 1.3, spin: .85, radius: .95, turb: .04, wave: 0,  dir: 1,  sag: 0,  size: .95,  gain: 1.1,  voice: 0, gal: 1, link: 1,  zoom: 1.12, ring: 2.2, arc: 3.8, pulse: 0 },
+    speaking:  { speed: 1,   spin: .2,  radius: .9,  turb: .08, wave: 1,  dir: 1,  sag: 0,  size: 1.2,  gain: 1.25, voice: 1, gal: 0, link: .55,zoom: 1.03, ring: 1.3, arc: 2.6, pulse: 1 },
+    error:     { speed: 1.6, spin: -.3, radius: 1.05, turb: .5, wave: 0,  dir: 1,  sag: .5, size: .9,   gain: .55,  voice: 0, gal: 0, link: 0,  zoom: .95, ring: .2, arc: .4, pulse: 0 },
+  };
+  const S = { ...PD.standby }; let ST = PD.standby, W = 0, H = 0, dpr = 1;
+  let tt = 0, yaw = 0, ra = 0, kick = 0, mx = 0, my = 0, ox = 0, oy = 0, hovered = false, bright = 1, tBright = 1, born = 0, reduce = false, cur = 'standby';
+  const CAM = 3.4; let N = 760, NL = 100;
+  const STAR = [], BG = [];
+  function seed() {
+    STAR.length = 0; BG.length = 0;
+    for (let i = 0; i < N; i++) {
+      const u = Math.random() * 2 - 1, th = Math.random() * 6.2832, q = Math.sqrt(1 - u * u), r = .25 + .75 * Math.cbrt(Math.random());
+      const gr = .04 + Math.sqrt(Math.random()) * .96, ga = (i % 3) * 2.094 + gr * 4.5 + (Math.random() - .5) * .6;
+      STAR.push({ sx: q * Math.cos(th) * r, sy: u * r, sz: q * Math.sin(th) * r, gx: Math.cos(ga) * gr, gy: (Math.random() - .5) * .07 * (1 - gr * .5), gz: Math.sin(ga) * gr,
+        ph: Math.random() * 6.2832, s0: .5 + Math.random() * 1.3, hi: i < NL, bt: Math.random() * .8, x: 0, y: 0, z: 0, px: 0, py: 0, pd: 1, da: 1 });
+    }
+    for (let i = 0; i < 170; i++) { const u = Math.random() * 2 - 1, th = Math.random() * 6.2832, q = Math.sqrt(1 - u * u), r = 1.3 + Math.random() * .9;
+      BG.push({ x: q * Math.cos(th) * r, y: u * r, z: q * Math.sin(th) * r, ph: Math.random() * 6.2832, s0: .4 + Math.random() * .7 }); }
+  }
   const h2 = hex => { const h = hex.replace('#', ''); return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) }; };
   const tri = c => ({ a: h2(c.a), b: h2(c.b), c: h2(c.c) });
   const toHex = o => '#' + [o.r, o.g, o.b].map(n => Math.round(n).toString(16).padStart(2, '0')).join('');
   const lerp = (f, t, k) => ({ r: f.r + (t.r - f.r) * k, g: f.g + (t.g - f.g) * k, b: f.b + (t.b - f.b) * k });
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
+  const white = { r: 255, g: 255, b: 255 };
   let now = tri(VISUAL_STATE.config('standby').color), target = tri(VISUAL_STATE.config('standby').color);
 
-  const resize = () => { canvas.width = canvas.height = orbEl.offsetWidth; };
-  function setState(name) {
-    const cfg = VISUAL_STATE.config(name); state = name in { listening: 1, thinking: 1, speaking: 1, error: 1 } ? name : 'standby';
-    tAmp = cfg.amp; tRot = cfg.rot; tBright = cfg.bright; target = tri(cfg.color);
-    ST = PD[state];
-    orbEl.classList.remove('st-listening', 'st-thinking', 'st-speaking', 'st-error'); if (cfg.cls) orbEl.classList.add(cfg.cls);
-    haloEl.classList.toggle('fast', state === 'listening' || state === 'speaking' || state === 'thinking');
-    zone.classList.toggle('speaking', state === 'speaking');
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = W < 600 ? 420 : 760; if (n !== N || !STAR.length) { N = n; NL = W < 600 ? 60 : 100; seed(); } // fallback for weaker screens
   }
-  // SÓ PARTÍCULAS: nada mais dentro da Orb. Cada estado muda a DINÂMICA do enxame (parâmetros suavizados quadro a quadro):
-  // speed=ritmo · swirl=vórtice (mais rápido no centro) · radius=contração/expansão · turb=turbulência
-  // wave/dir=onda que atravessa o enxame (-1 entra, +1 sai) · sag=queda · voice=pulsação de voz · size/gain=tamanho/brilho
-  const PD = {
-    standby:   { speed: .5,  swirl: .10, radius: .85, turb: .05, wave: 0,  dir: -1, sag: 0,   size: 1,    gain: 1,    voice: 0 },
-    listening: { speed: .8,  swirl: .35, radius: .55, turb: .06, wave: .8, dir: -1, sag: 0,   size: 1.15, gain: 1.15, voice: 0 },
-    thinking:  { speed: 1.3, swirl: 2.2, radius: .80, turb: .05, wave: 0,  dir: 1,  sag: 0,   size: .95,  gain: 1.1,  voice: 0 },
-    speaking:  { speed: 1.0, swirl: .3,  radius: .90, turb: .10, wave: 1,  dir: 1,  sag: 0,   size: 1.2,  gain: 1.25, voice: 1 },
-    error:     { speed: 2.0, swirl: -.4, radius: 1.05, turb: .55, wave: 0, dir: 1,  sag: .5,  size: .9,   gain: .55,  voice: 0 },
-  };
-  const S = { ...PD.standby }; let ST = PD.standby, tt = 0, swirlP = 0;
-  const P = Array.from({ length: 120 }, () => ({
-    a: Math.random() * 6.2832, r: .1 + .85 * Math.sqrt(Math.random()), w: .7 + Math.random() * .6, ph: Math.random() * 6.2832,
-    sz: .5 + Math.random() * 1.1, z: Math.random() * 2 - 1, sp: Math.random() > .86,
-  }));
+  function setState(name) { const cfg = VISUAL_STATE.config(name); cur = name; ST = PD[name] || PD.standby; target = tri(cfg.color); tBright = cfg.bright; }
 
-  function draw(ts) {
-    const W = canvas.width, R = W / 2;
+  function hud(cx, cy, U, b, env) {
+    const c = now.c, m = reduce ? .3 : 1, R = [U * 1.12, U * 1.3, U * 1.52], tight = cur === 'listening' ? .96 : 1;
+    ra += S.ring * .006 * m;
+    ctx.lineWidth = 1;
+    R.forEach((r, i) => { // base rings
+      ctx.setLineDash(i === 1 ? [2, 7] : []); ctx.strokeStyle = rgba(c, (i === 1 ? .22 : .1) * b * born);
+      ctx.beginPath(); ctx.arc(cx, cy, r * tight, 0, 6.2832); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1; ctx.strokeStyle = rgba(c, .28 * b * born); ctx.beginPath(); // tick scale
+    const rt = U * 1.22 * tight;
+    for (let i = 0; i < 144; i++) { const a = i * 6.2832 / 144 - ra * .6, l = i % 6 === 0 ? 10 : 4; ctx.moveTo(cx + Math.cos(a) * rt, cy + Math.sin(a) * rt); ctx.lineTo(cx + Math.cos(a) * (rt + l), cy + Math.sin(a) * (rt + l)); }
+    ctx.stroke();
+    for (let i = 0; i < 3; i++) { // arcs: length = state activity
+      ctx.lineWidth = 1.4 + i * .4; ctx.strokeStyle = rgba(lerp(c, white, .35), (.5 - i * .1) * b * born);
+      const a0 = ra * (i % 2 ? -1.4 : 1) * (1 + i * .3) + i * 2.1, len = S.arc * (1 - i * .18);
+      ctx.beginPath(); ctx.arc(cx, cy, R[i] * tight + (i === 1 ? 6 : 0), a0, a0 + len); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, R[i] * tight + (i === 1 ? 6 : 0), a0 + 3.14, a0 + 3.14 + len * .4); ctx.stroke();
+    }
+    if (S.pulse > .05) { // speech pulses travel outward
+      for (let k = 0; k < 3; k++) { const p = ((tt * .5 + k / 3) % 1); ctx.lineWidth = 1.2; ctx.strokeStyle = rgba(c, (1 - p) * .35 * S.pulse * (.6 + .4 * env));
+        ctx.beginPath(); ctx.arc(cx, cy, U * (.95 + p * .75), 0, 6.2832); ctx.stroke(); }
+    }
+  }
+
+  function draw() {
     if (!W) return requestAnimationFrame(draw);
-    ctx.clearRect(0, 0, W, W); ctx.save(); ctx.beginPath(); ctx.arc(R, R, R - 1, 0, 6.283); ctx.clip();
-    amp += (tAmp - amp) * .03; rot += (tRot - rot) * .03; bright += (tBright - bright) * .045;
-    ['a', 'b', 'c'].forEach(k => { now[k] = lerp(now[k], target[k], .03); root.style.setProperty('--core-' + k, toHex(now[k])); });
-    const b = bright * (hovered ? 1.08 : 1), t = ts * .00016;
-    ang += .00042 * rot * (hovered ? 1.12 : 1);
-    const jit = state === 'error' ? Math.sin(ts * .05) * R * .012 : 0;
-
-    const bg = ctx.createRadialGradient(R * .78, R * .58, 0, R, R, R);
-    bg.addColorStop(0, rgba(now.a, .34 * b)); bg.addColorStop(.55, rgba(now.b, .42 * b)); bg.addColorStop(1, 'rgba(0,0,2,.94)');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, W);
-
-    // ── ENXAME DE PARTÍCULAS (único conteúdo interno da Orb) ──
+    ctx.clearRect(0, 0, W, H);
     for (const k in ST) S[k] += (ST[k] - S[k]) * .035;
-    tt += S.speed * .017; swirlP += S.swirl * .017;
-    const env = .5 + .5 * Math.sin(tt * 6.5) * Math.sin(tt * 2.1 + 1.3), sc = R / 150;
-    const white = { r: 255, g: 255, b: 255 };
-    P.forEach(p => {
-      const an = p.a + swirlP * p.w * (1.3 - p.r) * (1 - .25 * p.z);
-      let rad = p.r * S.radius * (1 + .10 * Math.sin(tt * .9 + p.ph)) + S.wave * .07 * S.radius * Math.sin(9 * p.r - S.dir * tt * 4);
-      rad *= 1 + .16 * S.voice * env;
-      let x = Math.cos(an) * rad + S.turb * .12 * (Math.sin(tt * 2.3 + p.ph * 3) + Math.sin(tt * 3.7 + p.ph)) + .015 * Math.sin(tt * .6 + p.ph * 2);
-      let y = Math.sin(an) * rad + S.turb * .12 * (Math.cos(tt * 2.1 + p.ph * 2) + Math.sin(tt * 4.1 + p.ph * 3)) + S.sag * (.2 + .3 * p.r) + .015 * Math.cos(tt * .5 + p.ph);
-      const d = Math.hypot(x, y); if (d > .94) { x *= .94 / d; y *= .94 / d; }
-      const depth = .6 + .4 * (p.z + 1) / 2, tw = .4 + .6 * (.5 + .5 * Math.sin(tt * 2.2 + p.ph));
-      const rr = p.sz * sc * depth * S.size, al = .7 * tw * b * depth * S.gain;
-      ctx.fillStyle = rgba(now.c, al * .12); ctx.beginPath(); ctx.arc(R + x * R, R + y * R, rr * 3, 0, 6.2832); ctx.fill();
-      ctx.fillStyle = rgba(p.sp ? lerp(now.c, white, .55) : now.c, al * (p.sp ? 1.2 : 1));
-      ctx.beginPath(); ctx.arc(R + x * R, R + y * R, rr, 0, 6.2832); ctx.fill();
+    bright += (tBright - bright) * .045; born = Math.min(1, born + (reduce ? .05 : .0065));
+    ['a', 'b', 'c'].forEach(k => { now[k] = lerp(now[k], target[k], .03); root.style.setProperty('--core-' + k, toHex(now[k])); });
+    const m = reduce ? .3 : 1; tt += S.speed * .017 * m; yaw += S.spin * .017 * m; kick *= .94; ox += (mx - ox) * .05; oy += (my - oy) * .05;
+    const b = bright * (hovered ? 1.08 : 1), U = Math.min(W, H) * .30 * S.zoom, sc = U / 220, cx = W / 2, cy = H / 2 - H * .02;
+    const env = .5 + .5 * Math.sin(tt * 6.5) * Math.sin(tt * 2.1 + 1.3);
+    const ya = yaw + ox * .9, pa = .28 + oy * .6, cyw = Math.cos(ya), syw = Math.sin(ya), cpi = Math.cos(pa), spi = Math.sin(pa);
+
+    const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, U * 1.6); // soft core glow
+    halo.addColorStop(0, rgba(now.a, .13 * b * born)); halo.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
+    hud(cx, cy, U, b, env);
+
+    const by = ya * .5, cby = Math.cos(by), sby = Math.sin(by), UB = Math.max(W, H) * .5; // distant dust, parallax
+    BG.forEach(s => {
+      const x1 = s.x * cby + s.z * sby, z1 = -s.x * sby + s.z * cby, y2 = s.y * cpi - z1 * spi, z2 = s.y * spi + z1 * cpi, pd = CAM / (CAM + z2);
+      ctx.fillStyle = rgba(lerp(now.c, white, .5), (.14 + .2 * (.5 + .5 * Math.sin(tt * 1.3 + s.ph))) * b * born);
+      ctx.beginPath(); ctx.arc(cx + x1 * UB * pd, cy + y2 * UB * pd, s.s0 * pd, 0, 6.2832); ctx.fill();
     });
 
-    const rim = ctx.createRadialGradient(R, R, R * .6, R, R, R);
-    rim.addColorStop(0, 'transparent'); rim.addColorStop(1, rgba(now.b, .14 * b));
-    ctx.fillStyle = rim; ctx.fillRect(0, 0, W, W);
-    const vig = ctx.createRadialGradient(R, R, R * .35, R, R, R);
-    vig.addColorStop(0, 'transparent'); vig.addColorStop(1, 'rgba(0,0,4,.72)');
-    ctx.fillStyle = vig; ctx.beginPath(); ctx.arc(R, R, R - 1, 0, 6.283); ctx.fill();
-    ctx.restore(); requestAnimationFrame(draw);
+    STAR.forEach(s => {
+      const bo = Math.max(0, Math.min(1, (born - s.bt * .7) / .3)); // opening: stars appear one by one
+      let x = s.sx + (s.gx - s.sx) * S.gal, y = s.sy + (s.gy - s.sy) * S.gal, z = s.sz + (s.gz - s.sz) * S.gal;
+      const r0 = Math.hypot(x, y, z) || 1e-6, k = S.radius * (.6 + .4 * bo) * (1 + .05 * Math.sin(tt * .9 + s.ph)) * (1 + .16 * S.voice * env);
+      const disp = S.wave * .09 * Math.sin(9 * r0 - S.dir * tt * 4) + kick * .2, tb = S.turb * .15;
+      x = x * k + x / r0 * disp + tb * (Math.sin(tt * 2.3 + s.ph * 3) + Math.sin(tt * 3.7 + s.ph));
+      y = y * k + y / r0 * disp + tb * (Math.cos(tt * 2.1 + s.ph * 2) + Math.sin(tt * 4.1 + s.ph * 3)) + S.sag * (.25 + .3 * r0);
+      z = z * k + z / r0 * disp + tb * (Math.sin(tt * 1.9 + s.ph * 4) + Math.cos(tt * 3.3 + s.ph));
+      const d = Math.hypot(x, y, z); if (d > 1.05) { x *= 1.05 / d; y *= 1.05 / d; z *= 1.05 / d; }
+      const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw, y2 = y * cpi - z1 * spi, z2 = y * spi + z1 * cpi;
+      s.x = x1; s.y = y2; s.z = z2; s.pd = CAM / (CAM + z2); s.px = cx + x1 * U * s.pd; s.py = cy + y2 * U * s.pd; s.da = Math.max(.15, Math.min(1, .6 - .4 * z2)) * bo;
+    });
+
+    if (S.link > .02) { // subtle links between near stars
+      const th = .34, th2 = th * th; ctx.lineWidth = .8;
+      for (let i = 0; i < NL; i++) for (let j = i + 1; j < NL; j++) {
+        const p = STAR[i], q = STAR[j], dx = p.x - q.x, dy = p.y - q.y, dz = p.z - q.z, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < th2) { ctx.strokeStyle = rgba(now.c, (1 - Math.sqrt(d2) / th) * .4 * S.link * b * (p.da + q.da) / 2); ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(q.px, q.py); ctx.stroke(); }
+      }
+    }
+
+    STAR.slice().sort((p, q) => q.z - p.z).forEach(s => {
+      const tw = .55 + .45 * Math.sin(tt * 2.2 + s.ph), rr = s.s0 * sc * s.pd * S.size * (s.hi ? 1.5 : 1), al = .85 * s.da * tw * b * S.gain;
+      if (s.hi) { ctx.fillStyle = rgba(now.c, al * .12); ctx.beginPath(); ctx.arc(s.px, s.py, rr * 3.2, 0, 6.2832); ctx.fill(); }
+      ctx.fillStyle = rgba(s.hi ? lerp(now.c, white, .5) : now.c, al);
+      ctx.beginPath(); ctx.arc(s.px, s.py, rr, 0, 6.2832); ctx.fill();
+    });
+    requestAnimationFrame(draw);
   }
+
   return {
-    init() { resize(); window.addEventListener('resize', resize); requestAnimationFrame(draw); },
-    setState, setHover: v => { hovered = v; },
-    pressEffect() { orbEl.classList.add('pressed'); setTimeout(() => orbEl.classList.remove('pressed'), 150); },
+    init() {
+      resize(); addEventListener('resize', resize);
+      const aim = (x, y) => { mx = x / W - .5; my = y / H - .5; };
+      addEventListener('mousemove', e => aim(e.clientX, e.clientY));
+      addEventListener('touchmove', e => { const t = e.touches[0]; if (t) aim(t.clientX, t.clientY); }, { passive: true });
+      if (matchMedia('(prefers-reduced-motion:reduce)').matches) reduce = true;
+      requestAnimationFrame(draw);
+    },
+    setState, setHover: v => { hovered = v; }, pressEffect() { kick = 1; }, setReduce: v => { reduce = v; },
   };
 })();
 
-/* ═══════════ audio.js ═══════════ */
+/* ── audio cues ── */
 const SOUND = (() => {
   let ac = null;
   const ctxRef = () => { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); return ac; };
@@ -551,137 +472,117 @@ const SOUND = (() => {
     n.gain.setValueAtTime(.0001, t); n.gain.exponentialRampToValueAtTime(g, t + .02); n.gain.exponentialRampToValueAtTime(.0001, t + d);
     o.connect(n); n.connect(c.destination); o.start(t); o.stop(t + d + .02);
   }
-  return { init: () => tone(520, .1, 'sine', .035, 700), activate: () => tone(560, .1, 'sine', .045, 780), listen: () => tone(700, .09, 'sine', .04, 920),
-    answer: () => tone(480, .11, 'sine', .045, 340), error: () => tone(300, .16, 'triangle', .05, 160) };
+  return { init: () => tone(520, .1, 'sine', .035, 700), activate: () => tone(560, .1, 'sine', .045, 780), listen: () => tone(700, .09, 'sine', .04, 920), answer: () => tone(480, .11, 'sine', .045, 340), error: () => tone(300, .16, 'triangle', .05, 160) };
 })();
 
-/* ═══════════ settings.js — Ctrl+, · voz, sons, idioma ═══════════ */
+/* ── settings (Ctrl + ,) ── */
 const SETTINGS = (() => {
-  let panel = null, open = false, voice = true, sounds = true;
-  const emit = (key, value) => window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key, value } }));
+  const OPT = { voice: true, sound: true, hands: false, captions: true, reduce: false, contrast: false };
+  let panel = null, open = false;
+  const emit = (key, value) => dispatchEvent(new CustomEvent('orion-setting', { detail: { key, value } }));
   function refresh() {
-    if (!panel) return;
-    const $ = s => panel.querySelector(s), t = I18N.t;
-    $('.settings-title').textContent = t('settings'); $('#lblVoice').textContent = t('voice'); $('#lblSound').textContent = t('sounds'); $('#lblLang').textContent = t('language');
-    $('#toggleVoice').textContent = voice ? t('on') : t('off'); $('#toggleSound').textContent = sounds ? t('sOn') : t('sOff');
-    $('#toggleLang').textContent = I18N.pack().label; $('.settings-hint').textContent = t('close');
+    if (!panel) return; const t = I18N.t;
+    panel.querySelector('h2').textContent = t('settings'); panel.querySelector('p').textContent = t('close');
+    Object.keys(OPT).forEach(k => { panel.querySelector('#l_' + k).textContent = t(k); panel.querySelector('#t_' + k).textContent = OPT[k] ? t('on') : t('off'); });
   }
   function build() {
-    panel = document.createElement('div'); panel.id = 'settingsPanel';
-    panel.innerHTML = `<div class="settings-card"><p class="settings-title"></p>
-      <div class="settings-row"><span id="lblVoice"></span><button id="toggleVoice" class="settings-toggle"></button></div>
-      <div class="settings-row"><span id="lblSound"></span><button id="toggleSound" class="settings-toggle"></button></div>
-      <div class="settings-row"><span id="lblLang"></span><button id="toggleLang" class="settings-toggle"></button></div>
-      <p class="settings-hint"></p></div>`;
+    panel = document.createElement('div'); panel.id = 'settings';
+    panel.innerHTML = '<div class="card"><h2></h2>' + Object.keys(OPT).map(k => `<div class="row"><span id="l_${k}"></span><button class="tg" id="t_${k}"></button></div>`).join('') + '<p></p></div>';
     document.body.appendChild(panel);
-    panel.querySelector('#toggleVoice').onclick = () => { voice = !voice; refresh(); emit('voice', voice); };
-    panel.querySelector('#toggleSound').onclick = () => { sounds = !sounds; refresh(); emit('sound', sounds); };
-    panel.querySelector('#toggleLang').onclick = () => { const l = I18N.list(); emit('lang', l[(l.indexOf(I18N.get()) + 1) % l.length]); refresh(); };
+    Object.keys(OPT).forEach(k => { panel.querySelector('#t_' + k).onclick = () => { OPT[k] = !OPT[k]; refresh(); emit(k, OPT[k]); }; });
     panel.addEventListener('click', e => { if (e.target === panel) toggle(); });
     refresh();
   }
   function toggle() { if (!panel) build(); open = !open; panel.classList.toggle('open', open); }
-  function init() {
-    document.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === ',') { e.preventDefault(); toggle(); }
-      else if (e.key === 'Escape' && open) toggle();
-    });
-  }
-  return { init, refresh };
+  function init() { document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === ',') { e.preventDefault(); toggle(); } else if (e.key === 'Escape' && open) toggle(); }); }
+  return { init, refresh, toggle };
 })();
 
-/* ═══════════ tests.js — Ctrl+Shift+T ou ?test=1 (resultado no console) ═══════════ */
+/* ── tests: Ctrl+Shift+T or ?test=1 ── */
 const TESTS = (() => {
   async function run() {
-    let ok = 0, bad = 0;
-    const check = (name, cond) => { cond ? ok++ : bad++; console[cond ? 'log' : 'error'](`[ORION test] ${cond ? 'PASS' : 'FAIL'} — ${name}`); };
+    let ok = 0, bad = 0; const check = (n, c) => { c ? ok++ : bad++; console[c ? 'log' : 'error'](`[ORION test] ${c ? 'PASS' : 'FAIL'} — ${n}`); };
     const prev = I18N.get();
     check('calculator precedence', safeArithmetic('2+3*4') === 14);
     check('calculator parentheses/comma', safeArithmetic('(1,5+0,5)*2') === 4);
     check('calculator rejects letters', (() => { try { safeArithmetic('2+a'); return false; } catch (e) { return e.code === 'unexpected_input'; } })());
     check('tool blocks non-READ_ONLY', await (async () => { TOOLS.register('_w', { permission: 'WRITE', run: () => 1 }); try { await TOOLS.run('_w'); return false; } catch (e) { return e.code === 'tool_unavailable'; } })());
-    check('i18n packs share the same keys', (() => { const [a, b] = I18N.list().map(l => I18N.packs[l]); const k = o => Object.keys(o).sort().join(); return k(a.ui) === k(b.ui) && k(a.err) === k(b.err) && k(a.tools) === k(b.tools); })());
+    check('unknown tool fails', await TOOLS.run('nope').then(() => false, e => e.code === 'tool_unavailable'));
+    check('i18n packs share keys', (() => { const [a, b] = I18N.list().map(l => I18N.packs[l]); const k = o => Object.keys(o).sort().join(); return k(a.ui) === k(b.ui) && k(a.err) === k(b.err) && k(a.tools) === k(b.tools); })());
+    check('router → timer', ROUTER.route('timer de 5 minutos').tool === 'timer');
     check('router → calculator', ROUTER.route('12*(3+4)').tool === 'calculator');
     I18N.set('en'); check('router → datetime (en)', ROUTER.route('what time is it').tool === 'datetime');
     I18N.set('pt-BR'); check('router → datetime (pt)', ROUTER.route('que horas são').tool === 'datetime');
-    check('router falls back to local without endpoint', ROUTER.route('conte uma história').provider.name === 'local' || CONFIG.endpoint);
+    check('router falls back to local', ROUTER.route('conte uma história').provider.name === 'local' || !!CONFIG.endpoint);
     check('session trims history', (() => { const s = new Session(3); for (let i = 0; i < 6; i++) s.add('user', 'x' + i); return s.items.length === 3; })());
     check('local provider answers', typeof await new LocalProvider().generate({ text: 'oi' }) === 'string');
     check('base provider is abstract', await new ModelProvider('x').generate().then(() => false, e => e.code === 'model_unavailable'));
+    check('CORE starts in standby', CORE.state() === 'standby');
     I18N.set(prev); console.log(`[ORION test] ${ok} passed, ${bad} failed`); return bad === 0;
   }
   return { run };
 })();
 
-/* ═══════════ app.js — casca de UI: assina o CORE, não contém regra de negócio ═══════════ */
+/* ── app: UI shell, subscribes to CORE, no business logic ── */
 (function () {
   const $ = id => document.getElementById(id);
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), statusText = $('statusText'), hintText = $('hintText');
-  let statusTimer = null, hintShown = true, soundOn = true;
+  let statusTimer = null, hintShown = true, soundOn = true, captions = true;
 
   function applyI18n() {
-    const t = I18N.t;
-    hintText.textContent = t('hint'); $('versionTag').textContent = t('version') + ORION_VERSION;
+    hintText.textContent = I18N.t('hint'); $('ver').textContent = I18N.t('version') + ORION_VERSION; $('btnLang').textContent = I18N.pack().label;
     SETTINGS.refresh();
   }
   I18N.set(I18N.get()); applyI18n();
 
-  /* boot — registrado ANTES de tudo, nunca fica preso */
-  const bootLines = I18N.pack().ui.boot;
-  bootStatus.textContent = bootLines[0];
-  let bi = 1;
+  bootStatus.textContent = BOOT_LINES[0]; let bi = 1; // boot: initializing → connecting to core → systems online
   const bootIv = setInterval(() => {
-    bootStatus.style.opacity = '0';
-    const line = bootLines[bi];
+    bootStatus.style.opacity = '0'; const line = BOOT_LINES[bi];
     setTimeout(() => { bootStatus.textContent = line; bootStatus.style.opacity = '1'; }, 220);
-    if (++bi >= bootLines.length) clearInterval(bootIv);
+    if (++bi >= BOOT_LINES.length) clearInterval(bootIv);
   }, 620);
   setTimeout(() => {
     bootEl.classList.add('out');
-    try { SOUND.init(); } catch (e) { console.error('[ORION] SOUND.init falhou:', e); }
-    setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); setTimeout(() => flash(I18N.t('online'), 3200), 300); }, 1000);
+    try { SOUND.init(); } catch (e) {}
+    setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); setTimeout(() => flash(I18N.t('online'), 3200), 1800); }, 900);
   }, 2100);
 
   function flash(msg, ms = 2600) {
-    clearTimeout(statusTimer); statusText.textContent = msg;
-    requestAnimationFrame(() => statusText.classList.add('show'));
-    statusTimer = setTimeout(() => statusText.classList.remove('show'), ms);
+    if (!captions) return; clearTimeout(statusTimer); statusText.textContent = msg;
+    requestAnimationFrame(() => statusText.classList.add('show')); statusTimer = setTimeout(() => statusText.classList.remove('show'), ms);
   }
-
-  // a UI reflete exatamente os estados reais emitidos pelo CORE
   CORE.on((state, msg) => {
-    try { ORB.setState(state); } catch (e) { console.error('[ORION] ORB.setState falhou:', e); }
+    try { ORB.setState(state); } catch (e) { console.error('[ORION] ORB.setState', e); }
     const m = msg !== undefined ? msg : ({ standby: I18N.t('standby'), listening: I18N.t('listening'), thinking: I18N.t('thinking') })[state];
-    if (m) flash(m, state === 'error' ? 2200 : 2400);
+    if (m) flash(m, state === 'error' ? 2400 : 2400);
     if (soundOn) { try { ({ listening: SOUND.listen, speaking: SOUND.answer, error: SOUND.error })[state]?.(); } catch (e) {} }
   });
-
   function activate() {
     if (hintShown) { hintShown = false; hintText.style.opacity = '0'; }
     if (CORE.state() === 'standby') { ORB.pressEffect(); if (soundOn) try { SOUND.activate(); } catch (e) {} }
     CORE.toggle();
   }
-
-  const zone = $('orbZone');
+  const zone = $('zone');
   zone.addEventListener('click', activate);
   zone.addEventListener('touchstart', e => { e.preventDefault(); activate(); }, { passive: false });
-  zone.addEventListener('mouseenter', () => ORB.setHover(true));
-  zone.addEventListener('mouseleave', () => ORB.setHover(false));
+  zone.addEventListener('mouseenter', () => ORB.setHover(true)); zone.addEventListener('mouseleave', () => ORB.setHover(false));
+  $('btnMic').onclick = activate; $('btnSet').onclick = () => SETTINGS.toggle();
+  $('btnLang').onclick = () => { const l = I18N.list(); dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'lang', value: l[(l.indexOf(I18N.get()) + 1) % l.length] } })); };
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !e.target.matches('input,textarea')) { e.preventDefault(); activate(); }
+    if (e.code === 'Space' && !e.target.matches('input,textarea,button')) { e.preventDefault(); activate(); }
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') TESTS.run();
   });
-
-  window.addEventListener('orion-setting', e => {
+  addEventListener('orion-setting', e => {
     const { key, value } = e.detail;
-    if (key === 'voice') CORE.setVoice(value);
-    if (key === 'sound') soundOn = value;
+    if (key === 'voice') CORE.setVoice(value); if (key === 'sound') soundOn = value; if (key === 'hands') CORE.setHands(value);
+    if (key === 'captions') captions = value; if (key === 'reduce') ORB.setReduce(value);
+    if (key === 'contrast') document.body.classList.toggle('hc', value);
     if (key === 'lang') { I18N.set(value); CORE.onLangChange(); applyI18n(); flash(I18N.pack().label, 1800); }
   });
-
-  LOGGER.info('session_started', { version: ORION_VERSION, sttAvailable: VOICE.available, lang: I18N.get(), remote: !!CONFIG.endpoint });
-  try { ORB.init(); } catch (e) { console.error('[ORION] ORB.init falhou:', e); }
-  try { SETTINGS.init(); } catch (e) { console.error('[ORION] SETTINGS.init falhou:', e); }
+  addEventListener('orion-announce', e => CORE.announce(e.detail));
+  LOGGER.info('session_started', { version: ORION_VERSION, stt: VOICE.available, lang: I18N.get(), remote: !!CONFIG.endpoint });
+  try { ORB.init(); } catch (e) { console.error('[ORION] ORB.init', e); }
+  try { SETTINGS.init(); } catch (e) { console.error('[ORION] SETTINGS.init', e); }
   if (/[?&]test=1/.test(location.search)) TESTS.run();
 })();
 </script>
