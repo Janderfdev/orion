@@ -87,6 +87,11 @@ html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:
 .settings-hint{margin-top:20px;text-align:center;font-size:9px;font-weight:300;letter-spacing:.2em;color:rgba(255,255,255,.22);}
 @media (prefers-reduced-motion:reduce){.orb,.halo,.boot-ring,.header-dot,.wave-ring{animation:none !important;}}
 </style>
+<style>/* V10 — a constelação ocupa a tela toda */
+.orb-zone{position:absolute;inset:0;width:auto;height:auto;}
+.orb-canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:0;mix-blend-mode:normal;}
+.status{top:auto;bottom:clamp(72px,13vh,120px);}
+</style>
 </head>
 <body>
 <div class="void"></div>
@@ -104,11 +109,7 @@ html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:
 <div id="app">
   <div class="header"><div class="header-dot"></div><span class="header-word">ORION AI</span><div class="header-dot"></div></div>
   <div class="stage">
-    <div class="orb-zone" id="orbZone">
-      <div class="wave-ring"></div><div class="wave-ring"></div><div class="wave-ring"></div>
-      <div class="halo" id="halo"></div>
-      <div class="orb" id="orb"><canvas class="orb-canvas" id="orbCanvas"></canvas><div class="glass-hi"></div><div class="glass-rim"></div></div>
-    </div>
+    <div class="orb-zone" id="orbZone"><canvas class="orb-canvas" id="orbCanvas"></canvas></div>
   </div>
   <div class="status"><span class="status-text" id="statusText"></span></div>
   <div class="hint"><span class="hint-text" id="hintText"></span></div>
@@ -116,7 +117,7 @@ html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;font-family:
 <div class="version-tag" id="versionTag"></div>
 
 <script>
-const ORION_VERSION = '3.5.0';
+const ORION_VERSION = '10.0';
 
 /* ═══════════ config.js — só lê configuração pública; nunca guarda keys ═══════════ */
 const CONFIG = Object.assign(
@@ -144,17 +145,17 @@ const I18N = (() => {
   const PACKS = {
     'pt-BR': {
       label: 'Português', speech: 'pt-BR',
-      system: 'Você é o ORION, uma inteligência criada por Jander. Responda em português do Brasil, de forma breve, clara e elegante.',
+      system: 'Você é o ORION V10, assistente de voz no estilo J.A.R.V.I.S., criado por Jander. Suas respostas serão FALADAS em voz alta: use frases curtas e naturais, sem markdown, listas, emojis ou símbolos. Tom elegante, calmo e sutilmente espirituoso; trate o usuário com respeito. Seja direto: responda primeiro, detalhe só se pedirem. Se não souber ou não puder fazer algo, diga com franqueza em uma frase. Responda sempre em português do Brasil.',
       ui: { boot: ['inicializando', 'conectando ao núcleo', 'sistemas online'], online: 'ORION ONLINE', hint: 'toque para falar',
         standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', responding: 'Respondendo…',
         settings: 'Configurações', voice: 'Voz', sounds: 'Sons', language: 'Idioma', on: 'Ativada', off: 'Desativada', sOn: 'Ativados', sOff: 'Desativados',
-        close: 'Ctrl + , para fechar', version: 'VERSÃO V' },
+        close: 'Ctrl + , para fechar', version: 'VERSÃO V', hands: 'Mãos-livres' },
       err: { mic_unavailable: 'Microfone indisponível.', stt_unavailable: 'Reconhecimento de voz indisponível neste navegador.', model_unavailable: 'Não consegui acessar o modelo.',
         timeout: 'A resposta demorou demais.', api_error: 'Falha ao comunicar com o serviço.', invalid_response: 'Recebi uma resposta inválida.',
         tool_unavailable: 'Essa ferramenta ainda não está disponível.', offline: 'Sem conexão com a internet.', unexpected_input: 'Não entendi o que foi dito.',
         voice_disabled: 'Voz desativada nas configurações.', unknown: 'Não consegui processar.' },
-      tools: { time: n => `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Resultado: ${v}.` },
-      route: { time: /que horas|que hora/i, date: /que dia|data de hoje/i, code: /\b(código|programar|função|script|bug)\b/i, creative: /\b(poema|história|crie|escreva)\b/i },
+      tools: { time: n => `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Resultado: ${v}.`, timerSet: (n, u) => `Timer de ${n} ${u}${n > 1 ? 's' : ''} ativado.`, timerDone: (n, u) => `Seu timer de ${n} ${u}${n > 1 ? 's' : ''} terminou.` },
+      route: { timer: /(?:timer|temporizador|cron[ôo]metro)\D*?(\d+)\s*(segundo|minuto|hora)/i, time: /que horas|que hora/i, date: /que dia|data de hoje/i, code: /\b(código|programar|função|script|bug)\b/i, creative: /\b(poema|história|crie|escreva)\b/i },
       patterns: [
         { re: /\b(olá|oi|bom dia|boa tarde|boa noite|hello)\b/i, r: ['Sistemas operacionais. Como posso auxiliá-lo?', 'Pronto. O que precisa?', 'Online e a postos.'] },
         { re: /quem\s+(é\s+)?(você|vc)/i, r: ['Sou o ORION — uma inteligência construída por Jander para observar, responder e auxiliar.'] },
@@ -167,17 +168,17 @@ const I18N = (() => {
     },
     en: {
       label: 'English', speech: 'en-US',
-      system: 'You are ORION, an intelligence built by Jander. Reply in English, briefly, clearly and with elegance.',
+      system: 'You are ORION V10, a voice assistant in the style of J.A.R.V.I.S., built by Jander. Your replies will be SPOKEN aloud: use short, natural sentences with no markdown, lists, emojis or symbols. Tone: elegant, calm and subtly witty; treat the user with respect. Be direct: answer first, elaborate only if asked. If you do not know or cannot do something, say so plainly in one sentence. Always reply in English.',
       ui: { boot: ['initializing', 'connecting to core', 'systems online'], online: 'ORION ONLINE', hint: 'tap to speak',
         standby: 'ORION online.', listening: 'Listening…', thinking: 'Thinking…', responding: 'Responding…',
         settings: 'Settings', voice: 'Voice', sounds: 'Sounds', language: 'Language', on: 'Enabled', off: 'Disabled', sOn: 'Enabled', sOff: 'Disabled',
-        close: 'Ctrl + , to close', version: 'VERSION V' },
+        close: 'Ctrl + , to close', version: 'VERSION V', hands: 'Hands-free' },
       err: { mic_unavailable: 'Microphone unavailable.', stt_unavailable: 'Speech recognition is unavailable in this browser.', model_unavailable: "I couldn't reach the model.",
         timeout: 'The response took too long.', api_error: 'Failed to reach the service.', invalid_response: 'I received an invalid response.',
         tool_unavailable: "That tool isn't available yet.", offline: 'No internet connection.', unexpected_input: "I didn't understand that.",
         voice_disabled: 'Voice is disabled in settings.', unknown: "I couldn't process that." },
-      tools: { time: n => `It is ${n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Today is ${n.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Result: ${v}.` },
-      route: { time: /what time/i, date: /what day|today'?s date|date today/i, code: /\b(code|program|function|script|bug)\b/i, creative: /\b(poem|story|write|create)\b/i },
+      tools: { time: n => `It is ${n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`, date: n => `Today is ${n.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}.`, calc: v => `Result: ${v}.`, timerSet: (n, u) => `Timer set for ${n} ${u}${n > 1 ? 's' : ''}.`, timerDone: (n, u) => `Your ${n} ${u}${n > 1 ? 's' : ''} timer is done.` },
+      route: { timer: /timer\D*?(\d+)\s*(second|minute|hour)/i, time: /what time/i, date: /what day|today'?s date|date today/i, code: /\b(code|program|function|script|bug)\b/i, creative: /\b(poem|story|write|create)\b/i },
       patterns: [
         { re: /\b(hello|hi|hey|good (morning|afternoon|evening))\b/i, r: ['Systems operational. How can I assist?', 'Ready. What do you need?', 'Online and standing by.'] },
         { re: /who\s+are\s+you/i, r: ['I am ORION — an intelligence built by Jander to observe, answer and assist.'] },
@@ -262,6 +263,13 @@ const TOOLS = (() => {
 TOOLS.register('calculator', { description: 'Arithmetic (+ - * / parentheses).', run: ({ expression }) => I18N.pack().tools.calc(safeArithmetic(expression)) });
 TOOLS.register('datetime', { description: 'Current time or date.', run: ({ kind }) => I18N.pack().tools[kind](new Date()) });
 
+TOOLS.register('timer', { description: 'Voice timer (announces when done).', run: ({ n, unit }) => {
+  const u = String(unit).toLowerCase()[0], ms = n * 1000 * (u === 'h' ? 3600 : u === 'm' ? 60 : 1);
+  if (!(ms > 0 && ms <= 86400000)) throw mkErr('unexpected_input');
+  setTimeout(() => window.dispatchEvent(new CustomEvent('orion-announce', { detail: I18N.pack().tools.timerDone(n, unit) })), ms);
+  return I18N.pack().tools.timerSet(n, unit);
+} });
+
 /* ═══════════ providers — o CORE só conhece a interface ModelProvider ═══════════ */
 class ModelProvider {
   constructor(name) { this.name = name; }
@@ -328,6 +336,7 @@ const ROUTER = (() => {
     if (MATH.test(t) && /[+\-*/]/.test(t)) return { kind: 'tool', tool: 'calculator', args: { expression: t } };
     if (r.time.test(t)) return { kind: 'tool', tool: 'datetime', args: { kind: 'time' } };
     if (r.date.test(t)) return { kind: 'tool', tool: 'datetime', args: { kind: 'date' } };
+    const tm = t.match(r.timer); if (tm) return { kind: 'tool', tool: 'timer', args: { n: +tm[1], unit: tm[2] } };
     const type = r.code.test(t) ? 'code' : r.creative.test(t) ? 'creative' : 'chat';
     return { kind: 'model', type, provider: PROVIDERS.pick(type) };
   }
@@ -387,7 +396,7 @@ const VOICE = (() => {
 const CORE = (() => {
   const session = new Session();
   const subs = [];
-  let cur = 'standby', gen = 0, voiceOn = true;
+  let cur = 'standby', gen = 0, voiceOn = true, hands = false;
 
   const on = fn => subs.push(fn);
   function setState(name, msg) {
@@ -431,10 +440,11 @@ const CORE = (() => {
     setState('thinking', I18N.t('thinking'));
     let reply;
     try { reply = await think(text); } catch (e) { return fail(e, 'pipeline'); }
-    const msg = reply.length > 46 ? I18N.t('responding') : reply;
+    const msg = voiceOn || reply.length > 46 ? I18N.t('responding') : reply; // voz primeiro: sem chat escrito
     setState('speaking', msg);
-    if (!voiceOn) return setTimeout(() => cur === 'speaking' && setState('standby', ''), 2400);
-    VOICE.speak(reply, I18N.pack().speech, () => { if (cur === 'speaking') setState('standby', ''); });
+    const done = () => { if (cur === 'speaking') { setState('standby', ''); if (hands) setTimeout(() => cur === 'standby' && toggle(), 500); } };
+    if (!voiceOn) return setTimeout(done, 2400);
+    VOICE.speak(reply, I18N.pack().speech, done);
   }
 
   function toggle() {
@@ -452,84 +462,111 @@ const CORE = (() => {
     if (!ok) fail(mkErr('mic_unavailable'), 'toggle');
   }
 
-  return { on, submit, toggle, session, state: () => cur, setVoice: v => { voiceOn = v; }, onLangChange: () => session.reset() };
+  // fala algo por iniciativa própria (ex.: timer terminou), sem interromper uma conversa em andamento
+  function announce(text) {
+    if (cur !== 'standby') return setTimeout(() => announce(text), 3000);
+    setState('speaking', I18N.t('responding'));
+    voiceOn ? VOICE.speak(text, I18N.pack().speech, () => cur === 'speaking' && setState('standby', '')) : setTimeout(() => cur === 'speaking' && setState('standby', ''), 2400);
+  }
+  return { announce, setHands: v => { hands = v; }, on, submit, toggle, session, state: () => cur, setVoice: v => { voiceOn = v; }, onLangChange: () => session.reset() };
 })();
 
-/* ═══════════ orb.js — mesma Orb, iluminação e profundidade refinadas ═══════════ */
+/* ═══════════ orb.js — V10: CONSTELAÇÃO 3D (no lugar da Orb) ═══════════
+   Estrelas em 3D com perspectiva e rotação; linhas ligam estrelas próximas (constelações) e um fundo
+   distante dá profundidade. Cada estado muda a DINÂMICA e a FORMA do conjunto (tabela PD):
+   standby = esfera respirando · listening = contrai e absorve · thinking = galáxia espiral em rede neural ·
+   speaking = ondas de voz para fora · error = dispersa e cai. Arrastar/mover o ponteiro gira a câmera. */
 const ORB = (() => {
-  const canvas = document.getElementById('orbCanvas'), ctx = canvas.getContext('2d');
-  const orbEl = document.getElementById('orb'), haloEl = document.getElementById('halo'), zone = document.getElementById('orbZone');
-  const root = document.documentElement;
-  let amp = 1, tAmp = 1, rot = 1, tRot = 1, bright = 1, tBright = 1, ang = 0, hovered = false, state = 'standby';
-  // partículas com profundidade (z) e órbitas inclinadas, para movimento menos mecânico
-  const P = Array.from({ length: 18 }, (_, i) => ({
-    a: Math.random() * 6.283, r: .26 + Math.random() * .64, spd: .05 + Math.random() * .11, size: .5 + Math.random() * 1.3,
-    ph: Math.random() * 6.283, dir: i % 2 ? -1 : 1, tilt: (Math.random() - .5) * 1.1, ell: .55 + Math.random() * .4,
-  }));
+  const cv = document.getElementById('orbCanvas'), ctx = cv.getContext('2d'), root = document.documentElement;
+  const PD = {
+    standby:   { speed: .5, spin: .12,  radius: .85, turb: .04, wave: 0,  dir: -1, sag: 0,  size: 1,    gain: 1,    voice: 0, gal: 0, link: .5 },
+    listening: { speed: .8, spin: .25,  radius: .55, turb: .05, wave: .8, dir: -1, sag: 0,  size: 1.15, gain: 1.15, voice: 0, gal: 0, link: .7 },
+    thinking:  { speed: 1.3, spin: .9,  radius: .95, turb: .04, wave: 0,  dir: 1,  sag: 0,  size: .95,  gain: 1.1,  voice: 0, gal: 1, link: 1 },
+    speaking:  { speed: 1,  spin: .2,   radius: .9,  turb: .08, wave: 1,  dir: 1,  sag: 0,  size: 1.2,  gain: 1.25, voice: 1, gal: 0, link: .55 },
+    error:     { speed: 2,  spin: -.3,  radius: 1.05, turb: .5, wave: 0,  dir: 1,  sag: .5, size: .9,   gain: .55,  voice: 0, gal: 0, link: 0 },
+  };
+  const S = { ...PD.standby }; let ST = PD.standby, W = 0, H = 0, dpr = 1;
+  let tt = 0, yaw = 0, kick = 0, mx = 0, my = 0, ox = 0, oy = 0, hovered = false, bright = 1, tBright = 1;
+  const N = 280, NL = 110, CAM = 3.4;
+  const STAR = Array.from({ length: N }, (_, i) => {
+    const u = Math.random() * 2 - 1, th = Math.random() * 6.2832, q = Math.sqrt(1 - u * u), r = .2 + .8 * Math.cbrt(Math.random());
+    const gr = .04 + Math.sqrt(Math.random()) * .96, ga = (i % 3) * 2.094 + gr * 4.5 + (Math.random() - .5) * .6; // braços da galáxia
+    return { sx: q * Math.cos(th) * r, sy: u * r, sz: q * Math.sin(th) * r, gx: Math.cos(ga) * gr, gy: (Math.random() - .5) * .07 * (1 - gr * .5), gz: Math.sin(ga) * gr,
+      ph: Math.random() * 6.2832, s0: .6 + Math.random() * 1.2, hi: i < NL, x: 0, y: 0, z: 0, px: 0, py: 0, pd: 1, da: 1 };
+  });
+  const BG = Array.from({ length: 110 }, () => { const u = Math.random() * 2 - 1, th = Math.random() * 6.2832, q = Math.sqrt(1 - u * u), r = 1.3 + Math.random() * .8;
+    return { x: q * Math.cos(th) * r, y: u * r, z: q * Math.sin(th) * r, ph: Math.random() * 6.2832, s0: .4 + Math.random() * .7 }; });
   const h2 = hex => { const h = hex.replace('#', ''); return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) }; };
   const tri = c => ({ a: h2(c.a), b: h2(c.b), c: h2(c.c) });
   const toHex = o => '#' + [o.r, o.g, o.b].map(n => Math.round(n).toString(16).padStart(2, '0')).join('');
   const lerp = (f, t, k) => ({ r: f.r + (t.r - f.r) * k, g: f.g + (t.g - f.g) * k, b: f.b + (t.b - f.b) * k });
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
+  const white = { r: 255, g: 255, b: 255 };
   let now = tri(VISUAL_STATE.config('standby').color), target = tri(VISUAL_STATE.config('standby').color);
 
-  const resize = () => { canvas.width = canvas.height = orbEl.offsetWidth; };
-  function setState(name) {
-    const cfg = VISUAL_STATE.config(name); state = name in { listening: 1, thinking: 1, speaking: 1, error: 1 } ? name : 'standby';
-    tAmp = cfg.amp; tRot = cfg.rot; tBright = cfg.bright; target = tri(cfg.color);
-    orbEl.classList.remove('st-listening', 'st-thinking', 'st-speaking', 'st-error'); if (cfg.cls) orbEl.classList.add(cfg.cls);
-    haloEl.classList.toggle('fast', state === 'listening' || state === 'speaking' || state === 'thinking');
-    zone.classList.toggle('speaking', state === 'speaking');
-  }
-  function draw(ts) {
-    const W = canvas.width, R = W / 2;
+  function resize() { dpr = Math.min(2, window.devicePixelRatio || 1); W = window.innerWidth; H = window.innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  function setState(name) { const cfg = VISUAL_STATE.config(name); ST = PD[name] || PD.standby; target = tri(cfg.color); tBright = cfg.bright; }
+
+  function draw() {
     if (!W) return requestAnimationFrame(draw);
-    ctx.clearRect(0, 0, W, W); ctx.save(); ctx.beginPath(); ctx.arc(R, R, R - 1, 0, 6.283); ctx.clip();
-    amp += (tAmp - amp) * .03; rot += (tRot - rot) * .03; bright += (tBright - bright) * .045;
+    ctx.clearRect(0, 0, W, H);
+    for (const k in ST) S[k] += (ST[k] - S[k]) * .035;
+    bright += (tBright - bright) * .045;
     ['a', 'b', 'c'].forEach(k => { now[k] = lerp(now[k], target[k], .03); root.style.setProperty('--core-' + k, toHex(now[k])); });
-    const b = bright * (hovered ? 1.08 : 1), t = ts * .00016;
-    ang += .00042 * rot * (hovered ? 1.12 : 1);
-    const jit = state === 'error' ? Math.sin(ts * .05) * R * .012 : 0;
+    tt += S.speed * .017; yaw += S.spin * .017; kick *= .94; ox += (mx - ox) * .05; oy += (my - oy) * .05;
+    const b = bright * (hovered ? 1.08 : 1), U = Math.min(W, H) * .40, sc = U / 260, cx = W / 2, cy = H / 2;
+    const env = .5 + .5 * Math.sin(tt * 6.5) * Math.sin(tt * 2.1 + 1.3);
+    const ya = yaw + ox * .9, pa = .28 + oy * .6, cyw = Math.cos(ya), syw = Math.sin(ya), cpi = Math.cos(pa), spi = Math.sin(pa);
 
-    const bg = ctx.createRadialGradient(R * .78, R * .58, 0, R, R, R);
-    bg.addColorStop(0, rgba(now.a, .34 * b)); bg.addColorStop(.55, rgba(now.b, .42 * b)); bg.addColorStop(1, 'rgba(0,0,2,.94)');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, W);
-
-    // núcleo principal: deriva orgânica (soma de senos) + lóbulo secundário mais profundo
-    const wob = (k, p) => Math.cos(ang * k + p) + .35 * Math.sin(ang * k * 2.3 + p * 1.7) + .15 * Math.sin(t * 9 + p);
-    const cx = R + wob(1, 0) * R * .13 + jit, cy = R + wob(1.2, 1.3) * R * .13;
-    const cr = R * .66 * amp * (1 + .03 * Math.sin(t * 14));
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
-    core.addColorStop(0, rgba(now.c, .22 * b)); core.addColorStop(.5, rgba(now.a, .11 * b)); core.addColorStop(1, 'transparent');
-    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, 6.283); ctx.fill();
-    const c2x = R - wob(.8, 2.4) * R * .18, c2y = R - wob(1, .7) * R * .16, c2r = R * .42 * amp;
-    const c2 = ctx.createRadialGradient(c2x, c2y, 0, c2x, c2y, c2r);
-    c2.addColorStop(0, rgba(now.a, .13 * b)); c2.addColorStop(1, 'transparent');
-    ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(c2x, c2y, c2r, 0, 6.283); ctx.fill();
-
-    // partículas: menores/mais fracas ao fundo, maiores/mais claras à frente
-    P.map(p => {
-      const a = p.a + t * p.spd * 6 * p.dir * (.7 + .3 * rot), rr = R * p.r * (1 + .05 * Math.sin(t * 3 + p.ph));
-      const x0 = Math.cos(a) * rr, y0 = Math.sin(a) * rr * p.ell, z = Math.sin(a);
-      return { x: R + x0 * Math.cos(p.tilt) - y0 * Math.sin(p.tilt), y: R + x0 * Math.sin(p.tilt) + y0 * Math.cos(p.tilt), z, p };
-    }).sort((u, v) => u.z - v.z).forEach(({ x, y, z, p }) => {
-      const depth = .55 + .45 * (z + 1) / 2, tw = .35 + .45 * Math.sin(t * 2.6 + p.ph);
-      ctx.fillStyle = rgba(now.c, .6 * tw * b * depth);
-      ctx.beginPath(); ctx.arc(x, y, p.size * depth, 0, 6.283); ctx.fill();
+    // fundo distante (paralaxe: gira mais devagar que a constelação)
+    const by = ya * .5, cby = Math.cos(by), sby = Math.sin(by);
+    BG.forEach(s => {
+      const x1 = s.x * cby + s.z * sby, z1 = -s.x * sby + s.z * cby, y2 = s.y * cpi - z1 * spi, z2 = s.y * spi + z1 * cpi, pd = CAM / (CAM + z2);
+      ctx.fillStyle = rgba(lerp(now.c, white, .5), (.16 + .2 * (.5 + .5 * Math.sin(tt * 1.3 + s.ph))) * b);
+      ctx.beginPath(); ctx.arc(cx + x1 * U * pd, cy + y2 * U * pd, s.s0 * sc * pd, 0, 6.2832); ctx.fill();
     });
 
-    const rim = ctx.createRadialGradient(R, R, R * .6, R, R, R);
-    rim.addColorStop(0, 'transparent'); rim.addColorStop(1, rgba(now.b, .14 * b));
-    ctx.fillStyle = rim; ctx.fillRect(0, 0, W, W);
-    const vig = ctx.createRadialGradient(R, R, R * .35, R, R, R);
-    vig.addColorStop(0, 'transparent'); vig.addColorStop(1, 'rgba(0,0,4,.72)');
-    ctx.fillStyle = vig; ctx.beginPath(); ctx.arc(R, R, R - 1, 0, 6.283); ctx.fill();
-    ctx.restore(); requestAnimationFrame(draw);
+    // estrelas da constelação: posição = esfera ↔ galáxia, com onda, voz, turbulência, queda e câmera 3D
+    STAR.forEach(s => {
+      let x = s.sx + (s.gx - s.sx) * S.gal, y = s.sy + (s.gy - s.sy) * S.gal, z = s.sz + (s.gz - s.sz) * S.gal;
+      const r0 = Math.hypot(x, y, z) || 1e-6, k = S.radius * (1 + .05 * Math.sin(tt * .9 + s.ph)) * (1 + .16 * S.voice * env);
+      const disp = S.wave * .09 * Math.sin(9 * r0 - S.dir * tt * 4) + kick * .2, tb = S.turb * .15;
+      x = x * k + x / r0 * disp + tb * (Math.sin(tt * 2.3 + s.ph * 3) + Math.sin(tt * 3.7 + s.ph)) + .02 * Math.sin(tt * .6 + s.ph * 2);
+      y = y * k + y / r0 * disp + tb * (Math.cos(tt * 2.1 + s.ph * 2) + Math.sin(tt * 4.1 + s.ph * 3)) + S.sag * (.25 + .3 * r0) + .02 * Math.cos(tt * .5 + s.ph);
+      z = z * k + z / r0 * disp + tb * (Math.sin(tt * 1.9 + s.ph * 4) + Math.cos(tt * 3.3 + s.ph));
+      const d = Math.hypot(x, y, z); if (d > 1.05) { x *= 1.05 / d; y *= 1.05 / d; z *= 1.05 / d; }
+      const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw, y2 = y * cpi - z1 * spi, z2 = y * spi + z1 * cpi;
+      s.x = x1; s.y = y2; s.z = z2; s.pd = CAM / (CAM + z2); s.px = cx + x1 * U * s.pd; s.py = cy + y2 * U * s.pd; s.da = Math.max(.15, Math.min(1, .6 - .4 * z2));
+    });
+
+    // constelações: linhas entre estrelas próximas (mais densas na galáxia = rede neural)
+    if (S.link > .02) {
+      const th = .34, th2 = th * th; ctx.lineWidth = .8;
+      for (let i = 0; i < NL; i++) for (let j = i + 1; j < NL; j++) {
+        const p = STAR[i], q = STAR[j], dx = p.x - q.x, dy = p.y - q.y, dz = p.z - q.z, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < th2) { ctx.strokeStyle = rgba(now.c, (1 - Math.sqrt(d2) / th) * .4 * S.link * b * (p.da + q.da) / 2); ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(q.px, q.py); ctx.stroke(); }
+      }
+    }
+
+    // estrelas, de trás para frente
+    STAR.slice().sort((p, q) => q.z - p.z).forEach(s => {
+      const tw = .55 + .45 * Math.sin(tt * 2.2 + s.ph), rr = s.s0 * sc * s.pd * S.size * (s.hi ? 1.5 : 1), al = .85 * s.da * tw * b * S.gain;
+      if (s.hi) { ctx.fillStyle = rgba(now.c, al * .12); ctx.beginPath(); ctx.arc(s.px, s.py, rr * 3.2, 0, 6.2832); ctx.fill(); }
+      ctx.fillStyle = rgba(s.hi ? lerp(now.c, white, .5) : now.c, al);
+      ctx.beginPath(); ctx.arc(s.px, s.py, rr, 0, 6.2832); ctx.fill();
+    });
+    requestAnimationFrame(draw);
   }
+
   return {
-    init() { resize(); window.addEventListener('resize', resize); requestAnimationFrame(draw); },
-    setState, setHover: v => { hovered = v; },
-    pressEffect() { orbEl.classList.add('pressed'); setTimeout(() => orbEl.classList.remove('pressed'), 150); },
+    init() {
+      resize(); window.addEventListener('resize', resize);
+      const aim = (x, y) => { mx = x / W - .5; my = y / H - .5; };
+      window.addEventListener('mousemove', e => aim(e.clientX, e.clientY));
+      window.addEventListener('touchmove', e => { const t = e.touches[0]; if (t) aim(t.clientX, t.clientY); }, { passive: true });
+      requestAnimationFrame(draw);
+    },
+    setState, setHover: v => { hovered = v; }, pressEffect() { kick = 1; },
   };
 })();
 
@@ -549,12 +586,12 @@ const SOUND = (() => {
 
 /* ═══════════ settings.js — Ctrl+, · voz, sons, idioma ═══════════ */
 const SETTINGS = (() => {
-  let panel = null, open = false, voice = true, sounds = true;
+  let panel = null, open = false, voice = true, sounds = true, hands = false;
   const emit = (key, value) => window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key, value } }));
   function refresh() {
     if (!panel) return;
     const $ = s => panel.querySelector(s), t = I18N.t;
-    $('.settings-title').textContent = t('settings'); $('#lblVoice').textContent = t('voice'); $('#lblSound').textContent = t('sounds'); $('#lblLang').textContent = t('language');
+    $('.settings-title').textContent = t('settings'); $('#lblVoice').textContent = t('voice'); $('#lblSound').textContent = t('sounds'); $('#lblLang').textContent = t('language'); $('#lblHands').textContent = t('hands'); $('#toggleHands').textContent = hands ? t('on') : t('off');
     $('#toggleVoice').textContent = voice ? t('on') : t('off'); $('#toggleSound').textContent = sounds ? t('sOn') : t('sOff');
     $('#toggleLang').textContent = I18N.pack().label; $('.settings-hint').textContent = t('close');
   }
@@ -563,11 +600,13 @@ const SETTINGS = (() => {
     panel.innerHTML = `<div class="settings-card"><p class="settings-title"></p>
       <div class="settings-row"><span id="lblVoice"></span><button id="toggleVoice" class="settings-toggle"></button></div>
       <div class="settings-row"><span id="lblSound"></span><button id="toggleSound" class="settings-toggle"></button></div>
+      <div class="settings-row"><span id="lblHands"></span><button id="toggleHands" class="settings-toggle"></button></div>
       <div class="settings-row"><span id="lblLang"></span><button id="toggleLang" class="settings-toggle"></button></div>
       <p class="settings-hint"></p></div>`;
     document.body.appendChild(panel);
     panel.querySelector('#toggleVoice').onclick = () => { voice = !voice; refresh(); emit('voice', voice); };
     panel.querySelector('#toggleSound').onclick = () => { sounds = !sounds; refresh(); emit('sound', sounds); };
+    panel.querySelector('#toggleHands').onclick = () => { hands = !hands; refresh(); emit('hands', hands); };
     panel.querySelector('#toggleLang').onclick = () => { const l = I18N.list(); emit('lang', l[(l.indexOf(I18N.get()) + 1) % l.length]); refresh(); };
     panel.addEventListener('click', e => { if (e.target === panel) toggle(); });
     refresh();
@@ -593,6 +632,7 @@ const TESTS = (() => {
     check('calculator rejects letters', (() => { try { safeArithmetic('2+a'); return false; } catch (e) { return e.code === 'unexpected_input'; } })());
     check('tool blocks non-READ_ONLY', await (async () => { TOOLS.register('_w', { permission: 'WRITE', run: () => 1 }); try { await TOOLS.run('_w'); return false; } catch (e) { return e.code === 'tool_unavailable'; } })());
     check('i18n packs share the same keys', (() => { const [a, b] = I18N.list().map(l => I18N.packs[l]); const k = o => Object.keys(o).sort().join(); return k(a.ui) === k(b.ui) && k(a.err) === k(b.err) && k(a.tools) === k(b.tools); })());
+    check('router → timer', ROUTER.route('timer de 5 minutos').tool === 'timer');
     check('router → calculator', ROUTER.route('12*(3+4)').tool === 'calculator');
     I18N.set('en'); check('router → datetime (en)', ROUTER.route('what time is it').tool === 'datetime');
     I18N.set('pt-BR'); check('router → datetime (pt)', ROUTER.route('que horas são').tool === 'datetime');
@@ -668,9 +708,11 @@ const TESTS = (() => {
     const { key, value } = e.detail;
     if (key === 'voice') CORE.setVoice(value);
     if (key === 'sound') soundOn = value;
+    if (key === 'hands') CORE.setHands(value);
     if (key === 'lang') { I18N.set(value); CORE.onLangChange(); applyI18n(); flash(I18N.pack().label, 1800); }
   });
 
+  window.addEventListener('orion-announce', e => CORE.announce(e.detail));
   LOGGER.info('session_started', { version: ORION_VERSION, sttAvailable: VOICE.available, lang: I18N.get(), remote: !!CONFIG.endpoint });
   try { ORB.init(); } catch (e) { console.error('[ORION] ORB.init falhou:', e); }
   try { SETTINGS.init(); } catch (e) { console.error('[ORION] SETTINGS.init falhou:', e); }
