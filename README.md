@@ -2,12 +2,16 @@
 
 # 🌌 ORION AI
 
-### A next-generation Artificial Intelligence Assistant inspired by the Orion Constellation.
+### A digital intelligence designed to become more than a chatbot.
 
-![Python](https://img.shields.io/badge/Python-3.14.7-blue?style=for-the-badge&logo=python)
-![Version](https://img.shields.io/badge/Version-3.5.0-purple?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-In%20Development-green?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)
+**The future begins with curiosity.**
+
+<br>
+
+![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Version](https://img.shields.io/badge/Version-3.5.0-8A2BE2?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-In%20Development-22C55E?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)
 
 </div>
 
@@ -15,272 +19,100 @@
 
 # 🌌 About
 
-ORION AI is a modern Artificial Intelligence Assistant created with the goal of becoming an intelligent, elegant and futuristic AI companion.
+**ORION AI** is an experimental Artificial Intelligence project focused on
+building a **digital presence** rather than simply another chatbot.
 
-Unlike traditional chatbots, ORION AI focuses on creating an immersive experience through a living interface inspired by the Orion Constellation and J.A.R.V.I.S
+Inspired by the **Orion Constellation**, ORION combines intelligence,
+identity, voice, tools and a living visual interface into a modular system
+designed to evolve over time.
 
-The project is being developed over several years as my main Artificial Intelligence portfolio.
+The project is being developed as a long-term Artificial Intelligence
+engineering project and as the foundation of my AI portfolio.
 
----
-
-# ✨ Vision
-
-My vision is to transform ORION AI into a complete intelligent assistant capable of:
-
-- Natural conversations
-- Voice interaction
-- Computer Vision
-- Document understanding
-- Programming assistance
-- Personal productivity
-- Intelligent automation
-
-ORION AI is designed to evolve continuously through future versions.
+> **Model = Intelligence**  
+> **ORION = Identity + Context + Tools + Permissions + Actions + Orb + Voice**
 
 ---
 
-# 🚀 Features
+# 🎯 Vision
 
-Current features
+The long-term vision is to transform ORION into a modular AI system capable
+of understanding, reasoning, interacting and eventually performing useful
+actions through authorized tools.
 
-- Intelligent conversations
-- Modern interface
-- Animated Orb
-- Session memory
-- Voice interaction
-- Beautiful UI
+Potential capabilities include:
 
-Future features
+- 🧠 Intelligent conversations
+- 🎙️ Voice interaction
+- 🔧 Tool usage
+- 🌐 Web research
+- 📊 Data analysis
+- 📄 Document understanding
+- 💻 Programming assistance
+- 🖼️ Multimodal interaction
+- ⚙️ Intelligent automation
+- 🧩 Multiple AI model providers
 
-- Image understanding
-- PDF analysis
-- OCR
-- Programming Assistant
-- Translation
-- Web Search
-- Calendar
-- Email Assistant
-- Smart Automation
-
----
-
-# 🌌 Interface
-
-The interface is heavily inspired by:
-
-- Apple Human Interface Guidelines
-- Futuristic Operating Systems
-- J.A.R.V.I.S.
-
-The Orb represents the intelligence of ORION AI.
-
-It is always alive.
-
-It changes colors depending on its current state.
-
-🟣 Standby
-
-🔵 Listening
-
-🟢 Responding
-
-🔴 Error
-
-Inside the Orb lives the Orion Constellation.
+ORION is designed to evolve through independent versions instead of
+trying to implement everything at once.
 
 ---
 
-# 🛠 Technologies
+# 🧠 Core Philosophy
 
-Current
+ORION follows a simple principle:
 
-- Python
-- CustomTkinter
-- Git
-- GitHub
+> **Complexity inside. Simplicity outside.**
 
-Future
+The system should be technically sophisticated internally while maintaining
+a simple, clear and intuitive experience for the user.
 
-- OpenAI API
-- Whisper
-- Text-to-Speech
-- OpenCV
-- YOLO
-- Transformers
-- TensorFlow
-- PyTorch
-- SQLite
-- Cloud
+### Engineering principles
 
----
-
-# 📂 Project Structure
-
-```
-ORION-AI/
-
-├── assets/
-│   ├── logo.png
-│   ├── icons/
-│   └── sounds/
-│
-├── core/
-│
-├── interface/
-│
-├── modules/
-│
-├── memory/
-│
-├── voice/
-│
-├── vision/
-│
-├── docs/
-│
-├── main.py
-│
-└── README.md
-```
+- Purpose before features
+- Simplicity before quantity
+- Feedback before decoration
+- Motion with meaning
+- Modular architecture
+- Security before autonomy
+- Quality over quantity
+- Prototype before committing
+- Document important decisions
+- Preserve the identity of ORION while evolving it
 
 ---
 
-# 🗺 Roadmap
+# 🏗️ Architecture
 
-## Version 3.0
+The architecture is designed around separation between the AI model and
+the ORION system itself.
 
-✅ Modern Interface
-
-✅ Orb
-
-✅ Basic Assistant
-
----
-
-## Version 3.5
-
-- Voice Recognition
-- Voice Responses
-- Session Memory
-- Improved Interface
-
----
-
-## Version 4.0
-
-- Living Orb
-- Orion Constellation
-- Minimalist Interface
-- Animated States
-- Hidden Settings
-
----
-
-## Version 5.0
-
-- Image Understanding
-- PDF Analysis
-- OCR
-- Programming Assistant
-- Translation
-- Long-term Memory
-
----
-
-## Future
-
-- ORION Vision
-- ORION Mobile
-- ORION Cloud
-- Smart Home Integration
-- AI Automation
-
----
-
-# 💻 Installation
-
-Clone the repository
-
-```bash
-git clone https://github.com/yourusername/ORION-AI.git
-```
-
-Enter the folder
-
-```bash
-cd ORION-AI
-```
-
-Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-Run
-
-```bash
-python main.py
-```
-
----
-
-# 📸 Screenshots
-
-Coming soon.
-
----
-
-# 📈 Project Goals
-
-✔ Learn Artificial Intelligence
-
-✔ Learn Software Engineering
-
-✔ Learn Python
-
-✔ Build a professional portfolio
-
-✔ Continuously improve the project
-
-✔ Become an AI Engineer
-
----
-
-# 👨‍💻 Developer
-
-**Jander**
-
-Computer Science Student
-
-Future Artificial Intelligence Engineer
-
-🇧🇷 Brazil
-
-🍁 Future Canada
-
----
-
-# ⭐ Philosophy
-
-> "I didn't start because of the promise of money.
->
-> I started because I wanted to understand how things work.
->
-> And that opened doors I never imagined."
-
----
-
-# 📜 License
-
-This project is licensed under the MIT License.
-
----
-
-<div align="center">
-
-### 🌌 ORION AI
-
-#### "The future begins with curiosity."
-
-</div>
+```text
+                         🌌 ORION AI
+                              │
+                              ▼
+                       🧠 ORION CORE
+                              │
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
+          Context          Routing           Tools
+             │                │                │
+             └────────────────┼────────────────┘
+                              ▼
+                      🤖 MODEL PROVIDER
+                    ┌─────────┼─────────┐
+                    ▼         ▼         ▼
+                 OpenAI    Gemini    Claude
+                              │
+                              ▼
+                       🎙️ VOICE LAYER
+                       ┌──────┴──────┐
+                       ▼             ▼
+                      STT           TTS
+                       │             │
+                       └──────┬──────┘
+                              ▼
+                           🌌 ORB
+                              │
+                              ▼
+                         INTERFACE
