@@ -2,117 +2,139 @@
 
 # 🌌 ORION AI
 
-### A digital intelligence designed to become more than a chatbot.
+### **A digital presence inspired by the Orion Constellation.**
 
-**The future begins with curiosity.**
+**“O futuro começa com a curiosidade.”**
 
-<br>
-
-![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Version](https://img.shields.io/badge/Version-3.5.0-8A2BE2?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-In%20Development-22C55E?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)
+[![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/Version-3.5.0-8A2BE2?style=for-the-badge)](#-version-history)
+[![Status](https://img.shields.io/badge/Status-In%20Development-6A5ACD?style=for-the-badge)](#-current-status)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](#-license)
 
 </div>
 
 ---
 
-# 🌌 About
+# 🌌 About ORION AI
 
-**ORION AI** is an experimental Artificial Intelligence project focused on
-building a **digital presence** rather than simply another chatbot.
+**ORION AI** is a personal Artificial Intelligence project designed to become more than a traditional chatbot.
 
-Inspired by the **Orion Constellation**, ORION combines intelligence,
-identity, voice, tools and a living visual interface into a modular system
-designed to evolve over time.
+ORION is being built as a **digital presence** — an AI system with its own identity, visual language, voice, context, tools and interaction model.
 
-The project is being developed as a long-term Artificial Intelligence
-engineering project and as the foundation of my AI portfolio.
+Inspired by the **Orion Constellation**, the project combines Artificial Intelligence, software engineering, voice interaction, visual interfaces and system architecture into one long-term engineering project.
 
-> **Model = Intelligence**  
+The goal is not simply to connect an interface to an AI model.
+
+The goal is to build the system around the model.
+
+> **Model = Intelligence**
+>
 > **ORION = Identity + Context + Tools + Permissions + Actions + Orb + Voice**
 
 ---
 
-# 🎯 Vision
+# ✨ Philosophy
 
-The long-term vision is to transform ORION into a modular AI system capable
-of understanding, reasoning, interacting and eventually performing useful
-actions through authorized tools.
+ORION AI follows a simple principle:
 
-Potential capabilities include:
+> ## **Complexity inside. Simplicity outside.**
 
-- 🧠 Intelligent conversations
-- 🎙️ Voice interaction
-- 🔧 Tool usage
-- 🌐 Web research
-- 📊 Data analysis
-- 📄 Document understanding
-- 💻 Programming assistance
-- 🖼️ Multimodal interaction
-- ⚙️ Intelligent automation
-- 🧩 Multiple AI model providers
+The internal architecture may become increasingly sophisticated, while the experience presented to the user should remain clear, intuitive and natural.
 
-ORION is designed to evolve through independent versions instead of
-trying to implement everything at once.
+ORION should not feel like a collection of features.
 
----
+It should feel like **one coherent system**.
 
-# 🧠 Core Philosophy
-
-ORION follows a simple principle:
-
-> **Complexity inside. Simplicity outside.**
-
-The system should be technically sophisticated internally while maintaining
-a simple, clear and intuitive experience for the user.
-
-### Engineering principles
+The project is guided by:
 
 - Purpose before features
 - Simplicity before quantity
 - Feedback before decoration
 - Motion with meaning
-- Modular architecture
-- Security before autonomy
-- Quality over quantity
-- Prototype before committing
-- Document important decisions
-- Preserve the identity of ORION while evolving it
+- Consistency
+- Craft
+- Delight without excess
 
 ---
 
-# 🏗️ Architecture
+# 🎯 Project Vision
 
-The architecture is designed around separation between the AI model and
-the ORION system itself.
+The long-term vision for ORION AI is to create an intelligent digital presence capable of:
+
+- Natural conversations
+- Voice interaction
+- Context-aware responses
+- Multiple AI model providers
+- Tool usage
+- Information retrieval
+- Data processing
+- Programming assistance
+- Document analysis
+- Image understanding
+- Automation
+- Intelligent routing
+- Personalized settings
+- Controlled actions
+- A dynamic visual identity
+- A living Orb representing the state of the system
+
+ORION is designed to evolve gradually.
+
+Each version should have a purpose.
+
+---
+
+# 🧠 ORION Core Architecture
+
+The central architectural idea is to separate the **AI model** from the **ORION system**.
 
 ```text
-                         🌌 ORION AI
-                              │
-                              ▼
-                       🧠 ORION CORE
-                              │
-             ┌────────────────┼────────────────┐
-             ▼                ▼                ▼
-          Context          Routing           Tools
-             │                │                │
-             └────────────────┼────────────────┘
-                              ▼
-                      🤖 MODEL PROVIDER
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-                 OpenAI    Gemini    Claude
-                              │
-                              ▼
-                       🎙️ VOICE LAYER
-                       ┌──────┴──────┐
-                       ▼             ▼
-                      STT           TTS
-                       │             │
-                       └──────┬──────┘
-                              ▼
-                           🌌 ORB
-                              │
-                              ▼
-                         INTERFACE
+                         ┌─────────────────────┐
+                         │      ORION AI       │
+                         │ Digital Presence    │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │    ORION CORE      │
+                         │    Orchestrator     │
+                         └──────────┬──────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+              ▼                     ▼                     ▼
+        ┌───────────┐        ┌─────────────┐       ┌─────────────┐
+        │  Context  │        │   Routing   │       │    Tools    │
+        └───────────┘        └─────────────┘       └─────────────┘
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │   Model Provider    │
+                         └──────────┬──────────┘
+                                    │
+                ┌───────────────────┼───────────────────┐
+                │                   │                   │
+                ▼                   ▼                   ▼
+          ┌──────────┐        ┌──────────┐        ┌──────────┐
+          │  OpenAI  │        │  Gemini  │        │  Claude  │
+          └──────────┘        └──────────┘        └──────────┘
+
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │   Voice / Actions   │
+                         │     STT + TTS       │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │        ORB          │
+                         │ Visual System State │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │      Interface      │
+                         └─────────────────────┘
