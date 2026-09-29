@@ -138,3 +138,40 @@ The central architectural idea is to separate the **AI model** from the **ORION 
                          ┌─────────────────────┐
                          │      Interface      │
                          └─────────────────────┘
+
+V1.0
+│
+├── V1.2.0  → correções
+│
+├── V1.5.0  → evolução
+│   ├── V1.5.2 → bugs
+│   └── V1.5.5 → bugs/ajustes
+│
+↓
+V3.x
+│
+└── V3.5.0
+      ↓
+   arquitetura
+   ORION CORE
+   ModelProvider
+   Tools
+      ↓
+V4.x
+      ↓
+V5.0 🚀
+   LOGIN
+   SETTINGS
+   PROVIDERS
+   APIs
+   TOOLS
+   CONTEXT
+      ↓
+V6–V8
+      ↓
+V9.0 🌌
+   3D ORB / preparação visual
+      ↓
+V10.0 🌌
+   NOVA EXPERIÊNCIA
+   “DIGITAL PRESENCE”
