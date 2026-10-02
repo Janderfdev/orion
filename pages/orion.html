@@ -269,6 +269,7 @@ html,body{
 <!-- BOOT -->
 <div id="boot">
   <p class="boot-mark">ORION AI</p>
+  <p class="boot-version">V4.0.0</p>
   <div class="boot-ring-wrap">
     <div class="boot-ring"></div>
     <div class="boot-ring"></div>
@@ -692,12 +693,21 @@ const CORE = (() => {
     { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
   ];
 
+  // só o que depende do relógio do aparelho é resolvido localmente;
+  // todo o resto vai para o modelo (backend)
+  function local(userText) {
+    for (const cmd of CMDS.filter(c => /horas|que dia/.test(c.m.source))) {
+      if (cmd.m.test(userText)) return cmd.h(userText);
+    }
+    return null;
+  }
+
   function process(userText) {
     for (const cmd of CMDS) { if (cmd.m.test(userText)) { const r = cmd.h(userText); if (r) return r; } }
     return FALLBACK;
   }
 
-  return { process, FALLBACK };
+  return { process, local, FALLBACK };
 })();
 
 /* ═══ context.js — memória curta da conversa ═══ */
@@ -837,13 +847,46 @@ const MODEL_PROVIDER = (() => {
     generate: async (text, context) => CORE.process(text, context),
   });
 
+  /* ORION ENTENDE — provedor conectado ao backend Python (que fala com o modelo).
+     Defina ORION_API_URL abaixo com o endereço do seu backend. Vazio = só o núcleo local. */
+  const ORION_API_URL = ''; // ex.: 'https://orion-backend.onrender.com'
+
+  if (ORION_API_URL) {
+    const fail = (msg, code) => { const e = new Error(msg); e.code = code; return e; };
+    register('orion-backend', {
+      generate: async (text, context) => {
+        const local = CORE.local(context.rawText || text);
+        if (local) return local;
+        let token = '';
+        try { token = sessionStorage.getItem('orion_token') || ''; } catch (_) {}
+        let res;
+        try {
+          res = await fetch(ORION_API_URL.replace(/\/$/, '') + '/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ text: context.rawText || text, history: (context.history || []).slice(-6) }),
+          });
+        } catch (_) { throw fail('Backend inacessível.', 'model_unavailable'); }
+        if (res.status === 401) {
+          try { sessionStorage.removeItem('orion_token'); sessionStorage.removeItem('orion_auth'); } catch (_) {}
+          location.replace('../index.html');
+          throw fail('Sessão expirada.', 'api_error');
+        }
+        if (!res.ok) throw fail('Backend respondeu ' + res.status, 'api_error');
+        const data = await res.json();
+        return data.reply;
+      },
+    });
+    setActive('orion-backend');
+  }
+
   return { register, setActive, getActiveName, generate };
 })();
 
 /* ═══ orchestrator.js — ORION CORE ═══
    Usuário → classificação → contexto → (ferramenta | MODEL_PROVIDER) → validação → resposta */
 const ORCHESTRATOR = (() => {
-  const MODEL_TIMEOUT_MS = 8000;
+  const MODEL_TIMEOUT_MS = 45000;
   const MATH_EXPR_RE = /^[\s]*[0-9][0-9+\-*/().,\s]*[0-9)][\s]*$/;
 
   function classifyTask(text) {
@@ -893,7 +936,7 @@ const ORCHESTRATOR = (() => {
         const result = await TOOL_SYSTEM.run(task.tool, task.args);
         reply = validate(String(result));
       } else {
-        reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, context), MODEL_TIMEOUT_MS);
+        reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, { ...context, rawText }), MODEL_TIMEOUT_MS);
         reply = validate(reply);
       }
     } catch (err) {
