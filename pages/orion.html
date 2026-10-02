@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ORION AI</title>
+<link rel="icon" href="../favicon.png">
+<script>
+/* Guarda do protótipo V4.0 (NÃO é segurança real — será substituída por auth no backend).
+   - Durante o standby (02/10 08:00 → 03/10 08:00): volta ao index.html (standby).
+   - Depois do standby: exige ter passado pelo login nesta sessão.
+   - Antes do standby: acesso direto, como na V3.5.0. */
+(function () {
+  const S = new Date('2026-10-02T08:00:00-03:00').getTime();
+  const E = new Date('2026-10-03T08:00:00-03:00').getTime();
+  const t = Date.now();
+  let auth = false;
+  try { auth = sessionStorage.getItem('orion_auth') === '1'; } catch (_) {}
+  window.__ORION_AUTH = auth;
+  if (t >= S && !(t >= E && auth)) location.replace('../index.html');
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --font:      'Inter', -apple-system, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Space Grotesk', 'Inter', sans-serif;
+  --orb:  clamp(190px, 32vmin, 320px);
+  --halo: calc(var(--orb) * 1.9);
+  /* cor "ao vivo" da Orb — atualizada quadro a quadro por orb.js */
+  --core-a: #6d28d9; --core-b: #4c1d95; --core-c: #a78bfa;
+}
+
+html,body{
+  width:100vw; height:100dvh; overflow:hidden;
+  background:#000; font-family:var(--font); color:#fff;
+  -webkit-font-smoothing:antialiased;
+}
+
+.void{ position:fixed; inset:0; background:#000; z-index:0; }
+.orb-bleed{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background: radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--core-a) 10%, transparent) 0%, transparent 42%);
+  transition: opacity 1.2s ease;
+  opacity: var(--bleed-op, 1);
+}
+
+/* ═══════ BOOT ═══════ */
+#boot{
+  position:fixed; inset:0; z-index:200; background:#000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity 1s ease;
+}
+#boot.out{ opacity:0; pointer-events:none; }
+.boot-mark{
+  font-family:var(--font-mono); font-size:11px; font-weight:300;
+  letter-spacing:0.62em; text-transform:uppercase; color:rgba(255,255,255,0.85);
+  margin-bottom:10px; text-indent:0.62em;
+}
+.boot-version{
+  font-family:var(--font-mono); font-size:9px; font-weight:300;
+  letter-spacing:0.42em; text-transform:uppercase; color:rgba(167,139,250,0.55);
+  margin-bottom:46px; text-indent:0.42em;
+}
+.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; }
+.boot-ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:1px solid rgba(167,139,250,0.18);
+  border-top-color:rgba(167,139,250,0.75);
+  animation:bootspin 1.1s linear infinite;
+}
+.boot-ring:nth-child(2){ inset:14px; border-top-color:rgba(196,181,253,0.45); animation-duration:1.6s; animation-direction:reverse; }
+@keyframes bootspin{ to{ transform:rotate(360deg); } }
+.boot-status{
+  font-size:9px; font-weight:300; letter-spacing:0.34em; text-transform:uppercase;
+  color:rgba(255,255,255,0.5); transition:opacity 0.35s ease;
+}
+
+/* ═══════ APP ═══════ */
+#app{ position:fixed; inset:0; z-index:2; opacity:0; transition:opacity 1.1s ease; }
+#app.on{ opacity:1; }
+
+.header{
+  position:absolute; top:0; left:0; right:0;
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  padding-top:clamp(28px, 6vh, 56px);
+  pointer-events:none; user-select:none;
+}
+.header-dot{
+  width:3px; height:3px; border-radius:50%;
+  background:var(--core-c); box-shadow:0 0 8px var(--core-c);
+  animation:dotbreathe 4s ease-in-out infinite;
+}
+@keyframes dotbreathe{ 0%,100%{opacity:0.35;} 50%{opacity:1;} }
+.header-word{
+  font-family:var(--font); font-size:11px; font-weight:200;
+  letter-spacing:0.74em; text-indent:0.74em; text-transform:uppercase;
+  color:rgba(255,255,255,0.82);
+  text-shadow:0 0 18px rgba(255,255,255,0.10);
+}
+
+/* ═══════ STAGE ═══════ */
+.stage{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.orb-zone{
+  position:relative; width:var(--halo); height:var(--halo);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+
+.halo{
+  position:absolute; width:100%; height:100%; border-radius:50%;
+  background:conic-gradient(from 0deg,
+    transparent 0%, color-mix(in srgb, var(--core-a) 55%, transparent) 24%,
+    color-mix(in srgb, var(--core-b) 40%, transparent) 50%,
+    color-mix(in srgb, var(--core-a) 45%, transparent) 74%, transparent 92%);
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 1px), #fff calc(100% - 1px));
+  mask:radial-gradient(farthest-side, transparent calc(100% - 1px), #fff calc(100% - 1px));
+  animation:halospin 24s linear infinite;
+  transition:opacity 0.6s ease, filter 0.6s ease;
+  opacity:0.55;
+}
+.halo.fast{ animation-duration:11s; opacity:0.85; }
+.orb-zone:hover .halo{ animation-duration:16s; opacity:0.72; filter:brightness(1.18); }
+@keyframes halospin{ to{ transform:rotate(360deg); } }
+
+/* anéis de energia — só aparecem enquanto o ORION fala */
+.wave-ring{
+  position:absolute; left:50%; top:50%; border-radius:50%;
+  width:var(--orb); height:var(--orb);
+  transform:translate(-50%,-50%) scale(1);
+  border:1px solid color-mix(in srgb, var(--core-c) 70%, transparent);
+  opacity:0; pointer-events:none;
+}
+.orb-zone.speaking .wave-ring{ animation:wave-out 2.4s ease-out infinite; }
+.orb-zone.speaking .wave-ring:nth-child(2){ animation-delay:0.8s; }
+.orb-zone.speaking .wave-ring:nth-child(3){ animation-delay:1.6s; }
+@keyframes wave-out{
+  0%{ transform:translate(-50%,-50%) scale(1); opacity:0.55; }
+  100%{ transform:translate(-50%,-50%) scale(1.55); opacity:0; }
+}
+
+.orb{
+  position:relative; width:var(--orb); height:var(--orb); border-radius:50%;
+  overflow:hidden;
+  background:radial-gradient(circle at 34% 30%,
+    color-mix(in srgb, var(--core-c) 16%, transparent) 0%,
+    color-mix(in srgb, var(--core-a) 8%, transparent) 32%,
+    rgba(2,2,8,0.85) 68%, rgba(0,0,0,0.94) 100%);
+  border:1px solid color-mix(in srgb, var(--core-a) 30%, transparent);
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--core-a) 42%, transparent),
+    0 0 130px color-mix(in srgb, var(--core-b) 30%, transparent),
+    inset 0 0 60px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+  animation:orbfloat 8.5s ease-in-out infinite, orbbreathe 4.6s ease-in-out infinite;
+  transition:box-shadow 0.9s ease, filter 0.6s ease, transform 0.4s ease;
+  will-change:transform;
+  z-index:1;
+}
+.orb-zone:hover .orb{
+  filter:brightness(1.14);
+  box-shadow:
+    0 0 78px color-mix(in srgb, var(--core-a) 55%, transparent),
+    0 0 150px color-mix(in srgb, var(--core-b) 38%, transparent),
+    inset 0 0 60px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.14);
+}
+.orb.pressed{ transform:scale(1.08) !important; transition:transform 0.15s ease; }
+@keyframes orbfloat{ 0%,100%{margin-top:0;} 50%{margin-top:-14px;} }
+@keyframes orbbreathe{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.035);} }
+.orb.st-listening{ filter:brightness(1.22); animation:orbfloat 8.5s ease-in-out infinite, orbbreathe 2.6s ease-in-out infinite; }
+.orb.st-thinking{ filter:brightness(1.10); animation:orbfloat 8.5s ease-in-out infinite, orbbreathe 1.3s ease-in-out infinite; }
+.orb.st-speaking{ filter:brightness(1.30); animation:orbfloat 8.5s ease-in-out infinite, orbbreathe 1.8s ease-in-out infinite; }
+.orb.st-error{ filter:brightness(0.62); animation:orberr 0.42s ease; }
+@keyframes orberr{ 0%{transform:translateX(0);} 25%{transform:translateX(-7px);} 55%{transform:translateX(6px);} 80%{transform:translateX(-3px);} 100%{transform:translateX(0);} }
+
+.orb-canvas{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; mix-blend-mode:screen; }
+.glass-hi{ position:absolute; top:6%; left:9%; width:44%; height:38%; border-radius:50%;
+  background:radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.05) 46%, transparent 74%);
+  transform:rotate(-22deg); pointer-events:none; z-index:2; }
+.glass-rim{ position:absolute; bottom:6%; right:8%; width:24%; height:12%; border-radius:50%;
+  background:radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 72%); pointer-events:none; z-index:2; }
+
+.status{
+  position:absolute; left:0; right:0;
+  top:calc(50% + var(--halo)/2 + 30px);
+  display:flex; justify-content:center; pointer-events:none;
+}
+.status-text{
+  font-size:10px; font-weight:300; letter-spacing:0.28em; text-transform:uppercase;
+  color:rgba(255,255,255,0.55); opacity:0; transform:translateY(4px);
+  transition:opacity 0.6s ease, transform 0.6s ease;
+  white-space:nowrap;
+}
+.status-text.show{ opacity:1; transform:translateY(0); }
+
+.hint{
+  position:absolute; left:0; right:0; bottom:clamp(30px, 7vh, 64px);
+  display:flex; justify-content:center; pointer-events:none;
+}
+.hint-text{
+  font-size:9px; font-weight:200; letter-spacing:0.4em; text-transform:uppercase;
+  color:rgba(255,255,255,0.14); transition:opacity 1s ease;
+}
+
+.version-tag{
+  position:fixed; left:18px; bottom:16px; z-index:40;
+  font-family:var(--font-mono); font-size:9px; font-weight:300;
+  letter-spacing:0.22em; text-transform:uppercase;
+  color:rgba(255,255,255,0.16); user-select:none; pointer-events:none;
+}
+.mark-tag{
+  position:fixed; left:18px; bottom:4px; z-index:40;
+  font-family:var(--font-mono); font-size:9px; font-weight:300;
+  letter-spacing:0.22em; text-transform:uppercase;
+  color:rgba(255,255,255,0.16); user-select:none; pointer-events:none;
+}
+
+/* ═══════ SETTINGS (Ctrl + ,) ═══════ */
+#settingsPanel{
+  position:fixed; inset:0; z-index:150;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.72); backdrop-filter:blur(6px);
+  opacity:0; pointer-events:none; transition:opacity 0.35s ease;
+}
+#settingsPanel.open{ opacity:1; pointer-events:auto; }
+.settings-card{
+  width:min(280px, 84vw); padding:28px 26px;
+  border:1px solid rgba(167,139,250,0.22); border-radius:14px;
+  background:rgba(8,8,14,0.92);
+  box-shadow:0 0 60px rgba(109,40,217,0.18);
+}
+.settings-title{
+  font-size:10px; font-weight:300; letter-spacing:0.34em; text-transform:uppercase;
+  color:rgba(255,255,255,0.6); margin-bottom:22px; text-align:center;
+}
+.settings-row{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; font-weight:300; color:rgba(255,255,255,0.75);
+  padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.settings-row:last-of-type{ border-bottom:none; }
+.settings-toggle{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase;
+  color:#a78bfa; background:rgba(167,139,250,0.10); border:1px solid rgba(167,139,250,0.3);
+  border-radius:20px; padding:5px 12px; cursor:pointer; transition:all 0.25s ease;
+}
+.settings-toggle:hover{ background:rgba(167,139,250,0.18); }
+.settings-hint{
+  margin-top:20px; text-align:center; font-size:9px; font-weight:300;
+  letter-spacing:0.2em; color:rgba(255,255,255,0.22);
+}
+
+@media (prefers-reduced-motion:reduce){
+  .orb,.halo,.boot-ring,.header-dot,.wave-ring{ animation:none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="void"></div>
+<div class="orb-bleed" id="bleed"></div>
+
+<!-- BOOT -->
+<div id="boot">
+  <p class="boot-mark">ORION AI</p>
+  <p class="boot-version">V4.0.0</p>
+  <div class="boot-ring-wrap">
+    <div class="boot-ring"></div>
+    <div class="boot-ring"></div>
+  </div>
+  <p class="boot-status" id="bootStatus">inicializando</p>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <div class="header">
+    <div class="header-dot"></div>
+    <span class="header-word">ORION AI</span>
+    <div class="header-dot"></div>
+  </div>
+
+  <div class="stage">
+    <div class="orb-zone" id="orbZone">
+      <div class="wave-ring"></div>
+      <div class="wave-ring"></div>
+      <div class="wave-ring"></div>
+      <div class="halo" id="halo"></div>
+      <div class="orb" id="orb">
+        <canvas class="orb-canvas" id="orbCanvas"></canvas>
+        <div class="glass-hi"></div>
+        <div class="glass-rim"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status">
+    <span class="status-text" id="statusText"></span>
+  </div>
+
+  <div class="hint">
+    <span class="hint-text" id="hintText">toque para falar</span>
+  </div>
+
+</div>
+
+<div class="version-tag" id="versionTag">VERSÃO V4.0.0</div>
+<!-- Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) -->
+<script>
+/* ═══ visual-state.js — máquina de estados visuais da Orb ═══
+   STANDBY → LISTENING → THINKING → SPEAKING → STANDBY ; (qualquer) → ERROR → STANDBY */
+const VISUAL_STATE = (() => {
+  const CFG = {
+    standby: {
+      amp: 1.00, rot: 1.00, bright: 1.00, cls: '',
+      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' }, // Roxo Neon Escuro
+    },
+    listening: {
+      amp: 1.20, rot: 1.55, bright: 1.18, cls: 'st-listening',
+      color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' }, // Azul Neon Escuro
+    },
+    thinking: {
+      // reaproveita o roxo do STANDBY, com mais atividade interna
+      amp: 1.14, rot: 1.75, bright: 1.05, cls: 'st-thinking',
+      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' },
+    },
+    speaking: {
+      amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking',
+      color: { a: '#15803d', b: '#14532d', c: '#4ade80' }, // Verde Neon Escuro
+    },
+    error: {
+      amp: 0.80, rot: 0.50, bright: 0.62, cls: 'st-error',
+      color: { a: '#b91c1c', b: '#7f1d1d', c: '#f87171' }, // Vermelho Neon Escuro
+    },
+  };
+
+  const ALIAS = {
+    idle: 'standby', standby: 'standby',
+    listening: 'listening', thinking: 'thinking',
+    speaking: 'speaking', error: 'error',
+  };
+
+  let current = 'standby';
+
+  function apply(name) {
+    current = ALIAS[name] || 'standby';
+    return CFG[current];
+  }
+  function get() { return current; }
+  function config(name) { return CFG[ALIAS[name] || current]; }
+
+  return { apply, get, config };
+})();
+
+/* ═══ logger.js — diagnóstico leve (nunca grava texto bruto fora de dev) ═══ */
+const LOGGER = (() => {
+  const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
+  const sessionId = 'sess_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  let seq = 0;
+
+  function newRequestId() {
+    return 'req_' + (++seq) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function base(level, event, data) {
+    const entry = { t: new Date().toISOString(), level, event, sessionId, ...data };
+    if (!DEV) delete entry.rawText;
+    const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    fn('[ORION]', entry);
+    return entry;
+  }
+
+  return {
+    sessionId,
+    newRequestId,
+    info: (event, data = {}) => base('info', event, data),
+    warn: (event, data = {}) => base('warn', event, data),
+    error: (event, data = {}) => base('error', event, data),
+    isDev: () => DEV,
+  };
+})();
+
+/* ═══ error-handler.js — categorização única de falhas ═══ */
+const ERROR_HANDLER = (() => {
+  const MESSAGES = {
+    mic_unavailable: 'Microfone indisponível.',
+    stt_unavailable: 'Reconhecimento de voz indisponível neste navegador.',
+    model_unavailable: 'Não consegui acessar o modelo.',
+    timeout: 'A resposta demorou demais.',
+    api_error: 'Falha ao comunicar com o serviço.',
+    invalid_response: 'Recebi uma resposta inválida.',
+    tool_unavailable: 'Essa ferramenta ainda não está disponível.',
+    offline: 'Sem conexão com a internet.',
+    tts_unavailable: 'Não consigo falar a resposta agora.',
+    unexpected_input: 'Não entendi o que foi dito.',
+    unknown: 'Não consegui processar.',
+  };
+
+  function classify(err) {
+    if (!navigator.onLine) return 'offline';
+    if (!err) return 'unknown';
+    if (err.code && MESSAGES[err.code]) return err.code;
+    const msg = (err.message || String(err)).toLowerCase();
+    if (msg.includes('timeout')) return 'timeout';
+    if (msg.includes('not-allowed') || msg.includes('mic')) return 'mic_unavailable';
+    if (msg.includes('rede') || msg.includes('network')) return 'offline';
+    return 'unknown';
+  }
+
+  function handle(err, stage) {
+    const code = classify(err);
+    LOGGER.error('error_handled', { stage, code, message: err && err.message });
+    return { code, message: MESSAGES[code] || MESSAGES.unknown, recoverable: true };
+  }
+
+  return { handle, classify, MESSAGES };
+})();
+
+/* ═══ permissions.js — apenas READ_ONLY é autoaprovado nesta versão ═══ */
+const PERMISSIONS = (() => {
+  const LEVEL = Object.freeze({
+    READ_ONLY: 'READ_ONLY',
+    WRITE: 'WRITE',
+    EXECUTE: 'EXECUTE',
+    EXTERNAL_ACTION: 'EXTERNAL_ACTION',
+  });
+  function needsConfirmation(level) { return level !== LEVEL.READ_ONLY; }
+  return { LEVEL, needsConfirmation };
+})();
+
+/* ═══ orb.js — motor visual da Orb (cor interpolada quadro a quadro) ═══ */
+const ORB = (() => {
+  const canvas = document.getElementById('orbCanvas');
+  const ctx = canvas.getContext('2d');
+  const orbEl = document.getElementById('orb');
+  const haloEl = document.getElementById('halo');
+  const root = document.documentElement;
+
+  let amp = 1, targetAmp = 1;
+  let rotSpeed = 1, targetRot = 1;
+  let bright = 1, targetBright = 1;
+  let coreAngle = 0;
+  let hovered = false;
+  let currentState = 'standby';
+
+  const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
+    a: Math.random() * Math.PI * 2,
+    r: 0.30 + Math.random() * 0.62,
+    spd: 0.06 + Math.random() * 0.10,
+    size: 0.5 + Math.random() * 1.1,
+    phase: Math.random() * Math.PI * 2,
+    dir: i % 2 === 0 ? 1 : -1,
+  }));
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16),
+    };
+  }
+  function hexToRgbTriple(c) { return { a: hexToRgb(c.a), b: hexToRgb(c.b), c: hexToRgb(c.c) }; }
+  function rgbToHex(o) {
+    const h = n => Math.round(n).toString(16).padStart(2, '0');
+    return `#${h(o.r)}${h(o.g)}${h(o.b)}`;
+  }
+  function lerpRgb(from, to, t) {
+    return { r: from.r + (to.r - from.r) * t, g: from.g + (to.g - from.g) * t, b: from.b + (to.b - from.b) * t };
+  }
+  function rgba(o, a) {
+    return `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
+  }
+
+  let colorNow = hexToRgbTriple(VISUAL_STATE.config('standby').color);
+  let colorTarget = hexToRgbTriple(VISUAL_STATE.config('standby').color);
+
+  function resize() {
+    const s = orbEl.offsetWidth;
+    canvas.width = s;
+    canvas.height = s;
+  }
+
+  function applyStateClass(cls) {
+    orbEl.classList.remove('st-listening', 'st-thinking', 'st-speaking', 'st-error');
+    if (cls) orbEl.classList.add(cls);
+  }
+
+  function setState(name) {
+    const cfg = VISUAL_STATE.apply(name);
+    currentState = VISUAL_STATE.get();
+    targetAmp = cfg.amp;
+    targetRot = cfg.rot;
+    targetBright = cfg.bright;
+    colorTarget = hexToRgbTriple(cfg.color);
+    applyStateClass(cfg.cls);
+    haloEl.classList.toggle('fast', ['listening', 'speaking', 'thinking'].includes(currentState));
+    document.getElementById('orbZone').classList.toggle('speaking', currentState === 'speaking');
+  }
+
+  function setHover(on) { hovered = on; }
+
+  function pressEffect() {
+    orbEl.classList.add('pressed');
+    setTimeout(() => orbEl.classList.remove('pressed'), 150);
+  }
+
+  function draw(ts) {
+    const W = canvas.width, H = canvas.height, R = W / 2;
+    if (W === 0) { requestAnimationFrame(draw); return; }
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.clip();
+
+    amp += (targetAmp - amp) * 0.035;
+    rotSpeed += (targetRot - rotSpeed) * 0.035;
+    bright += (targetBright - bright) * 0.05;
+    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, 0.035);
+    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, 0.035);
+    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, 0.035);
+
+    root.style.setProperty('--core-a', rgbToHex(colorNow.a));
+    root.style.setProperty('--core-b', rgbToHex(colorNow.b));
+    root.style.setProperty('--core-c', rgbToHex(colorNow.c));
+
+    const hoverBoost = hovered ? 1.08 : 1.0;
+    coreAngle += 0.00042 * rotSpeed * (hovered ? 1.12 : 1);
+    const b = bright * hoverBoost;
+
+    const bg = ctx.createRadialGradient(R * 0.78, R * 0.58, 0, R, R, R);
+    bg.addColorStop(0, rgba(colorNow.a, 0.34 * b));
+    bg.addColorStop(0.55, rgba(colorNow.b, 0.42 * b));
+    bg.addColorStop(1, 'rgba(0,0,2,0.94)');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    const t = ts * 0.00016;
+
+    const cx = R + Math.cos(coreAngle) * R * 0.16;
+    const cy = R + Math.sin(coreAngle * 1.2) * R * 0.16;
+    const coreRad = R * 0.66 * amp;
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRad);
+    core.addColorStop(0, rgba(colorNow.c, 0.20 * b));
+    core.addColorStop(0.5, rgba(colorNow.a, 0.10 * b));
+    core.addColorStop(1, 'transparent');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(cx, cy, coreRad, 0, Math.PI * 2); ctx.fill();
+
+    PARTICLES.forEach(p => {
+      const ang = p.a + t * p.spd * 6 * p.dir;
+      const rad = R * p.r;
+      const px = R + Math.cos(ang) * rad;
+      const py = R + Math.sin(ang) * rad;
+      const tw = 0.35 + 0.45 * Math.sin(t * 2.6 + p.phase);
+      ctx.fillStyle = rgba(colorNow.c, 0.55 * tw * b);
+      ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
+    });
+
+    const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,4,0.72)');
+    ctx.fillStyle = vig;
+    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+    requestAnimationFrame(draw);
+  }
+
+  function init() {
+    resize();
+    window.addEventListener('resize', resize);
+    requestAnimationFrame(draw);
+  }
+
+  return { init, setState, setHover, pressEffect };
+})();
+
+/* ═══ audio.js — sons discretos via Web Audio nativa ═══ */
+const SOUND = (() => {
+  let actx = null;
+  function ctxRef() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, type, gainPeak, delay = 0, glideTo = null) {
+    const c = ctxRef();
+    const osc = c.createOscillator(), gain = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + delay + dur);
+    gain.gain.setValueAtTime(0.0001, c.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, c.currentTime + delay + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + delay + dur);
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(c.currentTime + delay); osc.stop(c.currentTime + delay + dur + 0.02);
+  }
+  return {
+    init: () => tone(520, 0.10, 'sine', 0.035, 0, 700),
+    activate: () => tone(560, 0.10, 'sine', 0.045, 0, 780),
+    listen: () => tone(700, 0.09, 'sine', 0.04, 0, 920),
+    answer: () => tone(480, 0.11, 'sine', 0.045, 0, 340),
+    error: () => tone(300, 0.16, 'triangle', 0.05, 0, 160),
+  };
+})();
+
+/* ═══ voice.js — SpeechRecognition + SpeechSynthesis nativos do navegador ═══ */
+const VOICE = (() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const synth = window.speechSynthesis;
+  let rec = null, isRec = false, onRes = null, onSt = null, cachedV = null, vReady = false;
+  const MALE_KNOWN = ['antonio', 'antônio', 'daniel', 'fabio', 'fábio', 'felipe', 'diego', 'ricardo', 'thiago', 'tiago', 'rodrigo', 'bruno', 'gustavo', 'lucas', 'miguel', 'paulo', 'joão', 'joao', 'pedro', 'fred', 'george', 'guy', 'david', 'mark', 'alex', 'matthew'];
+  const MALE_H = ['male', 'masculin', ...MALE_KNOWN];
+  const FEMALE_H = ['female', 'feminin', 'francisca', 'luciana', 'maria', 'fernanda', 'joana', 'helena', 'camila', 'raquel', 'vitória', 'vitoria', 'catarina', 'ines', 'inês', 'google português do brasil', 'google portuguese'];
+  const PREM_H = ['neural', 'premium', 'enhanced', 'natural', 'wavenet', 'online'];
+
+  function scoreVoice(v) {
+    const n = v.name.toLowerCase(); let s = 0;
+    const isPTBR = v.lang?.toLowerCase() === 'pt-br', isPT = v.lang?.toLowerCase().startsWith('pt'), isEN = v.lang?.toLowerCase().startsWith('en');
+    if (isPTBR) s += 50; else if (isPT) s += 30; else if (isEN) s += 10; else return -1;
+    if (FEMALE_H.some(h => n.includes(h))) s -= 500;
+    const maleIdx = MALE_KNOWN.findIndex(h => n.includes(h));
+    if (maleIdx !== -1) s += 100 - maleIdx;
+    if (MALE_H.some(h => n.includes(h))) s += 40;
+    if (PREM_H.some(h => n.includes(h))) s += 20;
+    if (v.localService) s += 8;
+    return s;
+  }
+  function pickVoice() {
+    const vs = synth.getVoices(); if (!vs.length) return null;
+    let best = null, bS = -Infinity; vs.forEach(v => { const s = scoreVoice(v); if (s > bS) { bS = s; best = v; } });
+    if (best && FEMALE_H.some(h => best.name.toLowerCase().includes(h))) {
+      console.warn('[ORION] Nenhuma voz masculina em pt encontrada neste navegador/SO. Usando', best.name, 'como única opção disponível.');
+    }
+    return best || vs.find(v => v.lang?.toLowerCase().startsWith('pt')) || vs[0];
+  }
+  function refreshCache() { const v = pickVoice(); if (v) { cachedV = v; vReady = true; } }
+
+  function init(cbs) {
+    onRes = cbs.onResult; onSt = cbs.onStateChange;
+    if (synth) { refreshCache(); if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = refreshCache; }
+    if (!SR) return;
+    rec = new SR();
+    rec.lang = 'pt-BR'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.onstart = () => { isRec = true; onSt('listening'); };
+    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' ? 'standby' : 'error', e.error); };
+    rec.onend = () => { if (isRec) { isRec = false; onSt('standby'); } };
+    rec.onresult = e => {
+      let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
+      if (fin.trim()) { isRec = false; onRes(fin.trim()); }
+    };
+  }
+  function startListening() { if (!rec || isRec) return false; try { rec.start(); return true; } catch (e) { return false; } }
+  function stopListening() { if (rec && isRec) { rec.stop(); isRec = false; } }
+
+  function speak(text, onStart, onEnd) {
+    if (!synth) { if (onEnd) onEnd(); return; }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if (!vReady) refreshCache();
+    if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = 'pt-BR';
+    u.rate = 1.08; u.pitch = 0.55; u.volume = 1.0;
+    u.onstart = () => { if (onStart) onStart(); };
+    u.onend = () => { if (onEnd) onEnd(); };
+    u.onerror = () => { if (onEnd) onEnd(); };
+    synth.speak(u);
+  }
+  function stopSpeaking() { if (synth) synth.cancel(); }
+
+  return { init, startListening, stopListening, speak, stopSpeaking, isAvailable: !!SR };
+})();
+
+/* ═══ core.js — raciocínio local (padrões). V4.0.0: sem respostas inventadas ═══ */
+const CORE = (() => {
+  const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // resposta padrão EXATA quando o ORION não comprende a solicitação
+  const FALLBACK = 'Desculpe, não entendi...';
+
+  const CMDS = [
+    { m: /\b(olá|oi|bom dia|boa tarde|boa noite|hello)\b/i, h: () => rand(['Sistemas operacionais. Como posso auxiliá-lo?', 'Pronto. O que precisa?', 'Online e a postos.']) },
+    { m: /quem[é\s]+(você|vc)/i, h: () => 'Sou o ORION — uma inteligência construída por Jander para observar, responder e auxiliar.' },
+    { m: /\b(obrigad[ao]|valeu|thanks)\b/i, h: () => rand(['Para isso estou aqui.', 'Sempre às ordens.']) },
+    { m: /\b(tchau|até logo|adeus|bye)\b/i, h: () => 'Retornando ao repouso. Até logo.' },
+    { m: /(que horas|que hora)/i, h: () => { const n = new Date(); return `São ${n.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`; } },
+    { m: /(que dia|data de hoje)/i, h: () => { const n = new Date(); return `Hoje é ${n.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}.`; } },
+    { m: /(versão|build|sistema)/i, h: () => 'ORION AI, versão 4.0.0. Orion entende.' },
+    { m: /como (você\s+)?(está|vai)/i, h: () => rand(['Todos os sistemas estáveis.', 'Funcionando normalmente, obrigado por perguntar.']) },
+  ];
+
+  function process(userText) {
+    for (const cmd of CMDS) { if (cmd.m.test(userText)) { const r = cmd.h(userText); if (r) return r; } }
+    return FALLBACK;
+  }
+
+  return { process, FALLBACK };
+})();
+
+/* ═══ context.js — memória curta da conversa ═══ */
+const CONTEXT = (() => {
+  const MAX_TURNS = 6;
+  let lastTopic = null;
+  let history = [];
+
+  function extractTopic(text) {
+    const m = text.match(/(?:sobre|é o|é a|é|criou|criador de|o que é)\s+([A-Za-zÀ-ú][\wÀ-ú+#.\-]{2,})/i);
+    return m ? m[1] : null;
+  }
+  function resolve(text) {
+    if (!lastTopic) return text;
+    return text.replace(/\b(ele|ela|isso|aquilo)\b/gi, lastTopic);
+  }
+  function remember(userText, replyText) {
+    history.push({ user: userText, reply: replyText });
+    if (history.length > MAX_TURNS) history.shift();
+    const topic = extractTopic(userText);
+    if (topic) lastTopic = topic;
+  }
+  function get() { return { lastTopic, history: history.slice() }; }
+  function reset() { lastTopic = null; history = []; }
+
+  return { resolve, remember, get, reset };
+})();
+
+/* ═══ tool-system.js — registro de ferramentas (todas READ_ONLY nesta versão) ═══ */
+const TOOL_SYSTEM = (() => {
+  const tools = {};
+
+  function register(name, fn, permission = PERMISSIONS.LEVEL.READ_ONLY, description = '') {
+    tools[name] = { fn, permission, description };
+    LOGGER.info('tool_registered', { name, permission });
+  }
+  function has(name) { return Object.prototype.hasOwnProperty.call(tools, name); }
+  function list() { return Object.entries(tools).map(([name, t]) => ({ name, permission: t.permission, description: t.description })); }
+
+  async function run(name, args) {
+    if (!has(name)) {
+      const err = new Error(`Ferramenta "${name}" não registrada.`);
+      err.code = 'tool_unavailable';
+      throw err;
+    }
+    const tool = tools[name];
+    if (PERMISSIONS.needsConfirmation(tool.permission)) {
+      const err = new Error(`Ferramenta "${name}" requer confirmação (${tool.permission}), ainda não suportada.`);
+      err.code = 'tool_unavailable';
+      throw err;
+    }
+    return tool.fn(args);
+  }
+
+  return { register, has, run, list };
+})();
+
+/* calculadora (READ_ONLY) — parser aritmético seguro, sem eval */
+function safeArithmetic(expr) {
+  const clean = String(expr).trim();
+  if (!/^[0-9+\-*/().,\s]+$/.test(clean)) {
+    const err = new Error('Expressão contém caracteres não permitidos.');
+    err.code = 'unexpected_input';
+    throw err;
+  }
+  const normalized = clean.replace(/,/g, '.');
+  const tokens = normalized.match(/(\d+\.?\d*|\.\d+|[+\-*/()])/g) || [];
+  const outQ = [], opQ = [];
+  const prec = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  tokens.forEach(tok => {
+    if (/^[\d.]+$/.test(tok)) outQ.push(parseFloat(tok));
+    else if (tok === '(') opQ.push(tok);
+    else if (tok === ')') { while (opQ.length && opQ[opQ.length - 1] !== '(') outQ.push(opQ.pop()); opQ.pop(); }
+    else { while (opQ.length && prec[opQ[opQ.length - 1]] >= prec[tok]) outQ.push(opQ.pop()); opQ.push(tok); }
+  });
+  while (opQ.length) outQ.push(opQ.pop());
+  const stack = [];
+  outQ.forEach(tok => {
+    if (typeof tok === 'number') { stack.push(tok); return; }
+    const b = stack.pop(), a = stack.pop();
+    if (tok === '+') stack.push(a + b);
+    else if (tok === '-') stack.push(a - b);
+    else if (tok === '*') stack.push(a * b);
+    else if (tok === '/') stack.push(a / b);
+  });
+  const result = stack.pop();
+  if (typeof result !== 'number' || Number.isNaN(result) || !Number.isFinite(result)) {
+    const err = new Error('Não foi possível calcular essa expressão.');
+    err.code = 'invalid_response';
+    throw err;
+  }
+  return result;
+}
+
+TOOL_SYSTEM.register(
+  'calculator',
+  async ({ expression }) => safeArithmetic(expression),
+  PERMISSIONS.LEVEL.READ_ONLY,
+  'Avalia expressões aritméticas simples (+-*/, parênteses).'
+);
+
+/* ═══ model-provider.js ═══
+   MODELO = inteligência · ORION = identidade + contexto + ferramentas + permissões + ações
+   Hoje só existe o provedor local (CORE). Futuramente, OpenAIProvider / GeminiProvider /
+   ClaudeProvider (via backend Python) serão registrados aqui com a MESMA assinatura
+   generate(text, context), sem mudar o Orchestrator, a Orb ou a voz.
+   Nenhum provedor externo está implementado na V4.0.0. */
+const MODEL_PROVIDER = (() => {
+  const providers = {};
+  let activeName = null;
+
+  function register(name, providerObj) {
+    if (!providerObj || typeof providerObj.generate !== 'function') {
+      throw new Error('Provider inválido: precisa expor generate(text, context).');
+    }
+    providers[name] = providerObj;
+    if (!activeName) activeName = name;
+    LOGGER.info('provider_registered', { name });
+  }
+  function setActive(name) {
+    if (!providers[name]) throw new Error(`Provider "${name}" não registrado.`);
+    activeName = name;
+    LOGGER.info('provider_switched', { name });
+  }
+  function getActiveName() { return activeName; }
+
+  async function generate(text, context) {
+    if (!activeName || !providers[activeName]) {
+      const err = new Error('Nenhum provedor de modelo ativo.');
+      err.code = 'model_unavailable';
+      throw err;
+    }
+    return providers[activeName].generate(text, context);
+  }
+
+  register('local-core', {
+    generate: async (text, context) => CORE.process(text, context),
+  });
+
+  return { register, setActive, getActiveName, generate };
+})();
+
+/* ═══ orchestrator.js — ORION CORE ═══
+   Usuário → classificação → contexto → (ferramenta | MODEL_PROVIDER) → validação → resposta */
+const ORCHESTRATOR = (() => {
+  const MODEL_TIMEOUT_MS = 8000;
+  const MATH_EXPR_RE = /^[\s]*[0-9][0-9+\-*/().,\s]*[0-9)][\s]*$/;
+
+  function classifyTask(text) {
+    const t = text.trim();
+    if (MATH_EXPR_RE.test(t) && /[+\-*/]/.test(t)) return { type: 'tool_call', tool: 'calculator', args: { expression: t } };
+    return { type: 'conversation' };
+  }
+
+  function withTimeout(promise, ms) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        const err = new Error('Tempo de resposta esgotado.');
+        err.code = 'timeout';
+        reject(err);
+      }, ms);
+      promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+    });
+  }
+
+  function validate(reply) {
+    if (typeof reply !== 'string' || !reply.trim()) {
+      const err = new Error('Resposta vazia ou inválida do modelo.');
+      err.code = 'invalid_response';
+      throw err;
+    }
+    return reply.trim();
+  }
+
+  async function ask(rawText) {
+    const requestId = LOGGER.newRequestId();
+    const startedAt = performance.now();
+    if (!navigator.onLine) {
+      const err = new Error('Sem conexão.');
+      err.code = 'offline';
+      throw err;
+    }
+
+    const task = classifyTask(rawText);
+    const context = CONTEXT.get();
+    const resolvedText = CONTEXT.resolve(rawText);
+
+    LOGGER.info('request_started', { requestId, task: task.type, provider: MODEL_PROVIDER.getActiveName() });
+
+    let reply;
+    try {
+      if (task.type === 'tool_call') {
+        const result = await TOOL_SYSTEM.run(task.tool, task.args);
+        reply = validate(String(result));
+      } else {
+        reply = await withTimeout(MODEL_PROVIDER.generate(resolvedText, context), MODEL_TIMEOUT_MS);
+        reply = validate(reply);
+      }
+    } catch (err) {
+      LOGGER.error('request_failed', { requestId, error: err.message, code: err.code });
+      throw err;
+    }
+
+    CONTEXT.remember(rawText, reply);
+    LOGGER.info('request_completed', { requestId, latencyMs: Math.round(performance.now() - startedAt) });
+    return reply;
+  }
+
+  return { ask, classifyTask };
+})();
+
+// alias de compatibilidade
+const AI_ORCHESTRATOR = { ask: ORCHESTRATOR.ask, setProvider: MODEL_PROVIDER.register, getProviderName: MODEL_PROVIDER.getActiveName };
+
+/* ═══ settings.js — painel via Ctrl+, (Esc fecha) ═══ */
+const SETTINGS = (() => {
+  let panel = null;
+  let open = false;
+
+  function build() {
+    panel = document.createElement('div');
+    panel.id = 'settingsPanel';
+    panel.innerHTML = `
+      <div class="settings-card">
+        <p class="settings-title">Configurações</p>
+        <div class="settings-row">
+          <span>Voz</span>
+          <button id="toggleVoice" class="settings-toggle" data-on="true">Ativada</button>
+        </div>
+        <div class="settings-row">
+          <span>Sons</span>
+          <button id="toggleSound" class="settings-toggle" data-on="true">Ativados</button>
+        </div>
+        <p class="settings-hint">Ctrl + , para fechar</p>
+      </div>`;
+    document.body.appendChild(panel);
+
+    panel.querySelector('#toggleVoice').addEventListener('click', e => {
+      const on = e.target.dataset.on === 'true';
+      e.target.dataset.on = (!on).toString();
+      e.target.textContent = !on ? 'Ativada' : 'Desativada';
+      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'voice', value: !on } }));
+    });
+    panel.querySelector('#toggleSound').addEventListener('click', e => {
+      const on = e.target.dataset.on === 'true';
+      e.target.dataset.on = (!on).toString();
+      e.target.textContent = !on ? 'Ativados' : 'Desativados';
+      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'sound', value: !on } }));
+    });
+  }
+
+  function toggle() {
+    if (!panel) build();
+    open = !open;
+    panel.classList.toggle('open', open);
+  }
+
+  function init() {
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === ',') {
+        e.preventDefault();
+        toggle();
+      } else if (e.key === 'Escape' && open) {
+        toggle();
+      }
+    });
+  }
+
+  return { init };
+})();
+
+/* ═══ app.js — shell: boot + fluxo de estados ═══
+   Toda entrada em ERROR passa por recoverFromError (sempre volta a STANDBY);
+   stateGen invalida timers de recuperação antigos. */
+(function () {
+  const bootEl = document.getElementById('boot');
+  const bootStatus = document.getElementById('bootStatus');
+  const appEl = document.getElementById('app');
+  const orbZone = document.getElementById('orbZone');
+  const statusText = document.getElementById('statusText');
+  const hintText = document.getElementById('hintText');
+
+  let curState = 'standby';
+  let statusTimer = null;
+  let hintShown = true;
+  let voiceEnabled = true;
+  let soundEnabled = true;
+  let stateGen = 0;
+
+  /* boot sequence — registrado ANTES de tudo que possa falhar */
+  const bootLines = ['inicializando', 'conectando ao núcleo', 'sistemas online'];
+  // linha 0 já está no HTML; cada linha seguinte entra em instantes fixos,
+  // então as TRÊS aparecem sempre, em ordem, ~1s cada
+  bootLines.forEach((line, i) => {
+    if (i === 0) return;
+    setTimeout(() => {
+      bootStatus.style.opacity = '0';
+      setTimeout(() => { bootStatus.textContent = line; bootStatus.style.opacity = '1'; }, 250);
+    }, i * 1100);
+  });
+
+  setTimeout(() => {
+    bootEl.classList.add('out');
+    try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init falhou:', err); }
+    setTimeout(() => {
+      bootEl.style.display = 'none';
+      appEl.classList.add('on');
+      setTimeout(() => flash('ORION ONLINE', 3200), 300);
+    }, 1000);
+  }, 3600);
+
+  function flash(msg, ms = 2600) {
+    clearTimeout(statusTimer);
+    statusText.textContent = msg;
+    requestAnimationFrame(() => statusText.classList.add('show'));
+    statusTimer = setTimeout(() => statusText.classList.remove('show'), ms);
+  }
+
+  function hideHint() {
+    if (!hintShown) return;
+    hintShown = false;
+    hintText.style.opacity = '0';
+  }
+
+  function setState(name, msg) {
+    curState = name;
+    stateGen++;
+    try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState falhou:', err); }
+    const MSG = { standby: 'ORION online.', listening: 'Ouvindo…', thinking: 'Pensando…', speaking: '', error: 'Não compreendi.' };
+    const m = msg !== undefined ? msg : MSG[name];
+    if (m) flash(m, name === 'error' ? 2200 : 2400);
+    return stateGen;
+  }
+
+  function recoverFromError(message, recoveryMs = 2200) {
+    const myGen = setState('error', message);
+    if (soundEnabled) SOUND.error();
+    setTimeout(() => {
+      if (stateGen === myGen && curState === 'error') setState('standby', '');
+    }, recoveryMs);
+  }
+
+  async function handle(text) {
+    if (!text || !text.trim()) { setState('standby'); return; }
+    setState('thinking');
+    try {
+      const reply = await ORCHESTRATOR.ask(text);
+      setState('speaking', reply.length > 46 ? 'Respondendo…' : reply);
+      if (soundEnabled) SOUND.answer();
+      VOICE.speak(reply, () => {}, () => setState('standby'));
+    } catch (err) {
+      const handled = ERROR_HANDLER.handle(err, 'orchestrator');
+      recoverFromError(handled.message);
+    }
+  }
+
+  try {
+    VOICE.init({
+      onResult: text => { handle(text); },
+      onStateChange: (s, sttErrorCode) => {
+        if (s === 'listening') { setState('listening'); if (soundEnabled) SOUND.listen(); }
+        else if (s === 'error') {
+          const handled = ERROR_HANDLER.handle({ code: 'stt_unavailable', message: sttErrorCode }, 'voice-recognition');
+          recoverFromError(handled.message);
+        }
+        else setState('standby');
+      },
+    });
+  } catch (err) { console.error('[ORION] VOICE.init falhou:', err); }
+
+  function activate() {
+    hideHint();
+    if (curState === 'speaking') { VOICE.stopSpeaking(); setState('standby'); return; }
+    if (curState === 'listening') { VOICE.stopListening(); setState('standby'); return; }
+    if (curState !== 'standby') return;
+    if (!voiceEnabled) { recoverFromError('Voz desativada nas configurações.', 2400); return; }
+    if (!VOICE.isAvailable) { recoverFromError('Voz indisponível neste navegador.', 2600); return; }
+    ORB.pressEffect();
+    if (soundEnabled) SOUND.activate();
+    if (!VOICE.startListening()) {
+      const handled = ERROR_HANDLER.handle({ code: 'mic_unavailable' }, 'voice');
+      recoverFromError(handled.message);
+    }
+  }
+
+  LOGGER.info('session_started', { sessionId: LOGGER.sessionId, sttAvailable: VOICE.isAvailable });
+
+  orbZone.addEventListener('click', activate);
+  orbZone.addEventListener('touchstart', e => { e.preventDefault(); activate(); }, { passive: false });
+  orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (e) {} });
+  orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (e) {} });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !e.target.matches('input,textarea')) { e.preventDefault(); activate(); }
+  });
+
+  window.addEventListener('orion-setting', e => {
+    if (e.detail.key === 'voice') voiceEnabled = e.detail.value;
+    if (e.detail.key === 'sound') soundEnabled = e.detail.value;
+  });
+
+  try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
+  try { SETTINGS.init(); } catch (err) { console.error('[ORION] SETTINGS.init falhou:', err); }
+})();
+</script>
+
+</body>
+</html>
