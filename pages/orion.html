@@ -7,12 +7,12 @@
 <link rel="icon" href="../favicon.png">
 <script>
 /* Guarda do protótipo V4.0 (NÃO é segurança real — será substituída por auth no backend).
-   - Durante o standby (02/10 08:00 → 03/10 08:00): volta ao index.html (standby).
+   - Durante o standby (01/10 22:10 → 02/10 10:10): volta ao index.html (standby).
    - Depois do standby: exige ter passado pelo login nesta sessão.
    - Antes do standby: acesso direto, como na V3.5.0. */
 (function () {
-  const S = new Date('2026-10-02T08:00:00-03:00').getTime();
-  const E = new Date('2026-10-03T08:00:00-03:00').getTime();
+  const S = new Date('2026-10-01T22:10:00-03:00').getTime();
+  const E = new Date('2026-10-02T10:10:00-03:00').getTime();
   const t = Date.now();
   let auth = false;
   try { auth = sessionStorage.getItem('orion_auth') === '1'; } catch (_) {}
