@@ -69,7 +69,7 @@ body.is-standby{background:#030406;}
 <section class="view" id="login" aria-label="Login">
   <img class="login-logo" src="assets/orion_ai_logo.png" alt="">
   <img class="login-word" src="assets/orion_ai_wordmark.png" alt="ORION AI">
-  <p class="login-sub">Fazer login</p>
+  <p class="login-sub">Acesse sua conta</p>
   <form id="loginForm" autocomplete="off" novalidate>
     <input class="field" id="user" name="user" type="text" placeholder="usuário" autocomplete="username" autocapitalize="none" spellcheck="false" aria-label="Usuário">
     <input class="field" id="pass" name="pass" type="password" placeholder="senha" autocomplete="current-password" aria-label="Senha">
@@ -170,23 +170,47 @@ addEventListener('pageshow', tick);
 const PROTO_USER = 'ORION AI'; // comparado sem diferenciar maiúsculas/minúsculas
 const PROTO_PASS = '230526'; // 23/05/2026 — início do projeto
 
-$('loginForm').addEventListener('submit', e => {
+/* Endereço do backend Python (o mesmo valor de ORION_API_URL em pages/orion.html).
+   Vazio = login só local, sem inteligência do modelo. */
+const ORION_API_URL = ''; // ex.: 'https://orion-backend.onrender.com'
+let busy = false;
+
+$('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
+  if (busy) return;
   const u = $('user').value.trim(), p = $('pass').value;
   const err = $('err'), form = $('loginForm');
-  if (u.replace(/\s+/g, ' ').toUpperCase() === PROTO_USER && p === PROTO_PASS) {
-    err.classList.remove('show');
-    // marca a sessão como autenticada (protótipo) e entra na IA
-    try { sessionStorage.setItem('orion_auth', '1'); } catch (_) {}
-    document.body.style.transition = 'opacity .9s ease';
-    document.body.style.opacity = '0';
-    setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
-  } else {
+  if (!(u.replace(/\s+/g, ' ').toUpperCase() === PROTO_USER && p === PROTO_PASS)) {
+    err.style.color = '';
     err.textContent = 'Usuário ou senha incorretos.';
     err.classList.add('show');
     form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
     $('pass').value = ''; $('pass').focus();
+    return;
   }
+  busy = true;
+  if (ORION_API_URL) {
+    // pede o token ao backend (pode demorar se o servidor estiver "dormindo")
+    err.style.color = 'rgba(167,139,250,.9)';
+    err.textContent = 'Conectando ao núcleo…';
+    err.classList.add('show');
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 60000);
+      const r = await fetch(ORION_API_URL.replace(/\/$/, '') + '/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: u, password: p }), signal: ctl.signal,
+      });
+      clearTimeout(t);
+      if (r.ok) { const d = await r.json(); sessionStorage.setItem('orion_token', d.token); }
+    } catch (_) { /* segue sem token: a IA avisará que não alcançou o modelo */ }
+    err.style.color = '';
+  }
+  err.classList.remove('show');
+  try { sessionStorage.setItem('orion_auth', '1'); } catch (_) {}
+  document.body.style.transition = 'opacity .9s ease';
+  document.body.style.opacity = '0';
+  setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
 });
 $('user').addEventListener('input', () => $('err').classList.remove('show'));
 $('pass').addEventListener('input', () => $('err').classList.remove('show'));
