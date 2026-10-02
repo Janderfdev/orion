@@ -89,10 +89,10 @@ body.is-standby{background:#030406;}
    fechar e reabrir ou deixar a aba aberta dá sempre o mesmo resultado.
    Horários em UTC-3 (Brasília/Fortaleza), fixos no código.
    ═══════════════════════════════════════════════════════════════ */
-const STANDBY_START = new Date('2026-10-02T08:00:00-03:00').getTime();
-const STANDBY_END   = new Date('2026-10-03T08:00:00-03:00').getTime();
+const STANDBY_START = new Date('2026-10-01T22:10:00-03:00').getTime();
+const STANDBY_END   = new Date('2026-10-02T10:10:00-03:00').getTime();
 
-/* Teste local: abra index.html?simular=2026-10-03T07:59:30-03:00
+/* Teste local: abra index.html?simular=2026-10-02T10:09:30-03:00
    (só funciona em localhost / file://; o relógio simulado continua correndo). */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
