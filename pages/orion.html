@@ -225,7 +225,7 @@ html,body{
 }
 #settingsPanel.open{ opacity:1; pointer-events:auto; }
 .settings-card{
-  width:min(280px, 84vw); padding:28px 26px;
+  width:min(330px, 88vw); padding:28px 26px;
   border:1px solid rgba(167,139,250,0.22); border-radius:14px;
   background:rgba(8,8,14,0.92);
   box-shadow:0 0 60px rgba(109,40,217,0.18);
@@ -251,6 +251,24 @@ html,body{
   letter-spacing:0.2em; color:rgba(255,255,255,0.22);
 }
 
+/* botão de configurações (canto inferior direito) */
+.gear{
+  position:fixed; right:16px; bottom:12px; z-index:40;
+  width:40px; height:40px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  color:rgba(255,255,255,0.38); background:transparent; border:1px solid transparent;
+  transition:color .3s ease, border-color .3s ease, transform .5s ease, background .3s ease;
+}
+.gear:hover{ color:rgba(255,255,255,0.85); border-color:rgba(167,139,250,0.3); background:rgba(167,139,250,0.08); transform:rotate(60deg); }
+.gear:focus-visible{ outline:1px solid #a78bfa; outline-offset:3px; }
+.settings-email{ font-size:11px; font-weight:300; color:rgba(255,255,255,0.5); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.settings-out{
+  width:100%; margin-top:18px; height:40px; border-radius:20px; cursor:pointer;
+  font:300 11px var(--font); letter-spacing:0.22em; text-transform:uppercase;
+  color:#f87171; background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.30);
+  transition:background .25s ease;
+}
+.settings-out:hover{ background:rgba(248,113,113,0.15); }
 @media (prefers-reduced-motion:reduce){
   .orb,.halo,.boot-ring,.header-dot,.wave-ring{ animation:none !important; }
 }
@@ -305,6 +323,9 @@ html,body{
 
 </div>
 
+<button class="gear" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)">
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
 <div class="version-tag" id="versionTag">VERSÃO V4.0.0</div>
 <!-- Módulos — tudo em um único arquivo, ordem importa (dependências primeiro) -->
 <script>
@@ -953,10 +974,25 @@ const ORCHESTRATOR = (() => {
 // alias de compatibilidade
 const AI_ORCHESTRATOR = { ask: ORCHESTRATOR.ask, setProvider: MODEL_PROVIDER.register, getProviderName: MODEL_PROVIDER.getActiveName };
 
-/* ═══ settings.js — painel via Ctrl+, (Esc fecha) ═══ */
+/* ═══ settings.js — painel de configurações (botão ⚙ no canto inferior direito ou Ctrl+,) ═══
+   Voz e sons ficam salvos neste navegador. */
 const SETTINGS = (() => {
-  let panel = null;
-  let open = false;
+  const KEY = 'orion_settings';
+  let panel = null, open = false;
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })();
+  const state = { voice: saved.voice !== false, sound: saved.sound !== false };
+
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {} };
+  const emit = (key, value) => window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key, value } }));
+  const label = (key, on) => key === 'voice' ? (on ? 'Ativada' : 'Desativada') : (on ? 'Ativados' : 'Desativados');
+
+  function refresh() {
+    const user = window.ORION_USER;
+    panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || 'Não conectada';
+    panel.querySelector('#setCore').textContent = MODEL_PROVIDER.getActiveName() === 'orion-backend' ? 'IA conectada' : 'Local (sem IA)';
+    panel.querySelector('#toggleVoice').textContent = label('voice', state.voice);
+    panel.querySelector('#toggleSound').textContent = label('sound', state.sound);
+  }
 
   function build() {
     panel = document.createElement('div');
@@ -964,57 +1000,53 @@ const SETTINGS = (() => {
     panel.innerHTML = `
       <div class="settings-card">
         <p class="settings-title">Configurações</p>
-        <div class="settings-row">
-          <span>Voz</span>
-          <button id="toggleVoice" class="settings-toggle" data-on="true">Ativada</button>
-        </div>
-        <div class="settings-row">
-          <span>Sons</span>
-          <button id="toggleSound" class="settings-toggle" data-on="true">Ativados</button>
-        </div>
-        <div class="settings-row">
-          <span>Conta</span>
-          <button id="signOutBtn" class="settings-toggle">Sair</button>
-        </div>
-        <p class="settings-hint">Ctrl + , para fechar</p>
+        <div class="settings-row"><span>Conta</span><span class="settings-email" id="setEmail">—</span></div>
+        <div class="settings-row"><span>Voz</span><button id="toggleVoice" class="settings-toggle"></button></div>
+        <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
+        <div class="settings-row"><span>Conversa</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
+        <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
+        <button id="signOutBtn" class="settings-out">Sair da conta</button>
+        <p class="settings-hint">ORION AI V4.0.0 · ORION ENTENDE</p>
       </div>`;
     document.body.appendChild(panel);
 
-    panel.querySelector('#toggleVoice').addEventListener('click', e => {
-      const on = e.target.dataset.on === 'true';
-      e.target.dataset.on = (!on).toString();
-      e.target.textContent = !on ? 'Ativada' : 'Desativada';
-      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'voice', value: !on } }));
+    panel.addEventListener('click', e => { if (e.target === panel) toggle(); });
+    ['voice', 'sound'].forEach(key => {
+      panel.querySelector(key === 'voice' ? '#toggleVoice' : '#toggleSound').addEventListener('click', e => {
+        state[key] = !state[key];
+        e.target.textContent = label(key, state[key]);
+        persist(); emit(key, state[key]);
+      });
+    });
+    panel.querySelector('#clearChat').addEventListener('click', e => {
+      emit('clear', true);
+      e.target.textContent = 'Limpo';
+      setTimeout(() => { e.target.textContent = 'Limpar'; }, 1500);
     });
     panel.querySelector('#signOutBtn').addEventListener('click', () => {
       if (window.ORION_SIGNOUT) window.ORION_SIGNOUT();
-    });
-    panel.querySelector('#toggleSound').addEventListener('click', e => {
-      const on = e.target.dataset.on === 'true';
-      e.target.dataset.on = (!on).toString();
-      e.target.textContent = !on ? 'Ativados' : 'Desativados';
-      window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'sound', value: !on } }));
     });
   }
 
   function toggle() {
     if (!panel) build();
     open = !open;
+    if (open) refresh();
     panel.classList.toggle('open', open);
   }
 
   function init() {
+    document.getElementById('gearBtn').addEventListener('click', toggle);
     document.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === ',') {
-        e.preventDefault();
-        toggle();
-      } else if (e.key === 'Escape' && open) {
-        toggle();
-      }
+      if (e.ctrlKey && e.key === ',') { e.preventDefault(); toggle(); }
+      else if (e.key === 'Escape' && open) toggle();
     });
+    // aplica as preferências salvas
+    emit('voice', state.voice);
+    emit('sound', state.sound);
   }
 
-  return { init };
+  return { init, toggle };
 })();
 
 /* ═══ app.js — shell: boot + fluxo de estados ═══
@@ -1138,12 +1170,13 @@ const SETTINGS = (() => {
   orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (e) {} });
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (e) {} });
   document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && !e.target.matches('input,textarea')) { e.preventDefault(); activate(); }
+    if (e.code === 'Space' && !e.target.matches('input,textarea,button')) { e.preventDefault(); activate(); }
   });
 
   window.addEventListener('orion-setting', e => {
     if (e.detail.key === 'voice') voiceEnabled = e.detail.value;
     if (e.detail.key === 'sound') soundEnabled = e.detail.value;
+    if (e.detail.key === 'clear') { CONTEXT.reset(); flash('Conversa limpa.', 2000); }
   });
 
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
