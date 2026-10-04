@@ -6,18 +6,13 @@
 <title>ORION AI</title>
 <link rel="icon" href="../favicon.png">
 <script>
-/* Guarda do protótipo V4.0 (NÃO é segurança real — será substituída por auth no backend).
-   - Durante o standby (01/10 22:10 → 02/10 10:10): volta ao index.html (standby).
-   - Depois do standby: exige ter passado pelo login nesta sessão.
-   - Antes do standby: acesso direto, como na V3.5.0. */
+/* Durante o standby (01/10 22:10 → 02/10 10:10) esta página volta ao index.html.
+   O login é verificado pelo Firebase (script no fim da página). */
 (function () {
   const S = new Date('2026-10-01T22:10:00-03:00').getTime();
   const E = new Date('2026-10-02T10:10:00-03:00').getTime();
   const t = Date.now();
-  let auth = false;
-  try { auth = sessionStorage.getItem('orion_auth') === '1'; } catch (_) {}
-  window.__ORION_AUTH = auth;
-  if (t >= S && !(t >= E && auth)) location.replace('../index.html');
+  if (t >= S && t < E) location.replace('../index.html');
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -399,6 +394,8 @@ const ERROR_HANDLER = (() => {
     offline: 'Sem conexão com a internet.',
     tts_unavailable: 'Não consigo falar a resposta agora.',
     unexpected_input: 'Não entendi o que foi dito.',
+    forbidden: 'Esta conta não tem acesso ao ORION.',
+    rate_limited: 'Muitas solicitações. Aguarde um instante.',
     unknown: 'Não consegui processar.',
   };
 
@@ -858,7 +855,7 @@ const MODEL_PROVIDER = (() => {
         const local = CORE.local(context.rawText || text);
         if (local) return local;
         let token = '';
-        try { token = sessionStorage.getItem('orion_token') || ''; } catch (_) {}
+        try { token = (window.ORION_GET_TOKEN ? await window.ORION_GET_TOKEN() : '') || ''; } catch (_) {}
         let res;
         try {
           res = await fetch(ORION_API_URL.replace(/\/$/, '') + '/ask', {
@@ -868,10 +865,11 @@ const MODEL_PROVIDER = (() => {
           });
         } catch (_) { throw fail('Backend inacessível.', 'model_unavailable'); }
         if (res.status === 401) {
-          try { sessionStorage.removeItem('orion_token'); sessionStorage.removeItem('orion_auth'); } catch (_) {}
-          location.replace('../index.html');
+          if (window.ORION_SIGNOUT) window.ORION_SIGNOUT();
           throw fail('Sessão expirada.', 'api_error');
         }
+        if (res.status === 403) throw fail('Conta sem acesso.', 'forbidden');
+        if (res.status === 429) throw fail('Limite de uso.', 'rate_limited');
         if (!res.ok) throw fail('Backend respondeu ' + res.status, 'api_error');
         const data = await res.json();
         return data.reply;
@@ -974,6 +972,10 @@ const SETTINGS = (() => {
           <span>Sons</span>
           <button id="toggleSound" class="settings-toggle" data-on="true">Ativados</button>
         </div>
+        <div class="settings-row">
+          <span>Conta</span>
+          <button id="signOutBtn" class="settings-toggle">Sair</button>
+        </div>
         <p class="settings-hint">Ctrl + , para fechar</p>
       </div>`;
     document.body.appendChild(panel);
@@ -983,6 +985,9 @@ const SETTINGS = (() => {
       e.target.dataset.on = (!on).toString();
       e.target.textContent = !on ? 'Ativada' : 'Desativada';
       window.dispatchEvent(new CustomEvent('orion-setting', { detail: { key: 'voice', value: !on } }));
+    });
+    panel.querySelector('#signOutBtn').addEventListener('click', () => {
+      if (window.ORION_SIGNOUT) window.ORION_SIGNOUT();
     });
     panel.querySelector('#toggleSound').addEventListener('click', e => {
       const on = e.target.dataset.on === 'true';
@@ -1146,5 +1151,36 @@ const SETTINGS = (() => {
 })();
 </script>
 
+<script type="module">
+/* Login real (Firebase): sem usuário logado, volta ao index.html.
+   Expõe o token do usuário para o provedor do backend. */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+const auth = getAuth(initializeApp({
+  apiKey: "AIzaSyApS5PXcQvApRfjCsEkqqktinwXF29ViHg",
+  authDomain: "orion-ai-b8d39.firebaseapp.com",
+  projectId: "orion-ai-b8d39",
+  storageBucket: "orion-ai-b8d39.firebasestorage.app",
+  messagingSenderId: "1087684319550",
+  appId: "1:1087684319550:web:d5b20c93c2e3179de5f46f",
+}));
+
+let ready;
+window.ORION_AUTH_READY = new Promise(r => { ready = r; });
+onAuthStateChanged(auth, user => {
+  window.ORION_USER = user;
+  ready();
+  if (!user) location.replace('../index.html');
+});
+window.ORION_GET_TOKEN = async () => {
+  await window.ORION_AUTH_READY;
+  return auth.currentUser ? auth.currentUser.getIdToken() : '';
+};
+window.ORION_SIGNOUT = async () => {
+  try { await signOut(auth); } catch (_) {}
+  location.replace('../index.html');
+};
+</script>
 </body>
 </html>
