@@ -10,50 +10,51 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --font:'Inter',-apple-system,'Helvetica Neue',sans-serif;
-  --font-mono:'Space Grotesk','Inter',sans-serif;
-  --violet:#a78bfa; --violet-d:#6d28d9; --blue:#60a5fa; --blue-d:#1d4ed8;
-}
-html,body{width:100vw;height:100dvh;overflow:hidden;background:#000;color:#fff;font-family:var(--font);-webkit-font-smoothing:antialiased;}
+:root{--font:'Inter',-apple-system,'Helvetica Neue',sans-serif;--font-mono:'Space Grotesk','Inter',sans-serif;--violet:#a78bfa;--blue:#60a5fa;}
+html,body{width:100vw;min-height:100dvh;overflow:hidden;background:#000;color:#fff;font-family:var(--font);-webkit-font-smoothing:antialiased;}
 body.is-standby{background:#030406;}
 
-/* ═══ camada cósmica compartilhada (V4.0.0 + login) — mesmo preto/violeta da Orb ═══ */
+/* fundo idêntico ao da IA: preto + brilho roxo suave */
 #cosmos{position:fixed;inset:0;z-index:0;opacity:0;transition:opacity 1.4s ease;pointer-events:none;
   background:radial-gradient(circle at 50% 54%, rgba(109,40,217,.10) 0%, transparent 42%),#000;}
 #cosmos.on{opacity:1;}
 
-/* ═══ views ═══ */
-.view{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;
+.view{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:24px 0;
   opacity:0;visibility:hidden;pointer-events:none;transition:opacity 1.2s ease,visibility 0s linear 1.2s;}
 .view.on{opacity:1;visibility:visible;pointer-events:auto;transition:opacity 1.2s ease,visibility 0s;}
 
-/* STANDBY */
+#standby{padding:0;overflow:hidden;}
 #standby img{width:min(100vw,100dvh);height:min(100vw,100dvh);object-fit:contain;}
 
 /* LOGIN */
-.login-logo{width:clamp(64px,10vmin,92px);height:auto;filter:drop-shadow(0 0 22px rgba(96,80,255,.5));}
-.login-word{margin-top:26px;width:min(330px,74vw);height:auto;filter:drop-shadow(0 0 16px rgba(120,100,255,.28));}
-.login-sub{margin-top:14px;font-size:11px;font-weight:300;letter-spacing:.22em;color:rgba(255,255,255,.4);}
-#loginForm{margin-top:42px;width:min(320px,82vw);display:flex;flex-direction:column;gap:14px;}
-.field{width:100%;height:50px;border-radius:25px;padding:0 24px;font:300 13px var(--font);letter-spacing:.16em;color:#fff;
+.login-logo{width:clamp(56px,9vmin,84px);height:auto;filter:drop-shadow(0 0 22px rgba(96,80,255,.5));}
+.login-word{margin-top:22px;width:min(330px,74vw);height:auto;filter:drop-shadow(0 0 16px rgba(120,100,255,.28));}
+.login-sub{margin-top:12px;font-size:11px;font-weight:300;letter-spacing:.22em;color:rgba(255,255,255,.4);}
+#loginForm{margin-top:28px;width:min(320px,82vw);display:flex;flex-direction:column;gap:12px;}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:25px;border:1px solid rgba(139,120,255,.22);background:rgba(8,8,18,.5);}
+.tab{flex:1;height:34px;border-radius:20px;border:0;background:transparent;color:rgba(255,255,255,.45);font:300 11px var(--font);letter-spacing:.24em;text-indent:.24em;cursor:pointer;transition:all .3s ease;}
+.tab.on{background:linear-gradient(135deg,rgba(29,78,216,.28),rgba(109,40,217,.32));color:#fff;}
+.field{width:100%;height:48px;border-radius:25px;padding:0 24px;font:300 13px var(--font);letter-spacing:.12em;color:#fff;
   background:rgba(8,8,18,.62);border:1px solid rgba(139,120,255,.30);outline:none;text-align:center;
   transition:border-color .3s ease,box-shadow .3s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
 .field::placeholder{color:rgba(255,255,255,.3);letter-spacing:.2em;}
 .field:focus{border-color:rgba(167,139,250,.75);box-shadow:0 0 22px rgba(109,40,217,.28);}
-.btn{margin-top:6px;height:50px;border-radius:25px;cursor:pointer;font:400 12px var(--font);letter-spacing:.34em;text-indent:.34em;color:#fff;
+.btn{height:48px;border-radius:25px;cursor:pointer;font:400 12px var(--font);letter-spacing:.3em;text-indent:.3em;color:#fff;
   background:linear-gradient(135deg,rgba(29,78,216,.22),rgba(109,40,217,.26));border:1px solid rgba(139,120,255,.6);
   box-shadow:0 0 26px rgba(109,40,217,.22);transition:box-shadow .3s ease,filter .3s ease;}
 .btn:hover{box-shadow:0 0 40px rgba(109,40,217,.42);filter:brightness(1.15);}
-.btn:focus-visible,.field:focus-visible{outline:1px solid var(--violet);outline-offset:3px;}
-.err{height:16px;margin-top:2px;font-size:10px;font-weight:300;letter-spacing:.2em;text-align:center;color:#f87171;opacity:0;transition:opacity .4s ease;}
-.err.show{opacity:.9;}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn-g{display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(8,8,18,.62);border-color:rgba(139,120,255,.3);box-shadow:none;letter-spacing:.14em;text-indent:0;font-weight:300;}
+.sep{display:flex;align-items:center;gap:12px;font-size:9px;letter-spacing:.3em;color:rgba(255,255,255,.28);}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1);}
+.link{align-self:center;background:none;border:0;cursor:pointer;color:rgba(255,255,255,.4);font:300 10px var(--font);letter-spacing:.18em;transition:color .3s ease;}
+.link:hover{color:rgba(255,255,255,.75);}
+.btn:focus-visible,.field:focus-visible,.tab:focus-visible,.link:focus-visible{outline:1px solid var(--violet);outline-offset:3px;}
+.err{min-height:16px;font-size:10px;font-weight:300;letter-spacing:.14em;line-height:1.5;text-align:center;color:#f87171;opacity:0;transition:opacity .4s ease;}
+.err.show{opacity:.92;}
+.err.ok{color:rgba(167,139,250,.95);}
 #loginForm.shake{animation:shake .42s ease;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}55%{transform:translateX(6px);}80%{transform:translateX(-3px);}}
-
-.version-tag{position:fixed;left:18px;bottom:16px;z-index:5;font-family:var(--font-mono);font-size:9px;font-weight:300;letter-spacing:.22em;color:rgba(255,255,255,.16);user-select:none;pointer-events:none;opacity:0;transition:opacity 1.2s ease;}
-.version-tag.on{opacity:1;}
-
 </style>
 </head>
 <body>
@@ -70,63 +71,66 @@ body.is-standby{background:#030406;}
   <img class="login-logo" src="assets/orion_ai_logo.png" alt="">
   <img class="login-word" src="assets/orion_ai_wordmark.png" alt="ORION AI">
   <p class="login-sub">Acesse sua conta</p>
-  <form id="loginForm" autocomplete="off" novalidate>
-    <input class="field" id="user" name="user" type="text" placeholder="usuário" autocomplete="username" autocapitalize="none" spellcheck="false" aria-label="Usuário">
-    <input class="field" id="pass" name="pass" type="password" placeholder="senha" autocomplete="current-password" aria-label="Senha">
-    <button class="btn" type="submit">Entrar</button>
+  <form id="loginForm" novalidate>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab on" id="tabIn" role="tab">Entrar</button>
+      <button type="button" class="tab" id="tabUp" role="tab">Criar conta</button>
+    </div>
+    <input class="field" id="email" type="email" placeholder="e-mail" autocomplete="email" autocapitalize="none" spellcheck="false" aria-label="E-mail">
+    <input class="field" id="pass" type="password" placeholder="senha" autocomplete="current-password" aria-label="Senha">
+    <input class="field" id="pass2" type="password" placeholder="confirmar senha" autocomplete="new-password" aria-label="Confirmar senha" hidden>
+    <button class="btn" id="submitBtn" type="submit">Entrar</button>
+    <button class="link" id="forgot" type="button">Esqueci minha senha</button>
+    <div class="sep">OU</div>
+    <button class="btn btn-g" id="googleBtn" type="button">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.4-4.7 7.1l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Continuar com Google
+    </button>
     <p class="err" id="err" role="alert" aria-live="polite"></p>
   </form>
 </section>
 
-
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI — entrada (standby → login)
-   Fluxo: STANDBY → LOGIN → pages/orion.html
-
-   O estado é SEMPRE derivado da data/hora atual (relógio do
-   sistema), nunca de variáveis temporárias do navegador. Recarregar,
-   fechar e reabrir ou deixar a aba aberta dá sempre o mesmo resultado.
-   Horários em UTC-3 (Brasília/Fortaleza), fixos no código.
+   ORION AI — entrada: STANDBY → LOGIN → pages/orion.html
+   O estado é SEMPRE derivado do relógio (UTC-3), nunca de variáveis do navegador.
    ═══════════════════════════════════════════════════════════════ */
 const STANDBY_START = new Date('2026-10-01T22:10:00-03:00').getTime();
 const STANDBY_END   = new Date('2026-10-02T10:10:00-03:00').getTime();
 
-/* Teste local: abra index.html?simular=2026-10-02T10:09:30-03:00
-   (só funciona em localhost / file://; o relógio simulado continua correndo). */
+/* Teste local: index.html?simular=2026-10-02T10:09:30-03:00 (só localhost / file://) */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
 const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
 const nowMs = () => Date.now() + clockOffset;
 
 function phase(t) {
-  if (t < STANDBY_START) return 'before';   // antes do standby: login
+  if (t < STANDBY_START) return 'before';
   if (t < STANDBY_END)   return 'standby';
-  return 'released';                         // V4.0.0 + login
+  return 'released';
 }
+window.__orionPhase = () => phase(nowMs());
 
 const $ = id => document.getElementById(id);
 const views = { standby: $('standby'), login: $('login') };
-let current = null;
-let flowStarted = false;
-let flowTimer = null;
+let current = null, flowStarted = false, flowTimer = null;
 
 function show(name) {
   Object.entries(views).forEach(([k, el]) => el.classList.toggle('on', k === name));
   current = name;
 }
 
-/* ── abre direto no login ── */
-function startV4Flow() {
+function startLogin() {
   if (flowStarted) return;
   flowStarted = true;
   document.body.classList.remove('is-standby');
+  // já logado (Firebase lembra a sessão): entra direto na IA
+  if (window.__orionUser && window.__orionEnter) { window.__orionEnter(); return; }
   $('cosmos').classList.add('on');
   show('login');
-  flowTimer = setTimeout(() => $('user').focus(), 1300);
+  flowTimer = setTimeout(() => $('email').focus(), 1300);
 }
 
-/* entra no standby (carregamento dentro da janela, ou janela começou com a página aberta) */
 function enterStandby() {
   clearTimeout(flowTimer);
   flowStarted = false;
@@ -135,14 +139,12 @@ function enterStandby() {
   show('standby');
 }
 
-/* standby terminou com a página aberta: fade-out do standby e entrada do login */
 function endStandby() {
   if (flowStarted) return;
-  views.standby.classList.remove('on');           // fade-out (1.2s)
-  setTimeout(startV4Flow, 1400);
+  views.standby.classList.remove('on');
+  setTimeout(startLogin, 1400);
 }
 
-/* ── verificação por relógio (não depende de um único setTimeout) ── */
 function tick() {
   const p = phase(nowMs());
   if (p === 'released' && current === 'standby') endStandby();
@@ -153,67 +155,144 @@ document.addEventListener('visibilitychange', tick);
 addEventListener('focus', tick);
 addEventListener('pageshow', tick);
 
-/* ── boot ── */
 (function boot() {
-  const p = phase(nowMs());
-  // standby só dentro da janela; fora dela (antes ou depois) abre direto no login
-  if (p === 'standby') requestAnimationFrame(enterStandby);
-  else requestAnimationFrame(startV4Flow);
+  if (phase(nowMs()) === 'standby') requestAnimationFrame(enterStandby);
+  else requestAnimationFrame(startLogin);
 })();
 
-/* ═══════════════════════════════════════════════════════════════
-   LOGIN — PROTÓTIPO DA V4.0
-   ATENÇÃO: estas credenciais ficam visíveis no código do navegador
-   e NÃO são segurança real. Futuramente serão substituídas por
-   autenticação real no backend (Python). Sem banco de dados nesta etapa.
-   ═══════════════════════════════════════════════════════════════ */
-const PROTO_USER = 'ORION AI'; // comparado sem diferenciar maiúsculas/minúsculas
-const PROTO_PASS = '230526'; // 23/05/2026 — início do projeto
+// se o módulo de login não carregar (sem internet / bloqueio), avisa
+setTimeout(() => {
+  if (!window.__orionReady) {
+    const e = $('err'); e.classList.remove('ok');
+    e.textContent = 'Não foi possível carregar o login. Verifique sua conexão.';
+    e.classList.add('show');
+  }
+}, 8000);
+</script>
 
-/* Endereço do backend Python (o mesmo valor de ORION_API_URL em pages/orion.html).
-   Vazio = login só local, sem inteligência do modelo. */
-const ORION_API_URL = ''; // ex.: 'https://orion-backend.onrender.com'
-let busy = false;
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN REAL — Firebase Authentication (e-mail/senha + Google).
+   A configuração abaixo NÃO é secreta (é pública por design no Firebase);
+   quem protege a conta são o domínio autorizado e as regras do projeto.
+   O backend valida o token do usuário em cada pergunta.
+   ═══════════════════════════════════════════════════════════════ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyApS5PXcQvApRfjCsEkqqktinwXF29ViHg",
+  authDomain: "orion-ai-b8d39.firebaseapp.com",
+  projectId: "orion-ai-b8d39",
+  storageBucket: "orion-ai-b8d39.firebasestorage.app",
+  messagingSenderId: "1087684319550",
+  appId: "1:1087684319550:web:d5b20c93c2e3179de5f46f",
+});
+const auth = getAuth(app);
+auth.languageCode = 'pt-BR';
+window.__orionReady = true;
+
+const $ = id => document.getElementById(id);
+let mode = 'in', busy = false, entering = false;
+
+function enter() {
+  if (entering) return;
+  entering = true;
+  document.body.style.transition = 'opacity .9s ease';
+  document.body.style.opacity = '0';
+  setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
+}
+window.__orionEnter = enter;
+
+// dispara no login novo E quando a sessão anterior é restaurada.
+// Durante o standby espera: startLogin() cuida da entrada quando ele terminar.
+onAuthStateChanged(auth, user => {
+  window.__orionUser = user;
+  if (user && window.__orionPhase() !== 'standby') enter();
+});
+
+const MSG = {
+  'auth/invalid-credential': 'E-mail ou senha incorretos.',
+  'auth/wrong-password': 'E-mail ou senha incorretos.',
+  'auth/user-not-found': 'E-mail ou senha incorretos.',
+  'auth/invalid-email': 'E-mail inválido.',
+  'auth/missing-password': 'Digite a senha.',
+  'auth/email-already-in-use': 'Este e-mail já tem uma conta. Use Entrar.',
+  'auth/weak-password': 'Senha fraca: use pelo menos 6 caracteres.',
+  'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco.',
+  'auth/network-request-failed': 'Sem conexão com a internet.',
+  'auth/popup-blocked': 'Permita pop-ups para entrar com Google.',
+  'auth/unauthorized-domain': 'Domínio não autorizado no Firebase.',
+  'auth/operation-not-allowed': 'Este método de login não está ativado.',
+};
+const SILENT = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+
+function say(text, ok = false) {
+  const e = $('err');
+  e.classList.toggle('ok', ok);
+  e.textContent = text;
+  e.classList.toggle('show', !!text);
+}
+function fail(err) {
+  if (SILENT.includes(err.code)) return say('');
+  say(MSG[err.code] || ('Não foi possível entrar. (' + (err.code || 'erro') + ')'));
+  const f = $('loginForm');
+  f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake');
+}
+function setBusy(on) {
+  busy = on;
+  ['submitBtn', 'googleBtn'].forEach(id => { $(id).disabled = on; });
+}
+
+function setMode(m) {
+  mode = m;
+  $('tabIn').classList.toggle('on', m === 'in');
+  $('tabUp').classList.toggle('on', m === 'up');
+  $('pass2').hidden = m === 'in';
+  $('forgot').hidden = m === 'up';
+  $('submitBtn').textContent = m === 'in' ? 'Entrar' : 'Criar conta';
+  $('pass').autocomplete = m === 'in' ? 'current-password' : 'new-password';
+  say('');
+}
+$('tabIn').addEventListener('click', () => setMode('in'));
+$('tabUp').addEventListener('click', () => setMode('up'));
 
 $('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   if (busy) return;
-  const u = $('user').value.trim(), p = $('pass').value;
-  const err = $('err'), form = $('loginForm');
-  if (!(u.replace(/\s+/g, ' ').toUpperCase() === PROTO_USER && p === PROTO_PASS)) {
-    err.style.color = '';
-    err.textContent = 'Usuário ou senha incorretos.';
-    err.classList.add('show');
-    form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake');
-    $('pass').value = ''; $('pass').focus();
-    return;
-  }
-  busy = true;
-  if (ORION_API_URL) {
-    // pede o token ao backend (pode demorar se o servidor estiver "dormindo")
-    err.style.color = 'rgba(167,139,250,.9)';
-    err.textContent = 'Conectando ao núcleo…';
-    err.classList.add('show');
-    try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 60000);
-      const r = await fetch(ORION_API_URL.replace(/\/$/, '') + '/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: u, password: p }), signal: ctl.signal,
-      });
-      clearTimeout(t);
-      if (r.ok) { const d = await r.json(); sessionStorage.setItem('orion_token', d.token); }
-    } catch (_) { /* segue sem token: a IA avisará que não alcançou o modelo */ }
-    err.style.color = '';
-  }
-  err.classList.remove('show');
-  try { sessionStorage.setItem('orion_auth', '1'); } catch (_) {}
-  document.body.style.transition = 'opacity .9s ease';
-  document.body.style.opacity = '0';
-  setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
+  const email = $('email').value.trim(), pass = $('pass').value;
+  if (!email || !pass) return say('Preencha e-mail e senha.');
+  if (mode === 'up' && pass !== $('pass2').value) return say('As senhas não coincidem.');
+  setBusy(true); say('');
+  try {
+    if (mode === 'in') await signInWithEmailAndPassword(auth, email, pass);
+    else await createUserWithEmailAndPassword(auth, email, pass);
+    // sucesso: onAuthStateChanged conduz para a IA
+  } catch (err) { fail(err); }
+  setBusy(false);
 });
-$('user').addEventListener('input', () => $('err').classList.remove('show'));
-$('pass').addEventListener('input', () => $('err').classList.remove('show'));
+
+$('googleBtn').addEventListener('click', async () => {
+  if (busy) return;
+  setBusy(true); say('');
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (err) { fail(err); }
+  setBusy(false);
+});
+
+$('forgot').addEventListener('click', async () => {
+  const email = $('email').value.trim();
+  if (!email) return say('Digite seu e-mail acima para receber o link.');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    say('Se este e-mail tiver conta, enviamos um link para redefinir a senha.', true);
+  } catch (err) { fail(err); }
+});
+
+['email', 'pass', 'pass2'].forEach(id => $(id).addEventListener('input', () => say('')));
 </script>
 </body>
 </html>
