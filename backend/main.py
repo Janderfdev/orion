@@ -8,6 +8,7 @@ Variáveis:
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MODEL, ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
+  ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
 import asyncio, os, time
 from collections import deque
@@ -18,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from auth.firebase import verify
 from core.orchestrator import Orchestrator
+from memory.store import Memory
 from providers.claude import ClaudeProvider
 
 ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderfdev.github.io").split(",")]
@@ -29,7 +31,7 @@ app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
                    allow_headers=["Authorization", "Content-Type"])
 
-orchestrator = Orchestrator(ClaudeProvider())
+orchestrator = Orchestrator(ClaudeProvider(), Memory())
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
 
 
@@ -51,7 +53,7 @@ class Turn(BaseModel):
 
 class AskIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
-    history: list[Turn] = Field(default_factory=list, max_length=12)
+    history: list[Turn] = Field(default_factory=list, max_length=12)  # ignorado: a memória agora fica no servidor
 
 
 @app.get("/health")
@@ -59,17 +61,32 @@ def health():
     return {"status": "ok", "name": "ORION AI"}
 
 
-@app.post("/ask")
-async def ask(body: AskIn, authorization: str = Header(default="")):
-    claims = await asyncio.to_thread(verify, authorization.removeprefix("Bearer ").strip())
+async def _auth(authorization: str):
+    """Valida o login do Firebase, a lista de e-mails e o limite de uso. Devolve (uid, token)."""
+    token = authorization.removeprefix("Bearer ").strip()
+    claims = await asyncio.to_thread(verify, token)
     if not claims:
         raise HTTPException(401, "Não autorizado.")
     if ALLOWED and (claims.get("email") or "").lower() not in ALLOWED:
         raise HTTPException(403, "Conta sem acesso.")
-    if not _rate_ok(claims.get("sub", "?")):
+    uid = claims.get("sub", "?")
+    if not _rate_ok(uid):
         raise HTTPException(429, "Muitas solicitações. Aguarde um instante.")
+    return uid, token
+
+
+@app.post("/ask")
+async def ask(body: AskIn, authorization: str = Header(default="")):
+    uid, token = await _auth(authorization)
     try:
-        reply = await orchestrator.ask(body.text, [t.model_dump() for t in body.history])
+        reply = await orchestrator.ask(body.text, uid, token)
     except Exception:
         raise HTTPException(502, "Falha ao consultar o modelo.")
     return {"reply": reply}
+
+
+@app.post("/memory/clear")
+async def clear_memory(authorization: str = Header(default="")):
+    uid, token = await _auth(authorization)
+    await orchestrator.clear(uid, token)
+    return {"ok": True}
