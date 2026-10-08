@@ -882,7 +882,7 @@ const MODEL_PROVIDER = (() => {
           res = await fetch(ORION_API_URL.replace(/\/$/, '') + '/ask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ text: context.rawText || text, history: (context.history || []).slice(-6) }),
+            body: JSON.stringify({ text: context.rawText || text }),
           });
         } catch (_) { throw fail('Backend inacessível.', 'model_unavailable'); }
         if (res.status === 401) {
@@ -897,6 +897,16 @@ const MODEL_PROVIDER = (() => {
       },
     });
     setActive('orion-backend');
+
+    // apaga o histórico guardado no servidor (botão Conversa → Limpar)
+    window.ORION_CLEAR_MEMORY = async () => {
+      try {
+        const token = (window.ORION_GET_TOKEN ? await window.ORION_GET_TOKEN() : '') || '';
+        await fetch(ORION_API_URL.replace(/\/$/, '') + '/memory/clear', {
+          method: 'POST', headers: { 'Authorization': 'Bearer ' + token },
+        });
+      } catch (_) {}
+    };
   }
 
   return { register, setActive, getActiveName, generate };
@@ -1176,7 +1186,7 @@ const SETTINGS = (() => {
   window.addEventListener('orion-setting', e => {
     if (e.detail.key === 'voice') voiceEnabled = e.detail.value;
     if (e.detail.key === 'sound') soundEnabled = e.detail.value;
-    if (e.detail.key === 'clear') { CONTEXT.reset(); flash('Conversa limpa.', 2000); }
+    if (e.detail.key === 'clear') { CONTEXT.reset(); if (window.ORION_CLEAR_MEMORY) window.ORION_CLEAR_MEMORY(); flash('Conversa limpa.', 2000); }
   });
 
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
