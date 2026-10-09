@@ -7,7 +7,7 @@
 **“O futuro começa com a curiosidade.”**
 
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-4.0.0-8A2BE2?style=for-the-badge)](#-version-history)
+[![Version](https://img.shields.io/badge/Version-4.2.0-8A2BE2?style=for-the-badge)](#-version-history)
 [![Status](https://img.shields.io/badge/Status-In%20Development-6A5ACD?style=for-the-badge)](#-current-status)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](#-license)
 
