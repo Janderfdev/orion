@@ -415,6 +415,7 @@ const API = (() => {
   const statusText = $('statusText'), hintText = $('hintText');
   const respEl = $('response'), respText = $('responseText');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend');
+  const chatBtn = $('chatBtn'), siri = $('siri');
 
   /* ── preferências (salvas neste navegador) ── */
   const KEY = 'orion_settings';
@@ -422,7 +423,7 @@ const API = (() => {
     (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })());
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
 
-  let curState = 'standby', stateGen = 0, processing = false, hintShown = true;
+  let curState = 'standby', stateGen = 0, processing = false, hintShown = true, chatOpen = false;
   let flashTimer = null, hideTimer = null;
   let models = [], online = false;
 
@@ -445,7 +446,6 @@ const API = (() => {
       bootEl.style.display = 'none';
       appEl.classList.add('on');
       flash('ORION ONLINE', 3200);
-      if (finePointer()) askInput.focus();
     }, 1000);
   }, 3600);
 
@@ -546,6 +546,24 @@ const API = (() => {
     else setTimeout(done, readMs(reply));
   }
 
+  /* ── botão de chat: o campo sobe da base da tela até abaixo da Orb ── */
+  function setChat(open) {
+    chatOpen = open;
+    document.body.classList.toggle('chat-open', open);
+    askForm.classList.toggle('open', open);
+    askForm.setAttribute('aria-hidden', String(!open));
+    chatBtn.classList.toggle('on', open);
+    chatBtn.setAttribute('aria-pressed', String(open));
+    askInput.tabIndex = askSend.tabIndex = open ? 0 : -1;
+    if (open) {
+      hideHint(); sfx('activate');
+      siri.classList.remove('play'); void siri.offsetWidth; siri.classList.add('play');
+      if (finePointer()) setTimeout(() => { if (chatOpen) askInput.focus(); }, 450);
+    } else askInput.blur();
+  }
+  chatBtn.addEventListener('click', () => setChat(!chatOpen));
+  askInput.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); setChat(false); } });
+
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
   askInput.addEventListener('focus', hideHint);
 
@@ -578,6 +596,7 @@ const API = (() => {
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
+    else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
   });
 
   /* ── modelos (lista vem do backend; o site só guarda o id escolhido) ── */
@@ -601,13 +620,13 @@ const API = (() => {
       if (!panel) return;
       const user = window.ORION_USER;
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || 'Não conectada';
-      panel.querySelector('#setCore').textContent = online ? 'Conectado' : (API.configured() ? 'Indisponível' : 'Não configurado');
+      panel.querySelector('#setCore').textContent = online ? 'Conectado' : (API.configured() ? 'Servidor indisponível' : 'Backend não configurado');
       panel.querySelector('#toggleVoice').textContent = label('voice', prefs.voice);
       panel.querySelector('#toggleSound').textContent = label('sound', prefs.sound);
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
-        const o = document.createElement('option'); o.textContent = '—'; sel.appendChild(o); sel.disabled = true;
+        const o = document.createElement('option'); o.textContent = online ? '—' : 'Indisponível'; sel.appendChild(o); sel.disabled = true;
       } else {
         models.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
         sel.value = prefs.model; sel.disabled = false;
