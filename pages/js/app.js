@@ -393,6 +393,7 @@ const API = (() => {
     if (res.status === 401) { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); throw fail('Sessão expirada.', 'api_error'); }
     if (res.status === 403) throw fail('Conta sem acesso.', 'forbidden');
     if (res.status === 429) throw fail('Limite de uso.', 'rate_limited');
+    if (res.status === 503 || res.status === 400) throw fail('Modelo indisponível.', 'model_unavailable');
     if (!res.ok) throw fail('Falha ' + res.status, 'api_error');
     try { return await res.json(); } catch (_) { throw fail('Resposta ilegível.', 'invalid_response'); }
   }
