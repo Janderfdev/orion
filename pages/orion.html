@@ -271,17 +271,22 @@ html,body{
 .settings-out:hover{ background:rgba(248,113,113,0.15); }
 /* ═══════ V4.2.0 — interação centrada na Orb ═══════ */
 .stage{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
-body.chat-open .stage, body.has-response .stage{ transform:translateY(-12vh); }
+body.has-response .stage{ transform:translateY(-11vh); }
+.orb-zone{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
+body.chat-open .orb-zone{ transform:scale(.78); }   /* a Orb encolhe um pouco enquanto você escreve */
 
 /* resposta: aparece na cena, abaixo da Orb (e abaixo do campo, quando o chat está aberto) */
 .response{
   position:absolute; left:50%; transform:translateX(-50%);
-  top:calc(50% - 12vh + var(--orb)/2 + 40px);
+  top:calc(50% - 11vh + var(--orb)/2 + 40px);
   bottom:calc(clamp(30px, 7vh, 64px) + 30px);
   width:min(640px, 86vw); overflow-y:auto; scrollbar-width:none;
   text-align:center; opacity:0; pointer-events:none; transition:opacity .8s ease, top .6s ease;
 }
-body.chat-open .response{ top:calc(50% - 12vh + var(--orb)/2 + 34px + 48px + 22px); }
+body.chat-open .response{
+  top:calc(50% - 11vh + var(--orb) * 0.39 + 34px);
+  bottom:calc(clamp(30px, 7vh, 64px) + 30px + 48px + 14px);
+}
 .response::-webkit-scrollbar{ display:none; }
 .response.show{ opacity:1; pointer-events:auto; }
 .response-text{
@@ -293,10 +298,10 @@ body.chat-open .response{ top:calc(50% - 12vh + var(--orb)/2 + 34px + 48px + 22p
 @keyframes wordin{ to{ opacity:1; filter:blur(0); } }
 .response.error .response-text{ font-size:13px; letter-spacing:.06em; color:#fca5a5; text-shadow:0 0 18px rgba(248,113,113,.3); }
 
-/* campo de pergunta: sobe de baixo da tela até ficar logo abaixo da Orb */
+/* campo de pergunta: sobe de baixo da tela até a base, acima do rodapé */
 .ask{
   position:absolute; left:50%; z-index:5;
-  top:calc(50% - 12vh + var(--orb)/2 + 34px);
+  bottom:calc(clamp(30px, 7vh, 64px) + 30px);
   width:min(560px, 88vw); height:48px; padding:0 6px 0 22px;
   display:flex; align-items:center; gap:8px; border-radius:26px;
   background:rgba(8,8,18,.62); border:1px solid color-mix(in srgb, var(--core-a) 38%, transparent);
