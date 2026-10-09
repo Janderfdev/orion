@@ -1,16 +1,18 @@
-"""ORION AI — backend V4.0 (ORION ENTENDE).
+"""ORION AI — backend V4.2.0.
 
 Rodar local:  uvicorn main:app --reload
+Rotas:  GET /health · GET /models · POST /ask · POST /memory/clear
 Variáveis:
   ANTHROPIC_API_KEY      (obrigatória) chave da API do Claude
   ORION_ALLOWED_EMAILS   (recomendada) e-mails com acesso, separados por vírgula.
                          Vazio = qualquer conta criada no Firebase pode usar (e gastar seu crédito!)
+  ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Sonnet, Haiku, Opus); ORION_DEFAULT_MODEL
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
-  ORION_MODEL, ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
+  ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
-import asyncio, os, time
+import asyncio, logging, os, time
 from collections import deque
 
 from fastapi import FastAPI, Header, HTTPException
@@ -20,8 +22,9 @@ from pydantic import BaseModel, Field
 from auth.firebase import verify
 from core.orchestrator import Orchestrator
 from memory.store import Memory
-from providers.claude import ClaudeProvider
+from providers.registry import Registry
 
+log = logging.getLogger("orion")
 ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderfdev.github.io").split(",")]
 ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").split(",") if e.strip()}
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
@@ -31,7 +34,8 @@ app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
                    allow_headers=["Authorization", "Content-Type"])
 
-orchestrator = Orchestrator(ClaudeProvider(), Memory())
+registry = Registry()
+orchestrator = Orchestrator(Memory())
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
 
 
@@ -46,23 +50,14 @@ def _rate_ok(uid: str) -> bool:
     return True
 
 
-class Turn(BaseModel):
-    user: str = Field(default="", max_length=2000)
-    reply: str = Field(default="", max_length=2000)
-
-
 class AskIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
-    history: list[Turn] = Field(default_factory=list, max_length=12)  # ignorado: a memória agora fica no servidor
+    model: str | None = Field(default=None, max_length=80)  # id vindo de GET /models
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "name": "ORION AI"}
-
-
-async def _auth(authorization: str):
-    """Valida o login do Firebase, a lista de e-mails e o limite de uso. Devolve (uid, token)."""
+async def _auth(authorization: str, count: bool = False):
+    """Valida o login do Firebase e a lista de e-mails. Devolve (uid, token).
+    count=True também aplica o limite de uso (perguntas ao modelo)."""
     token = authorization.removeprefix("Bearer ").strip()
     claims = await asyncio.to_thread(verify, token)
     if not claims:
@@ -70,19 +65,34 @@ async def _auth(authorization: str):
     if ALLOWED and (claims.get("email") or "").lower() not in ALLOWED:
         raise HTTPException(403, "Conta sem acesso.")
     uid = claims.get("sub", "?")
-    if not _rate_ok(uid):
+    if count and not _rate_ok(uid):
         raise HTTPException(429, "Muitas solicitações. Aguarde um instante.")
     return uid, token
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "name": "ORION AI"}
+
+
+@app.get("/models")
+async def models(authorization: str = Header(default="")):
+    await _auth(authorization)
+    return {"default": registry.default, "models": registry.models()}
+
+
 @app.post("/ask")
 async def ask(body: AskIn, authorization: str = Header(default="")):
-    uid, token = await _auth(authorization)
+    uid, token = await _auth(authorization, count=True)
+    model_id, provider = registry.get(body.model)
+    if not provider:
+        raise HTTPException(400, "Modelo indisponível.")
     try:
-        reply = await orchestrator.ask(body.text, uid, token)
+        reply = await orchestrator.ask(body.text, uid, token, provider)
     except Exception:
+        log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": reply}
+    return {"reply": reply, "model": model_id}
 
 
 @app.post("/memory/clear")
