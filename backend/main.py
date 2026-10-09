@@ -3,10 +3,11 @@
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /memory/clear
 Variáveis:
-  ANTHROPIC_API_KEY      (obrigatória) chave da API do Claude
+  GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
+  ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
   ORION_ALLOWED_EMAILS   (recomendada) e-mails com acesso, separados por vírgula.
                          Vazio = qualquer conta criada no Firebase pode usar (e gastar seu crédito!)
-  ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Sonnet, Haiku, Opus); ORION_DEFAULT_MODEL
+  ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
@@ -84,13 +85,17 @@ async def models(authorization: str = Header(default="")):
 @app.post("/ask")
 async def ask(body: AskIn, authorization: str = Header(default="")):
     uid, token = await _auth(authorization, count=True)
+    if not registry.models():
+        raise HTTPException(503, "Nenhum modelo configurado no servidor.")
     model_id, provider = registry.get(body.model)
     if not provider:
         raise HTTPException(400, "Modelo indisponível.")
     try:
         reply = await orchestrator.ask(body.text, uid, token, provider)
-    except Exception:
+    except Exception as e:
         log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
+        if getattr(e, "status_code", None) == 429:    # limite de uso do provedor (ex.: plano gratuito)
+            raise HTTPException(429, "O modelo atingiu o limite de uso agora.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
     return {"reply": reply, "model": model_id}
 
