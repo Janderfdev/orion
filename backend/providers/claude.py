@@ -7,8 +7,8 @@ MAX_STEPS = 5  # limite de rodadas de ferramentas por pergunta
 class ClaudeProvider:
     name = "claude"
 
-    def __init__(self):
-        self.model = os.getenv("ORION_MODEL", "claude-sonnet-5-5")
+    def __init__(self, model: str | None = None):
+        self.model = model or os.getenv("ORION_MODEL", "claude-sonnet-5-5")
         self.max_tokens = int(os.getenv("ORION_MAX_TOKENS", "600"))
         self._client = None
 
