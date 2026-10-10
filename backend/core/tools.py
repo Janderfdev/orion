@@ -4,12 +4,30 @@ São funções Python comuns. O modelo recebe a lista (nome + descrição + par�
 e DECIDE sozinho quando chamar cada uma. Todas são somente-leitura.
 Para criar uma ferramenta nova: escreva a função e adicione-a em TOOLS.
 """
-import ast, datetime as dt, math, operator
+import ast, contextvars, datetime as dt, math, operator
+from urllib.parse import quote
 
 import requests
 
 HEADERS = {"User-Agent": "ORION-AI/4.0 (https://janderfdev.github.io/orion)"}
 TIMEOUT = 8
+
+# ── fontes consultadas nesta pergunta (cada pergunta tem a sua lista, mesmo com várias ao mesmo tempo) ──
+_sources: contextvars.ContextVar = contextvars.ContextVar("orion_sources", default=None)
+
+
+def collect_sources() -> list:
+    """Começa a coletar as fontes desta pergunta e devolve a lista (preenchida pelas ferramentas)."""
+    lst: list = []
+    _sources.set(lst)
+    return lst
+
+
+def _add_source(title: str, url: str) -> None:
+    lst = _sources.get()
+    if lst is not None and all(x["url"] != url for x in lst):
+        lst.append({"title": title, "url": url})
+
 
 # ── calculadora (sem eval: percorre a árvore da expressão) ──
 _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
@@ -92,6 +110,7 @@ def pesquisar_wikipedia(consulta: str) -> str:
     title = hits[0]["title"]
     r = requests.get("https://pt.wikipedia.org/api/rest_v1/page/summary/" + requests.utils.quote(title.replace(" ", "_"), safe=""),
                      headers=HEADERS, timeout=TIMEOUT).json()
+    _add_source(title, "https://pt.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),"))
     return f"{title}: {(r.get('extract') or 'sem resumo disponível.')[:900]}"
 
 
