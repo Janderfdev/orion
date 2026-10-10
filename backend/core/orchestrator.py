@@ -35,8 +35,7 @@ SYSTEM_PROMPT = (
 
 
 class Orchestrator:
-    def __init__(self, provider, memory):
-        self.provider = provider
+    def __init__(self, memory):
         self.memory = memory
 
     @staticmethod
@@ -49,9 +48,9 @@ class Orchestrator:
         msgs.append({"role": "user", "content": text})
         return msgs
 
-    async def ask(self, text: str, uid: str, token: str) -> str:
+    async def ask(self, text: str, uid: str, token: str, provider) -> str:
         history = await asyncio.to_thread(self.memory.load, uid, token)
-        reply = await self.provider.generate(
+        reply = await provider.generate(
             SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
         )
         reply = reply.strip() or FALLBACK
