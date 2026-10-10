@@ -11,6 +11,7 @@ Variáveis:
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
+  ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal | low (padrão) | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
 import asyncio, logging, os, time
@@ -91,7 +92,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
     if not provider:
         raise HTTPException(400, "Modelo indisponível.")
     try:
-        reply = await orchestrator.ask(body.text, uid, token, provider)
+        result = await orchestrator.ask(body.text, uid, token, provider)
     except Exception as e:
         log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
         status = getattr(e, "status_code", None)
@@ -100,7 +101,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
             raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": reply, "model": model_id}
+    return {"reply": result["reply"], "model": model_id, "sources": result["sources"]}
 
 
 @app.post("/memory/clear")
