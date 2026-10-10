@@ -41,9 +41,10 @@ class GeminiProvider:
     async def generate(self, system: str, messages: list[dict], tools: list[dict] | None = None, execute=None) -> str:
         contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]}
                     for m in messages]
-        gen_cfg = {"maxOutputTokens": max(self.max_tokens, 1024)}
-        # os modelos 2.5 "pensam" antes de responder e isso consome tokens; nos não-Pro desligamos
-        if "2.5" in self.model and "pro" not in self.model:
+        is_25 = "2.5" in self.model
+        # o raciocínio interno do modelo consome tokens de saída: damos mais espaço para a resposta não ser cortada
+        gen_cfg = {"maxOutputTokens": max(self.max_tokens, 1024 if is_25 else 4096)}
+        if is_25 and "pro" not in self.model:   # só nos 2.5 não-Pro dá para desligar o raciocínio
             gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
         body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": contents, "generationConfig": gen_cfg}
         if tools and execute:
