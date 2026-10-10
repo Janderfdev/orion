@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Cole aqui, ex.: 'https://orion-xxxx.onrender.com' */
-const ORION_CONFIG = { API_URL: 'https://orion-backend-9qk5.onrender.com' };
+const ORION_CONFIG = { API_URL: '' };
 
 /* ═══ visual-state.js — máquina de estados visuais da Orb ═══
    STANDBY → LISTENING → THINKING → SPEAKING → STANDBY ; (qualquer) → ERROR → STANDBY */
@@ -401,7 +401,7 @@ const API = (() => {
   return {
     configured: () => !!base(),
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
-    ask: (text, model) => call('/ask', { method: 'POST', body: { text, model } }),
+    ask: (text, model) => call('/ask', { method: 'POST', body: { text, model } }),   // → { reply, model, sources }
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
   };
 })();
@@ -414,7 +414,7 @@ const API = (() => {
   const $ = id => document.getElementById(id);
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone');
   const statusText = $('statusText'), hintText = $('hintText');
-  const respEl = $('response'), respText = $('responseText');
+  const respText = $('responseText');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend');
   const chatBtn = $('chatBtn'), siri = $('siri');
 
@@ -424,8 +424,8 @@ const API = (() => {
     (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })());
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
 
-  let curState = 'standby', stateGen = 0, processing = false, hintShown = true, chatOpen = false;
-  let flashTimer = null, hideTimer = null;
+  let curState = 'standby', stateGen = 0, processing = false, hintShown = true, chatOpen = false, speaking = false;
+  let flashTimer = null;
   let models = [], online = false, loading = false, coreErr = null;
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
@@ -471,32 +471,110 @@ const API = (() => {
     return stateGen;
   }
 
-  /* ── a resposta aparece na própria cena, palavra por palavra (nunca vira uma lista de mensagens) ── */
-  function showResponse(text, { error = false, holdMs } = {}) {
-    clearTimeout(hideTimer);
-    respEl.classList.toggle('error', error);
+  /* ── a resposta vive num "quadro": a própria Orb se transforma nele (nunca vira lista de mensagens) ──
+     O quadro desce até a faixa logo acima do campo de pergunta, cresce para cima se a resposta for
+     longa (com rolagem) e volta a ser Orb ao fechar. */
+  const card = $('answerCard'), cardScroll = $('answerScroll'), cardSrc = $('answerSource');
+  const orbEl = $('orb'), zone = $('orbZone');
+  let cardOpen = false, cardGen = 0, holdTimer = null, closeTimers = [];
+  const barTop = () => (innerWidth <= 760 ? 120 : 64);   // altura ocupada pelo campo de pergunta (igual ao CSS)
+
+  // só aceita link da Wikipédia vindo do servidor
+  function pickSource(sources) {
+    for (const x of Array.isArray(sources) ? sources : []) {
+      try {
+        const u = new URL(x.url);
+        if (u.protocol === 'https:' && /(^|\.)wikipedia\.org$/.test(u.hostname)) return u.href;
+      } catch (_) {}
+    }
+    return null;
+  }
+  const rectOf = r => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  // com o chat aberto a Orb fica 22% menor (igual ao CSS): o quadro volta exatamente a esse tamanho
+  const orbRect = () => {
+    const r = orbEl.getBoundingClientRect();
+    if (!chatOpen) return r;
+    const k = 0.78, cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    return { left: cx - r.width * k / 2, top: cy - r.height * k / 2, width: r.width * k, height: r.height * k };
+  };
+
+  function openCard(text, { error = false, sources = [] } = {}) {
+    closeTimers.forEach(clearTimeout); closeTimers = []; clearTimeout(holdTimer);
+    const vw = innerWidth, vh = innerHeight;
+    const W = Math.min(620, vw * 0.88), padX = 26, padY = 22;
+
+    // texto palavra por palavra, já com a largura final (para medir a altura)
+    card.classList.toggle('error', error);
     respText.textContent = '';
+    respText.style.width = (W - padX * 2) + 'px';
     const words = text.split(/\s+/).filter(Boolean);
-    const step = Math.min(55, 2600 / Math.max(words.length, 1));
+    const step = Math.min(26, 1100 / Math.max(words.length, 1));
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     words.forEach((w, i) => {
-      const s = document.createElement('span');
-      s.className = 'w'; s.textContent = w;
-      if (!still) s.style.animationDelay = Math.round(i * step) + 'ms';
-      respText.appendChild(s);
-      respText.appendChild(document.createTextNode(' '));   // espaço real entre palavras (leitores de tela / copiar)
+      const sp = document.createElement('span');
+      sp.className = 'w'; sp.textContent = w;
+      if (!still) sp.style.animationDelay = Math.round(i * step) + 'ms';
+      respText.appendChild(sp);
+      respText.appendChild(document.createTextNode(' '));
     });
-    respEl.scrollTop = 0;
-    document.body.classList.add('has-response');
-    respEl.classList.add('show');
-    hideTimer = setTimeout(hideResponse, holdMs || Math.max(14000, words.length * 600 + 8000));
+    const href = error ? null : pickSource(sources);
+    cardSrc.hidden = !href;
+    if (href) { cardSrc.href = href; cardSrc.textContent = 'Ler na Wikipédia ↗'; }
+
+    // tamanho: acompanha o texto; passou do limite, rola
+    const bottomOff = barTop() + 30;
+    const maxH = Math.max(170, vh - bottomOff - 90);
+    const need = respText.offsetHeight + padY * 2 + (href ? 40 : 0);
+    const H = Math.min(maxH, Math.max(error ? 84 : 124, need));
+    card.classList.toggle('scrolls', need > maxH);
+    cardScroll.scrollTop = 0;
+
+    // começa exatamente onde está a Orb e se abre até o destino
+    const from = orbEl.getBoundingClientRect();
+    card.style.transition = 'none';
+    Object.assign(card.style, rectOf(from), { borderRadius: '50%' });
+    card.classList.remove('filled');
+    card.classList.add('on');
+    void card.offsetWidth;
+    card.style.transition = '';
+    zone.classList.add('card-open');
+    Object.assign(card.style, {
+      left: (vw - W) / 2 + 'px', top: (vh - bottomOff - H) + 'px', width: W + 'px', height: H + 'px', borderRadius: '26px',
+    });
+    closeTimers.push(setTimeout(() => card.classList.add('filled'), 260));
+    cardOpen = true;
   }
-  function hideResponse() {
-    clearTimeout(hideTimer);
-    respEl.classList.remove('show');
-    document.body.classList.remove('has-response');
+
+  function closeCard() {
+    clearTimeout(holdTimer);
+    if (!cardOpen) return;
+    cardOpen = false;
+    card.classList.remove('filled');
+    Object.assign(card.style, rectOf(orbRect()), { borderRadius: '50%' });   // volta a ser Orb
+    closeTimers.forEach(clearTimeout);
+    closeTimers = [
+      setTimeout(() => zone.classList.remove('card-open'), 380),
+      setTimeout(() => card.classList.remove('on'), 520),
+    ];
   }
-  const readMs = t => Math.min(15000, Math.max(2500, t.split(/\s+/).length * 350));
+
+  // fecha o quadro e devolve a Orb ao standby
+  function dismiss() {
+    VOICE.stopSpeaking(); speaking = false;
+    closeCard();
+    if (stateGen === cardGen && (curState === 'responding' || curState === 'error')) setState('standby');
+  }
+  const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(dismiss, ms); };
+
+  card.addEventListener('click', e => {
+    if (e.target.closest('a') || String(window.getSelection && window.getSelection())) return;   // link / texto selecionado
+    dismiss();
+  });
+  // enquanto você lê (mouse em cima, rolando ou tocando) o quadro não fecha sozinho
+  card.addEventListener('pointerenter', () => clearTimeout(holdTimer));
+  card.addEventListener('pointerleave', () => { if (cardOpen && !speaking && curState === 'responding') scheduleHold(5000); });
+  card.addEventListener('touchstart', () => clearTimeout(holdTimer), { passive: true });
+  card.addEventListener('touchend', () => { if (cardOpen && !speaking && curState === 'responding') scheduleHold(6000); }, { passive: true });
 
   function hideHint() {
     if (!hintShown) return;
@@ -505,13 +583,14 @@ const API = (() => {
   }
   function lock(on) { askInput.disabled = on; askSend.disabled = on; }
 
-  /* ── erros: mensagem curta e clara; nada técnico; a Orb volta ao estado seguro ── */
+  /* ── erros: mensagem curta e clara dentro do quadro; nada técnico; a Orb volta ao estado seguro ── */
   function fail(err, stage) {
     const handled = ERROR_HANDLER.handle(err, stage);   // só registra código/estágio no console
     const gen = setState('error', '');
+    cardGen = gen;
     sfx('error');
-    showResponse(handled.message, { error: true, holdMs: 6000 });
-    setTimeout(() => { if (stateGen === gen && curState === 'error') setState('standby'); }, 2200);
+    openCard(handled.message, { error: true });
+    scheduleHold(3400);
   }
 
   /* ── ciclo principal: pergunta → API → Orb ── */
@@ -519,7 +598,7 @@ const API = (() => {
     text = (text || '').trim();
     if (!text || processing) return;
     processing = true; lock(true);
-    hideHint(); VOICE.stopSpeaking(); hideResponse();
+    hideHint(); VOICE.stopSpeaking(); speaking = false; closeCard();
     askInput.value = '';
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
@@ -528,7 +607,7 @@ const API = (() => {
       const reply = data && typeof data.reply === 'string' ? data.reply.trim() : '';
       if (!reply) { const e = new Error('Resposta vazia.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
-      respond(reply, source);
+      respond(reply, source, data.sources);
     } catch (err) {
       processing = false; lock(false);
       if (!askInput.value) askInput.value = text;   // devolve o texto para o usuário tentar de novo
@@ -537,14 +616,18 @@ const API = (() => {
     if (source === 'text' && finePointer()) askInput.focus();
   }
 
-  function respond(reply, source) {
+  function respond(reply, source, sources) {
     const gen = setState('responding');
-    showResponse(reply);
+    cardGen = gen;
+    openCard(reply, { sources });
     sfx('answer');
-    const done = () => { if (stateGen === gen) setState('standby'); };
+    // tempo de leitura: proporcional ao tamanho (o quadro não fecha enquanto você lê/rola)
+    const hold = Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400));
     // só fala em voz alta quando a pergunta foi feita por voz (e a voz está ativada)
-    if (source === 'voice' && prefs.voice) VOICE.speak(reply, () => {}, done);
-    else setTimeout(done, readMs(reply));
+    if (source === 'voice' && prefs.voice) {
+      speaking = true;
+      VOICE.speak(reply, () => {}, () => { speaking = false; if (stateGen === gen) scheduleHold(Math.max(6000, hold * 0.5)); });
+    } else scheduleHold(hold);
   }
 
   /* ── botão de chat: o campo sobe da base da tela até abaixo da Orb ── */
@@ -582,7 +665,7 @@ const API = (() => {
 
   function activate() {
     hideHint();
-    if (curState === 'responding') { VOICE.stopSpeaking(); setState('standby'); return; }
+    if (curState === 'responding') { dismiss(); return; }
     if (curState === 'listening') { VOICE.stopListening(); setState('standby'); return; }
     if (processing || curState !== 'standby') return;
     if (!prefs.voice) return fail({ code: 'voice_disabled' }, 'voice');
@@ -596,6 +679,7 @@ const API = (() => {
   orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (_) {} });
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && cardOpen && !(document.getElementById('settingsPanel') || {}).classList?.contains('open')) dismiss();
     if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
   });
@@ -659,7 +743,7 @@ const API = (() => {
           <div class="settings-row"><span>Modelo</span><select id="modelSelect" class="settings-select" aria-label="Modelo"></select></div>
           <div class="settings-row"><span>Voz</span><button id="toggleVoice" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
-          <div class="settings-row"><span>Conversa</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
+          <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
           <button id="signOutBtn" class="settings-out">Sair da conta</button>
           <p class="settings-hint">ORION AI V4.2.0</p>
@@ -679,7 +763,7 @@ const API = (() => {
       });
       panel.querySelector('#clearChat').addEventListener('click', async e => {
         const btn = e.target;
-        hideResponse();
+        closeCard();
         try { await API.clearMemory(); btn.textContent = 'Limpo'; } catch (_) { btn.textContent = 'Falhou'; }
         setTimeout(() => { btn.textContent = 'Limpar'; }, 1600);
       });
@@ -704,4 +788,8 @@ const API = (() => {
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
   LOGGER.info('session_started', { sessionId: LOGGER.sessionId, apiConfigured: API.configured(), sttAvailable: VOICE.isAvailable });
   loadModels();   // já durante o boot: também acorda o servidor gratuito
+  // o plano gratuito dorme após ~15 min sem uso (e acordar demora): enquanto a página está aberta e visível, avisa que ainda estamos aqui
+  if (API.configured()) setInterval(() => {
+    if (!document.hidden) { try { fetch(ORION_CONFIG.API_URL.replace(/\/$/, '') + '/health', { mode: 'no-cors' }).catch(() => {}); } catch (_) {} }
+  }, 9 * 60 * 1000);
 })();
