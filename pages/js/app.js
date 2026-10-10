@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Cole aqui, ex.: 'https://orion-xxxx.onrender.com' */
-const ORION_CONFIG = { API_URL: 'https://orion-backend-xxxx.onrender.com' };
+const ORION_CONFIG = { API_URL: '' };
 
 /* ═══ visual-state.js — máquina de estados visuais da Orb ═══
    STANDBY → LISTENING → THINKING → SPEAKING → STANDBY ; (qualquer) → ERROR → STANDBY */
@@ -426,7 +426,7 @@ const API = (() => {
 
   let curState = 'standby', stateGen = 0, processing = false, hintShown = true, chatOpen = false;
   let flashTimer = null, hideTimer = null;
-  let models = [], online = false;
+  let models = [], online = false, loading = false, coreErr = null;
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
@@ -437,8 +437,8 @@ const API = (() => {
     if (i === 0) return;
     setTimeout(() => {
       bootStatus.style.opacity = '0';
-      setTimeout(() => { bootStatus.textContent = line; bootStatus.style.opacity = '1'; }, 250);
-    }, i * 1100);
+      setTimeout(() => { bootStatus.textContent = line; bootStatus.style.opacity = '1'; }, 170);
+    }, i * 730);
   });
   setTimeout(() => {
     bootEl.classList.add('out');
@@ -447,8 +447,8 @@ const API = (() => {
       bootEl.style.display = 'none';
       appEl.classList.add('on');
       flash('ORION ONLINE', 3200);
-    }, 1000);
-  }, 3600);
+    }, 670);
+  }, 2400);
 
   /* ── status (linha pequena sob a Orb) ── */
   function flash(msg, ms = 2600) {
@@ -601,15 +601,22 @@ const API = (() => {
   });
 
   /* ── modelos (lista vem do backend; o site só guarda o id escolhido) ── */
-  async function loadModels() {
+  async function loadModels(retry = 0) {
+    if (loading) return;
     if (!API.configured()) { online = false; settings.sync(); return; }
+    loading = true; settings.sync();
     try {
       const d = await API.models();
       models = Array.isArray(d.models) ? d.models : [];
       if (!models.some(m => m.id === prefs.model)) { prefs.model = d.default || (models[0] && models[0].id) || null; savePrefs(); }
-      online = true;
-    } catch (err) { online = false; LOGGER.warn('models_unavailable', { code: err.code }); }
-    settings.sync();
+      online = true; coreErr = null;
+    } catch (err) {
+      online = false; coreErr = err.code || 'api_error';
+      LOGGER.warn('models_unavailable', { code: coreErr });
+      // servidor gratuito "acordando" ou reiniciando: tenta de novo sozinho (exceto se a conta não tem acesso)
+      if (retry < 3 && coreErr !== 'forbidden') setTimeout(() => loadModels(retry + 1), 8000);
+    }
+    loading = false; settings.sync();
   }
 
   /* ── settings: painel (⚙ no canto inferior direito ou Ctrl+,) ── */
@@ -617,17 +624,25 @@ const API = (() => {
     let panel = null, open = false;
     const label = (key, on) => key === 'voice' ? (on ? 'Ativada' : 'Desativada') : (on ? 'Ativados' : 'Desativados');
 
+    function coreLabel() {
+      if (!API.configured()) return 'Backend não configurado';
+      if (loading) return 'Conectando…';
+      if (online) return models.length ? 'Conectado' : 'Sem chave de modelo no servidor';
+      return ({ forbidden: 'E-mail sem acesso', timeout: 'Servidor demorou a responder',
+                core_unavailable: 'Sem resposta do servidor', api_error: 'Erro no servidor' }[coreErr]) || 'Servidor indisponível';
+    }
+
     function sync() {
       if (!panel) return;
       const user = window.ORION_USER;
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || 'Não conectada';
-      panel.querySelector('#setCore').textContent = online ? 'Conectado' : (API.configured() ? 'Servidor indisponível' : 'Backend não configurado');
+      panel.querySelector('#setCore').textContent = coreLabel();
       panel.querySelector('#toggleVoice').textContent = label('voice', prefs.voice);
       panel.querySelector('#toggleSound').textContent = label('sound', prefs.sound);
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
-        const o = document.createElement('option'); o.textContent = online ? '—' : 'Indisponível'; sel.appendChild(o); sel.disabled = true;
+        const o = document.createElement('option'); o.textContent = loading ? 'Conectando…' : (online ? 'Sem modelo' : 'Indisponível'); sel.appendChild(o); sel.disabled = true;
       } else {
         models.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
         sel.value = prefs.model; sel.disabled = false;
