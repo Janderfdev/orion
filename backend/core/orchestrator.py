@@ -37,6 +37,7 @@ SYSTEM_PROMPT = (
 class Orchestrator:
     def __init__(self, memory):
         self.memory = memory
+        self._bg: set = set()   # referências às gravações em segundo plano
 
     @staticmethod
     def _messages(text: str, history: list[dict]) -> list[dict]:
@@ -48,15 +49,23 @@ class Orchestrator:
         msgs.append({"role": "user", "content": text})
         return msgs
 
-    async def ask(self, text: str, uid: str, token: str, provider) -> str:
+    def _persist_later(self, uid: str, token: str, history: list[dict]) -> None:
+        """Grava no Firestore sem fazer o usuário esperar."""
+        self.memory.stage(uid, history)
+        task = asyncio.create_task(asyncio.to_thread(self.memory.flush, uid, token, history))
+        self._bg.add(task)
+        task.add_done_callback(self._bg.discard)
+
+    async def ask(self, text: str, uid: str, token: str, provider) -> dict:
+        sources = tools.collect_sources()          # fontes que as ferramentas usarem nesta pergunta
         history = await asyncio.to_thread(self.memory.load, uid, token)
         reply = await provider.generate(
             SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
         )
         reply = reply.strip() or FALLBACK
         history = (history + [{"user": text[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
-        await asyncio.to_thread(self.memory.save, uid, token, history)
-        return reply
+        self._persist_later(uid, token, history)
+        return {"reply": reply, "sources": sources}
 
     async def clear(self, uid: str, token: str) -> None:
-        await asyncio.to_thread(self.memory.save, uid, token, [])
+        self._persist_later(uid, token, [])
