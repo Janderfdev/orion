@@ -94,8 +94,11 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         reply = await orchestrator.ask(body.text, uid, token, provider)
     except Exception as e:
         log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
-        if getattr(e, "status_code", None) == 429:    # limite de uso do provedor (ex.: plano gratuito)
+        status = getattr(e, "status_code", None)
+        if status == 429:                              # limite de uso do provedor (ex.: plano gratuito)
             raise HTTPException(429, "O modelo atingiu o limite de uso agora.")
+        if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
+            raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
     return {"reply": reply, "model": model_id}
 
