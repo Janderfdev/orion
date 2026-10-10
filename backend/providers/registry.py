@@ -13,9 +13,9 @@ from providers.claude import ClaudeProvider
 from providers.gemini import GeminiProvider, api_key as gemini_key
 
 DEFAULT_MODELS = (
-    "gemini-2.5-flash:Gemini Flash (grátis),"
-    "gemini-2.5-flash-lite:Gemini Flash-Lite (leve),"
-    "gemini-2.5-pro:Gemini Pro (avançado),"
+    "gemini-3.8-flash:Gemini 3.8 Flash (rápido),"
+    "gemini-3.5-flash-lite:Gemini 3.5 Flash-Lite (leve),"
+    "gemini-3.6-flash:Gemini 3.6 Flash,"
     "claude-sonnet-5-5:Claude Sonnet (equilibrado),"
     "claude-haiku-4-5-20251001:Claude Haiku (rápido),"
     "claude-opus-5-5:Claude Opus (avançado)"
