@@ -10,7 +10,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Cole aqui, ex.: 'https://orion-xxxx.onrender.com' */
-const ORION_CONFIG = { API_URL: '' };
+const ORION_CONFIG = { API_URL: 'https://orion-backend-xxxx.onrender.com' };
 
 /* ═══ visual-state.js — máquina de estados visuais da Orb ═══
    STANDBY → LISTENING → THINKING → SPEAKING → STANDBY ; (qualquer) → ERROR → STANDBY */
