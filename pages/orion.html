@@ -26,6 +26,8 @@
   --font-mono: 'Space Grotesk', 'Inter', sans-serif;
   --orb:  clamp(190px, 32vmin, 320px);
   --halo: calc(var(--orb) * 1.9);
+  --panel-w: min(490px, 88vw);
+  --panel-h: clamp(280px, 58vh, 400px);
   /* cor "ao vivo" da Orb — atualizada quadro a quadro por orb.js */
   --core-a: #6d28d9; --core-b: #4c1d95; --core-c: #a78bfa;
 }
@@ -56,6 +58,7 @@ html,body{
   letter-spacing:0.62em; text-transform:uppercase; color:rgba(255,255,255,0.85);
   margin-bottom:46px; text-indent:0.62em;
 }
+.boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(120,100,255,.28)); }
 .boot-version{
   font-family:var(--font-mono); font-size:9px; font-weight:300;
   letter-spacing:0.42em; text-transform:uppercase; color:rgba(167,139,250,0.55);
@@ -153,7 +156,8 @@ html,body{
     inset 0 1px 0 rgba(255,255,255,0.12);
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
   animation:orbfloat 8.5s ease-in-out infinite, orbbreathe 4.6s ease-in-out infinite;
-  transition:box-shadow 0.9s ease, filter 0.6s ease, transform 0.4s ease, opacity .45s ease;
+  transition:box-shadow 0.9s ease, filter 0.6s ease, transform 0.4s ease, opacity .45s ease,
+    width .8s cubic-bezier(.16,.9,.24,1), height .8s cubic-bezier(.16,.9,.24,1), border-radius .8s cubic-bezier(.16,.9,.24,1);
   will-change:transform;
   z-index:1;
 }
@@ -269,38 +273,29 @@ html,body{
   transition:background .25s ease;
 }
 .settings-out:hover{ background:rgba(248,113,113,0.15); }
-/* ═══════ V4.2.0 — interação centrada na Orb ═══════ */
-.stage{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
-.orb-zone{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
-body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb encolhe um pouco enquanto você escreve */
+/* ═══════ V4.2.0 — a própria Orb vira o painel de pesquisa ═══════
+   Nada sai da Orb: o anel em volta some, ela cresce no lugar e, depois de formada, a pesquisa aparece dentro dela. */
+.orb-zone.panel-open{ cursor:default; }
+.orb-zone.panel-open .halo, .orb-zone.panel-open .wave-ring{ opacity:0 !important; }
+.status{ transition:top .8s cubic-bezier(.16,.9,.24,1); }
+body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processando…" fica logo abaixo do painel */
 
-/* resposta: a Orb vira um quadro (vidro + brilho do estado atual) que desce até a faixa acima do campo de pergunta */
-.orb-zone.card-open{ pointer-events:none; }
-.orb-zone.card-open .halo, .orb-zone.card-open .wave-ring{ opacity:0 !important; }
-.orb-zone.card-open .orb{ opacity:0; }
-.answer-card{
-  position:fixed; z-index:6; left:0; top:0; width:0; height:0;
-  display:flex; flex-direction:column; overflow:hidden; border-radius:50%; cursor:pointer;
-  background:radial-gradient(circle at 30% 18%, color-mix(in srgb, var(--core-c) 14%, rgba(6,6,14,.94)) 0%, rgba(5,5,12,.94) 72%);
-  border:1px solid color-mix(in srgb, var(--core-a) 45%, transparent);
-  box-shadow:
-    0 0 60px color-mix(in srgb, var(--core-a) 38%, transparent),
-    0 0 130px color-mix(in srgb, var(--core-b) 24%, transparent),
-    inset 0 0 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+.orb.panel{ width:var(--panel-w); height:var(--panel-h); border-radius:28px; animation:none !important; filter:none !important; cursor:default; }
+.orb.panel .orb-canvas{ border-radius:inherit; opacity:.75; }
+.orb.panel .glass-hi{ opacity:.3; } .orb.panel .glass-rim{ opacity:.4; }
+
+.panel-ui{
+  position:absolute; inset:0; z-index:3; display:flex; flex-direction:column;
   opacity:0; visibility:hidden; pointer-events:none;
-  transition:left .8s cubic-bezier(.16,.9,.24,1), top .8s cubic-bezier(.16,.9,.24,1), width .8s cubic-bezier(.16,.9,.24,1),
-             height .8s cubic-bezier(.16,.9,.24,1), border-radius .8s cubic-bezier(.16,.9,.24,1),
-             opacity .35s ease, box-shadow .9s ease, visibility 0s linear .8s;
+  transition:opacity .25s ease, visibility 0s linear .25s;
 }
-.answer-card.on{ opacity:1; visibility:visible; pointer-events:auto; transition-property:left, top, width, height, border-radius, opacity, box-shadow, visibility; transition-delay:0s; }
-.answer-card.error.on{ animation:orberr .42s ease; }
+.orb.panel .panel-ui{ opacity:1; visibility:visible; pointer-events:auto; transition:opacity .4s ease .5s, visibility 0s linear .5s; }
+
 .answer-scroll{
-  flex:1; min-height:0; overflow-y:auto; padding:22px 26px; text-align:center; scrollbar-width:thin;
-  scrollbar-color:rgba(167,139,250,.35) transparent; opacity:0; transition:opacity .35s ease;
+  flex:1; min-height:0; overflow-y:auto; padding:26px 28px 10px; text-align:center;
+  scrollbar-width:thin; scrollbar-color:rgba(167,139,250,.35) transparent;
 }
-.answer-card.filled .answer-scroll{ opacity:1; }
-.answer-card.scrolls .answer-scroll{
+.answer-scroll.scrolls{
   -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
           mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
 }
@@ -310,9 +305,9 @@ body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb enc
 }
 .response-text .w{ display:inline-block; opacity:0; filter:blur(5px); animation:wordin .45s ease forwards; }
 @keyframes wordin{ to{ opacity:1; filter:blur(0); } }
-.answer-card.error .response-text{ font-size:13px; letter-spacing:.06em; color:#fca5a5; text-shadow:0 0 18px rgba(248,113,113,.3); }
+.orb.answer-error .response-text{ font-size:13px; letter-spacing:.06em; color:#fca5a5; text-shadow:0 0 18px rgba(248,113,113,.3); }
 .answer-source{
-  flex:none; align-self:center; margin:0 0 14px; padding:6px 14px; border-radius:16px;
+  flex:none; align-self:center; margin:0 0 8px; padding:6px 14px; border-radius:16px;
   font:300 10px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; text-decoration:none;
   color:color-mix(in srgb, var(--core-c) 85%, #fff); border:1px solid color-mix(in srgb, var(--core-c) 40%, transparent);
   background:color-mix(in srgb, var(--core-a) 14%, transparent); transition:background .25s ease;
@@ -320,68 +315,38 @@ body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb enc
 .answer-source:hover{ background:color-mix(in srgb, var(--core-a) 30%, transparent); }
 .answer-source[hidden]{ display:none; }
 
-/* campo de pergunta: sobe de baixo da tela até a base, acima do rodapé */
+/* campo de pesquisa dentro do painel */
 .ask{
-  position:absolute; left:50%; z-index:5;
-  bottom:16px;
-  width:min(560px, 88vw); height:48px; padding:0 6px 0 22px;
-  display:flex; align-items:center; gap:8px; border-radius:26px;
-  background:rgba(8,8,18,.62); border:1px solid color-mix(in srgb, var(--core-a) 38%, transparent);
-  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-  opacity:0; visibility:hidden; pointer-events:none;
-  transform:translate(-50%, 70vh) scale(.92);
-  transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease, border-color .4s ease, box-shadow .4s ease, visibility 0s linear .9s;
+  flex:none; display:flex; align-items:center; gap:4px; height:48px; margin:6px 14px 14px; padding:0 6px 0 20px;
+  border-radius:26px; background:rgba(6,6,14,.72);
+  border:1px solid color-mix(in srgb, var(--core-a) 40%, transparent);
+  transition:border-color .4s ease, box-shadow .4s ease;
 }
-.ask.open{
-  opacity:1; visibility:visible; pointer-events:auto;
-  transform:translate(-50%, 0) scale(1);
-  box-shadow:0 0 34px color-mix(in srgb, var(--core-a) 28%, transparent);
-  transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease .08s, border-color .4s ease, box-shadow .4s ease, visibility 0s;
-}
-.ask:focus-within{ border-color:color-mix(in srgb, var(--core-c) 75%, transparent); box-shadow:0 0 38px color-mix(in srgb, var(--core-a) 40%, transparent); }
+.ask:focus-within{ border-color:color-mix(in srgb, var(--core-c) 75%, transparent); box-shadow:0 0 26px color-mix(in srgb, var(--core-a) 36%, transparent); }
 .ask-input{ flex:1; min-width:0; height:100%; background:none; border:0; outline:none; color:#fff; font:300 14px var(--font); letter-spacing:.04em; }
 .ask-input::placeholder{ color:rgba(255,255,255,.3); letter-spacing:.06em; }
-.ask-input:disabled{ opacity:.5; }
-.ask-send{
-  width:36px; height:36px; border-radius:50%; border:0; cursor:pointer; color:#fff; flex:none;
-  display:flex; align-items:center; justify-content:center;
-  background:color-mix(in srgb, var(--core-a) 50%, transparent); transition:filter .3s ease, opacity .3s ease;
+.ask-input:disabled{ opacity:.55; }
+.ask-send, .ask-mic{
+  width:36px; height:36px; border-radius:50%; border:0; cursor:pointer; flex:none;
+  display:flex; align-items:center; justify-content:center; transition:filter .3s ease, opacity .3s ease, color .3s ease;
 }
+.ask-send{ color:#fff; background:color-mix(in srgb, var(--core-a) 50%, transparent); }
+.ask-mic{ color:rgba(255,255,255,.55); background:transparent; }
+.ask-mic:hover{ color:#fff; }
 .ask-send:hover{ filter:brightness(1.3); }
-.ask-send:disabled{ opacity:.35; cursor:default; }
-.ask-send:focus-visible{ outline:1px solid #a78bfa; outline-offset:3px; }
-
-@media (max-width:760px){
-  .ask{ bottom:72px; }
-}
-
-/* brilho que sobe da base da tela ao abrir o chat (estilo assistente de voz) */
-.siri{
-  position:fixed; left:0; right:0; bottom:0; height:55vh; z-index:4; pointer-events:none;
-  opacity:0; transform:translateY(100%); filter:blur(22px);
-  background:
-    radial-gradient(55% 60% at 18% 100%, rgba(29,78,216,.70), transparent 72%),
-    radial-gradient(55% 62% at 50% 100%, color-mix(in srgb, var(--core-a) 80%, transparent), transparent 72%),
-    radial-gradient(55% 60% at 84% 100%, rgba(74,222,128,.38), transparent 72%);
-}
-.siri.play{ animation:siri 1.7s cubic-bezier(.2,.75,.2,1) forwards; }
-@keyframes siri{
-  0%{ opacity:0; transform:translateY(100%); }
-  30%{ opacity:1; }
-  62%{ opacity:.9; transform:translateY(8%); }
-  100%{ opacity:0; transform:translateY(-6%); }
-}
+.ask-send:disabled, .ask-mic:disabled{ opacity:.35; cursor:default; }
+.ask-send:focus-visible, .ask-mic:focus-visible{ outline:1px solid #a78bfa; outline-offset:2px; }
 
 /* botão de chat (ao lado do ⚙) */
 .chat-btn{ right:60px; }
 .chat-btn:hover{ transform:translateY(-2px); }
 .chat-btn.on{ color:#fff; border-color:rgba(167,139,250,.45); background:rgba(167,139,250,.14); }
+@media (prefers-reduced-motion:reduce){ .response-text .w{ animation:none; opacity:1; filter:none; } .orb{ transition:none; } .panel-ui{ transition:none; } }
 .settings-select{
   max-width:160px; font:300 11px var(--font-mono); color:#a78bfa; background:rgba(167,139,250,.10);
   border:1px solid rgba(167,139,250,.3); border-radius:20px; padding:5px 10px; outline:none; cursor:pointer;
 }
 .settings-select option{ background:#0b0b14; color:#fff; }
-@media (prefers-reduced-motion:reduce){ .response-text .w{ animation:none; opacity:1; filter:none; } .siri{ display:none; } .ask,.ask.open{ transition:opacity .2s ease, visibility 0s; } .answer-card{ transition:opacity .2s ease; } }
 @media (prefers-reduced-motion:reduce){
   .orb,.halo,.boot-ring,.header-dot,.wave-ring{ animation:none !important; }
 }
@@ -394,7 +359,7 @@ body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb enc
 
 <!-- BOOT -->
 <div id="boot">
-  <p class="boot-mark">ORION AI</p>
+  <img class="boot-word" src="../assets/orion_ai_wordmark.png" alt="ORION AI">
   <div class="boot-ring-wrap">
     <div class="boot-ring"></div>
     <div class="boot-ring"></div>
@@ -421,6 +386,20 @@ body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb enc
         <canvas class="orb-canvas" id="orbCanvas"></canvas>
         <div class="glass-hi"></div>
         <div class="glass-rim"></div>
+        <div class="panel-ui" id="panelUi">
+          <div class="answer-scroll" id="answerScroll" aria-live="polite"><p class="response-text" id="responseText"></p></div>
+          <a class="answer-source" id="answerSource" target="_blank" rel="noopener noreferrer" hidden></a>
+          <form class="ask" id="askForm" autocomplete="off" aria-hidden="true">
+            <input class="ask-input" id="askInput" type="text" tabindex="-1" maxlength="2000" enterkeyhint="send"
+                   placeholder="Pergunte ou dê um comando ao ORION" aria-label="Pergunta ao ORION">
+            <button class="ask-mic" id="micBtn" type="button" aria-label="Falar" title="Falar" tabindex="-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg>
+            </button>
+            <button class="ask-send" id="askSend" type="submit" aria-label="Enviar" tabindex="-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -428,21 +407,6 @@ body.chat-open .orb-zone:not(.card-open){ transform:scale(.78); }   /* a Orb enc
   <div class="status">
     <span class="status-text" id="statusText"></span>
   </div>
-
-  <div class="answer-card" id="answerCard" role="status" aria-live="polite" title="Toque para fechar">
-    <div class="answer-scroll" id="answerScroll"><p class="response-text" id="responseText"></p></div>
-    <a class="answer-source" id="answerSource" target="_blank" rel="noopener noreferrer" hidden></a>
-  </div>
-
-  <div class="siri" id="siri" aria-hidden="true"></div>
-
-  <form class="ask" id="askForm" autocomplete="off" aria-hidden="true">
-    <input class="ask-input" id="askInput" type="text" tabindex="-1" maxlength="2000" enterkeyhint="send"
-           placeholder="Pergunte ou dê um comando ao ORION" aria-label="Pergunta ao ORION">
-    <button class="ask-send" id="askSend" type="submit" aria-label="Enviar" tabindex="-1">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </button>
-  </form>
 
   <div class="hint">
     <span class="hint-text" id="hintText">toque na orb para falar · ou use o botão de chat</span>
