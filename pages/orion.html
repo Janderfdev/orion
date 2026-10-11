@@ -26,7 +26,7 @@
   --font-mono: 'Space Grotesk', 'Inter', sans-serif;
   --orb:  clamp(190px, 32vmin, 320px);
   --halo: calc(var(--orb) * 1.9);
-  --panel-w: min(490px, 88vw);
+  --panel-w: min(550px, 90vw);
   --panel-h: clamp(280px, 58vh, 400px);
   /* cor "ao vivo" da Orb — atualizada quadro a quadro por orb.js */
   --core-a: #6d28d9; --core-b: #4c1d95; --core-c: #a78bfa;
@@ -142,7 +142,7 @@ html,body{
 }
 
 .orb{
-  position:relative; width:var(--orb); height:var(--orb); border-radius:50%;
+  position:relative; flex:none; width:var(--orb); height:var(--orb); border-radius:50%;
   overflow:hidden;
   background:radial-gradient(circle at 34% 30%,
     color-mix(in srgb, var(--core-c) 16%, transparent) 0%,
