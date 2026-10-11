@@ -412,12 +412,13 @@ const API = (() => {
    Estados da Orb: standby · listening · processing · responding · error. */
 (function () {
   'use strict';
+  try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
   const $ = id => document.getElementById(id);
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
   const statusText = $('statusText'), hintText = $('hintText');
-  const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource');
+  const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerImg = $('answerImg');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
-  const chatBtn = $('chatBtn');
+  const chatBtn = $('chatBtn'), siri = $('siri');
 
   /* ── preferências (salvas neste navegador) ── */
   const KEY = 'orion_settings';
@@ -426,13 +427,12 @@ const API = (() => {
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
 
   let curState = 'standby', stateGen = 0, processing = false, hintShown = true;
-  let panelOpen = false, hasAnswer = false, speaking = false, lastActivity = Date.now();
+  let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null;
   let flashTimer = null;
   let models = [], online = false, loading = false, coreErr = null;
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
-  const touchActivity = () => { lastActivity = Date.now(); };
 
   /* ── boot: inicializando → conectando ao núcleo → sistemas online ── */
   const bootLines = ['inicializando', 'conectando ao núcleo', 'sistemas online'];
@@ -483,48 +483,45 @@ const API = (() => {
   }
   function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
 
-  /* ── painel de pesquisa: a própria Orb cresce no lugar (o anel em volta some) ── */
-  function openPanel(focus) {
+  /* ── painel de resposta: na hora de responder, a própria Orb cresce no lugar (o anel em volta some) ── */
+  function openPanel() {
     if (panelOpen) return;
     panelOpen = true;
     orbEl.classList.add('panel'); orbZone.classList.add('panel-open'); document.body.classList.add('panel-on');
-    askForm.setAttribute('aria-hidden', 'false');
-    askInput.tabIndex = micBtn.tabIndex = askSend.tabIndex = 0;
-    chatBtn.classList.add('on'); chatBtn.setAttribute('aria-pressed', 'true');
-    hideHint(); touchActivity();
-    // a pesquisa só aparece depois que a Orb terminou de virar painel
-    if (focus && finePointer()) setTimeout(() => { if (panelOpen) askInput.focus(); }, 800);
   }
   function closePanel() {
+    clearTimeout(holdTimer);
     if (!panelOpen) return;
     panelOpen = false;
     VOICE.stopSpeaking(); speaking = false;
     orbEl.classList.remove('panel'); orbZone.classList.remove('panel-open'); document.body.classList.remove('panel-on');
-    askForm.setAttribute('aria-hidden', 'true');
-    askInput.tabIndex = micBtn.tabIndex = askSend.tabIndex = -1;
-    askInput.blur();
-    chatBtn.classList.remove('on'); chatBtn.setAttribute('aria-pressed', 'false');
-    if (curState === 'responding' || curState === 'error') setState('standby');
-    setTimeout(() => { if (!panelOpen && !processing) clearAnswer(); }, 600);   // limpa depois de voltar a ser Orb
+    if (curState === 'responding' || curState === 'error') setState('standby');   // a Orb nunca fica em "respondendo" sem resposta na tela
   }
+  const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(closePanel, ms); };
 
-  // só aceita link da Wikipédia vindo do servidor
+  // só aceita da Wikipédia (link) e da Wikimedia (imagem) o que vier do servidor
   function pickSource(sources) {
     for (const x of Array.isArray(sources) ? sources : []) {
       try {
         const u = new URL(x.url);
-        if (u.protocol === 'https:' && /(^|\.)wikipedia\.org$/.test(u.hostname)) return u.href;
+        if (u.protocol !== 'https:' || !/(^|\.)wikipedia\.org$/.test(u.hostname)) continue;
+        let image = null;
+        try { const i = new URL(x.image); if (i.protocol === 'https:' && i.hostname === 'upload.wikimedia.org') image = i.href; } catch (_) {}
+        return { href: u.href, title: String(x.title || '').slice(0, 90), image };
       } catch (_) {}
     }
     return null;
   }
 
+  const updateScrolls = () => answerScroll.classList.toggle('scrolls', answerScroll.scrollHeight > answerScroll.clientHeight + 4);
+
   function clearAnswer() {
     respText.textContent = ''; answerSrc.hidden = true; answerScroll.classList.remove('scrolls');
+    answerImg.hidden = true; answerImg.classList.remove('loaded'); answerImg.removeAttribute('src');
     orbEl.classList.remove('answer-error'); hasAnswer = false;
   }
 
-  // a resposta aparece palavra por palavra, dentro do painel; se for longa, rola
+  // a resposta aparece palavra por palavra, dentro do painel, com a imagem e o link da Wikipédia quando houver; se for longa, rola
   function showAnswer(text, { error = false, sources = [] } = {}) {
     orbEl.classList.toggle('answer-error', error);
     respText.textContent = '';
@@ -538,37 +535,40 @@ const API = (() => {
       respText.appendChild(sp);
       respText.appendChild(document.createTextNode(' '));
     });
-    const href = error ? null : pickSource(sources);
-    answerSrc.hidden = !href;
-    if (href) { answerSrc.href = href; answerSrc.textContent = 'Ler na Wikipédia ↗'; }
+    const src = error ? null : pickSource(sources);
+    answerSrc.hidden = !src;
+    if (src) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = 'Ler na Wikipédia ↗'; }
+    answerImg.classList.remove('loaded');
+    if (src && src.image) {
+      answerImg.hidden = false;
+      answerImg.alt = src.title;
+      answerImg.onload = () => { answerImg.classList.add('loaded'); updateScrolls(); };
+      answerImg.onerror = () => { answerImg.hidden = true; updateScrolls(); };
+      answerImg.src = src.image;
+    } else { answerImg.hidden = true; answerImg.removeAttribute('src'); }
     answerScroll.scrollTop = 0;
-    requestAnimationFrame(() => answerScroll.classList.toggle('scrolls', answerScroll.scrollHeight > answerScroll.clientHeight + 4));
+    requestAnimationFrame(updateScrolls);
     hasAnswer = !error;   // mensagem de erro não conta como resposta (a Orb volta ao standby)
   }
 
   /* ── erros: mensagem curta e clara dentro do painel; nada técnico; a Orb volta ao estado seguro ── */
   function fail(err, stage) {
     const handled = ERROR_HANDLER.handle(err, stage);   // só registra código/estágio no console
-    const wasOpen = panelOpen;
-    const gen = setState('error', '');
+    setState('error', '');
     sfx('error');
-    openPanel(false);
+    openPanel();
     showAnswer(handled.message, { error: true });
-    setTimeout(() => { if (stateGen === gen && curState === 'error') setState(restState()); }, 2200);
-    // painel aberto só por causa do erro: volta a ser Orb sozinho
-    if (!wasOpen) setTimeout(() => { if (panelOpen && !processing && !askInput.value) closePanel(); }, 5200);
+    scheduleHold(3400);   // fecha sozinho; closePanel devolve a Orb ao standby
   }
 
-  /* ── ciclo principal: pergunta → API → resposta dentro da Orb ── */
+  /* ── ciclo principal: pergunta → "Processando…" abaixo da Orb → a Orb vira painel com a resposta ── */
   async function submit(text, source) {
     text = (text || '').trim();
     if (!text || processing) return;
     processing = true; lock(true);
-    hideHint(); VOICE.stopSpeaking(); speaking = false;
-    openPanel(false);
-    clearAnswer();                  // a resposta só aparece quando terminar
-    askInput.value = text;          // mostra o que foi perguntado enquanto processa
-    setState('processing');         // "Processando…" aparece abaixo do painel
+    hideHint(); closePanel(); clearAnswer();   // a resposta anterior volta a ser Orb; a nova só aparece quando terminar
+    askInput.value = text;                     // mostra o que foi perguntado enquanto processa
+    setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
     try {
       const data = await API.ask(text, prefs.model);
@@ -581,35 +581,51 @@ const API = (() => {
       processing = false; lock(false);   // o texto fica no campo para tentar de novo
       fail(err, 'ask');
     }
-    if (source === 'text' && finePointer()) askInput.focus();
+    if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
   function respond(reply, source, sources) {
     setState('responding');
-    openPanel(false);
+    openPanel();
     showAnswer(reply, { sources });
-    sfx('answer'); touchActivity();
+    sfx('answer');
+    // tempo de leitura proporcional ao tamanho; não fecha enquanto você lê (mouse em cima) ou rola
+    const hold = Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400));
     // só fala em voz alta quando a pergunta foi feita por voz (e a voz está ativada)
     if (source === 'voice' && prefs.voice) {
       speaking = true;
-      VOICE.speak(reply, () => {}, () => { speaking = false; touchActivity(); });
-    }
+      VOICE.speak(reply, () => {}, () => { speaking = false; if (panelOpen) scheduleHold(Math.max(6000, hold * 0.5)); });
+    } else scheduleHold(hold);
   }
 
+  /* ── campo de pergunta (botão de chat): sobe da base da tela; a Orb diminui um pouco ── */
+  function setChat(open) {
+    chatOpen = open;
+    document.body.classList.toggle('chat-open', open);
+    askForm.classList.toggle('open', open);
+    askForm.setAttribute('aria-hidden', String(!open));
+    askInput.tabIndex = micBtn.tabIndex = askSend.tabIndex = open ? 0 : -1;
+    chatBtn.classList.toggle('on', open);
+    chatBtn.setAttribute('aria-pressed', String(open));
+    if (open) {
+      hideHint(); sfx('activate');
+      siri.classList.remove('play'); void siri.offsetWidth; siri.classList.add('play');
+      if (finePointer()) setTimeout(() => { if (chatOpen) askInput.focus(); }, 450);
+    } else askInput.blur();
+  }
+  chatBtn.addEventListener('click', () => setChat(!chatOpen));
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
   askInput.addEventListener('focus', hideHint);
 
-  /* ── abrir/fechar o painel ── */
-  chatBtn.addEventListener('click', () => (panelOpen ? closePanel() : openPanel(true)));
-  // tocar fora do painel fecha (a Orb/painel, os botões e as configurações não contam como "fora")
+  // tocar fora do painel fecha (Orb/painel, campo de pergunta, botões e configurações não contam como "fora")
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #chatBtn, #gearBtn, #settingsPanel')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #askForm, #chatBtn, #gearBtn, #settingsPanel')) closePanel();
   });
-  // sem nenhuma interação por 1 minuto (e campo vazio), o painel volta a ser Orb
-  ['pointermove', 'keydown', 'wheel', 'touchstart', 'input'].forEach(ev => orbEl.addEventListener(ev, touchActivity, { passive: true }));
-  setInterval(() => {
-    if (panelOpen && !processing && !speaking && curState !== 'listening' && !askInput.value && Date.now() - lastActivity > 60000) closePanel();
-  }, 5000);
+  // enquanto você lê (mouse em cima, rolando ou tocando) o painel não fecha sozinho
+  orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
+  orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && curState === 'responding') scheduleHold(5000); });
+  orbEl.addEventListener('touchstart', () => { if (panelOpen) clearTimeout(holdTimer); }, { passive: true });
+  orbEl.addEventListener('touchend', () => { if (panelOpen && !speaking && curState === 'responding') scheduleHold(6000); }, { passive: true });
 
   /* ── voz (já existente): clicar na Orb fechada, no microfone do painel ou Espaço ── */
   try {
@@ -634,17 +650,24 @@ const API = (() => {
     sfx('activate');
     if (!VOICE.startListening()) fail({ code: 'mic_unavailable' }, 'voice');
   }
-  // com o painel aberto, clicar nele não aciona a voz (o microfone do painel faz isso)
-  orbZone.addEventListener('click', () => { if (!panelOpen) activate(); });
+  // Orb fechada: clicar fala. Painel aberto: tocar nele fecha (link e texto selecionado não contam)
+  orbZone.addEventListener('click', e => {
+    if (panelOpen) {
+      if (e.target.closest('a') || String(window.getSelection && window.getSelection())) return;
+      closePanel();
+      return;
+    }
+    activate();
+  });
   orbZone.addEventListener('touchstart', e => { if (panelOpen) return; e.preventDefault(); activate(); }, { passive: false });
-  micBtn.addEventListener('click', activate);
+  micBtn.addEventListener('click', () => { closePanel(); activate(); });
   orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (_) {} });
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     const settingsOpen = !!(document.getElementById('settingsPanel') || { classList: { contains: () => false } }).classList.contains('open');
-    if (e.key === 'Escape' && panelOpen && !settingsOpen) closePanel();
+    if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
-    else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openPanel(true); }
+    else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
   });
 
   /* ── modelos (lista vem do backend; o site só guarda o id escolhido) ── */
@@ -726,7 +749,7 @@ const API = (() => {
       });
       panel.querySelector('#clearChat').addEventListener('click', async e => {
         const btn = e.target;
-        clearAnswer();
+        closePanel(); clearAnswer();
         try { await API.clearMemory(); btn.textContent = 'Limpo'; } catch (_) { btn.textContent = 'Falhou'; }
         setTimeout(() => { btn.textContent = 'Limpar'; }, 1600);
       });
@@ -748,7 +771,6 @@ const API = (() => {
     return { sync };
   })();
 
-  try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
   LOGGER.info('session_started', { sessionId: LOGGER.sessionId, apiConfigured: API.configured(), sttAvailable: VOICE.isAvailable });
   loadModels();   // já durante o boot: também acorda o servidor gratuito
   // o plano gratuito dorme após ~15 min sem uso (e acordar demora): enquanto a página está aberta e visível, avisa que ainda estamos aqui
