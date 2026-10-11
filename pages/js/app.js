@@ -513,6 +513,14 @@ const API = (() => {
     return null;
   }
 
+  // tema para a busca na Wikipédia: tira o início da pergunta ("quem foi…", "o que é…") e a pontuação final
+  function topicOf(q) {
+    const t = String(q || '').trim().replace(/[?!.…\s]+$/, '')
+      .replace(/^(quem\s+(foi|é|era|são)|o\s+que\s+(é|são|foi|significa)|qual\s+(é|foi|era)|quais\s+(são|foram)|quando\s+(foi|nasceu|morreu)|onde\s+(fica|é|nasceu)|como\s+(funciona|surgiu)|me\s+(fale|conte|explique)\s+(sobre|de|do|da))\s+/i, '')
+      .replace(/^(o|a|os|as|um|uma)\s+/i, '').trim();
+    return (t || String(q || '').trim()).slice(0, 200);
+  }
+
   const updateScrolls = () => answerScroll.classList.toggle('scrolls', answerScroll.scrollHeight > answerScroll.clientHeight + 4);
 
   function clearAnswer() {
@@ -522,7 +530,7 @@ const API = (() => {
   }
 
   // a resposta aparece palavra por palavra, dentro do painel, com a imagem e o link da Wikipédia quando houver; se for longa, rola
-  function showAnswer(text, { error = false, sources = [] } = {}) {
+  function showAnswer(text, { error = false, sources = [], query = '' } = {}) {
     orbEl.classList.toggle('answer-error', error);
     respText.textContent = '';
     const words = text.split(/\s+/).filter(Boolean);
@@ -535,9 +543,16 @@ const API = (() => {
       respText.appendChild(sp);
       respText.appendChild(document.createTextNode(' '));
     });
+    // toda resposta tem um botão da Wikipédia: o artigo consultado, ou (se nenhum foi usado) uma busca pelo assunto
     const src = error ? null : pickSource(sources);
-    answerSrc.hidden = !src;
-    if (src) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = 'Ler na Wikipédia ↗'; }
+    const topic = topicOf(query);
+    if (src) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = 'Ler na Wikipédia ↗'; answerSrc.hidden = false; }
+    else if (!error && topic) {
+      answerSrc.href = 'https://pt.wikipedia.org/w/index.php?search=' + encodeURIComponent(topic);
+      answerSrc.title = 'Pesquisar "' + topic + '" na Wikipédia';
+      answerSrc.textContent = 'Pesquisar na Wikipédia ↗';
+      answerSrc.hidden = false;
+    } else answerSrc.hidden = true;
     answerImg.classList.remove('loaded');
     if (src && src.image) {
       answerImg.hidden = false;
@@ -576,7 +591,7 @@ const API = (() => {
       if (!reply) { const e = new Error('Resposta vazia.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
       askInput.value = '';
-      respond(reply, source, data.sources);
+      respond(reply, source, data.sources, text);
     } catch (err) {
       processing = false; lock(false);   // o texto fica no campo para tentar de novo
       fail(err, 'ask');
@@ -584,10 +599,10 @@ const API = (() => {
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  function respond(reply, source, sources) {
+  function respond(reply, source, sources, query) {
     setState('responding');
     openPanel();
-    showAnswer(reply, { sources });
+    showAnswer(reply, { sources, query });
     sfx('answer');
     // tempo de leitura proporcional ao tamanho; não fecha enquanto você lê (mouse em cima) ou rola
     const hold = Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400));
