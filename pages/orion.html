@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ORION AI</title>
-<meta name="orion-html" content="4.2.1">
 <link rel="icon" href="../favicon.png">
 <script>
 /* Durante o standby (01/10 22:10 → 02/10 10:10) esta página volta ao index.html.
@@ -284,8 +283,11 @@ body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }   /* com o ca
 body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processando…" fica logo abaixo do painel */
 
 .orb.panel{ width:var(--panel-w); height:var(--panel-h); border-radius:28px; animation:none !important; filter:none !important; cursor:default; }
-.orb.panel .orb-canvas{ border-radius:inherit; opacity:.75; }
-.orb.panel .glass-hi{ opacity:.3; } .orb.panel .glass-rim{ opacity:.4; }
+.orb-canvas, .glass-hi, .glass-rim{ transition:opacity .45s ease; }
+.orb.panel{ border-color:color-mix(in srgb, var(--core-c) 45%, transparent); }
+.orb.panel .orb-canvas, .orb.panel .glass-hi, .orb.panel .glass-rim{ opacity:0; }   /* o visual da Orb não faz parte da resposta */
+.panel-bg{ position:absolute; inset:0; z-index:1; background:rgba(7,7,15,.94); opacity:0; transition:opacity .5s ease; pointer-events:none; }
+.orb.panel .panel-bg{ opacity:1; }
 
 .panel-ui{
   position:absolute; inset:0; z-index:3; display:flex; flex-direction:column;
@@ -309,6 +311,14 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processa
 .response-text .w{ display:inline-block; opacity:0; filter:blur(5px); animation:wordin .45s ease forwards; }
 @keyframes wordin{ to{ opacity:1; filter:blur(0); } }
 .orb.answer-error .response-text{ font-size:13px; letter-spacing:.06em; color:#fca5a5; text-shadow:0 0 18px rgba(248,113,113,.3); }
+.answer-img{
+  display:block; max-width:100%; max-height:150px; width:auto; height:auto; margin:0 auto 14px; border-radius:14px;
+  border:1px solid color-mix(in srgb, var(--core-c) 30%, transparent);
+  box-shadow:0 0 24px color-mix(in srgb, var(--core-a) 25%, transparent);
+  opacity:0; transition:opacity .5s ease;
+}
+.answer-img.loaded{ opacity:1; }
+.answer-img[hidden]{ display:none; }
 .answer-source{
   flex:none; align-self:center; margin:0 0 8px; padding:6px 14px; border-radius:16px;
   font:300 10px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; text-decoration:none;
@@ -416,8 +426,12 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processa
         <canvas class="orb-canvas" id="orbCanvas"></canvas>
         <div class="glass-hi"></div>
         <div class="glass-rim"></div>
+        <div class="panel-bg"></div>
         <div class="panel-ui" id="panelUi">
-          <div class="answer-scroll" id="answerScroll" aria-live="polite"><p class="response-text" id="responseText"></p></div>
+          <div class="answer-scroll" id="answerScroll" aria-live="polite">
+            <img class="answer-img" id="answerImg" alt="" hidden referrerpolicy="no-referrer">
+            <p class="response-text" id="responseText"></p>
+          </div>
           <a class="answer-source" id="answerSource" target="_blank" rel="noopener noreferrer" hidden></a>
         </div>
       </div>
@@ -487,6 +501,6 @@ window.ORION_SIGNOUT = async () => {
   location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js"></script>
+<script defer src="js/app.js?v=4.2.2"></script>
 </body>
 </html>
