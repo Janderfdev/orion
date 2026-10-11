@@ -489,7 +489,6 @@ window.ORION_SIGNOUT = async () => {
 </script>
 <script defer src="js/app.js"></script>
 <script>
-/* Se o app.js não for da mesma versão (ou não carregar), avisa na tela em vez de ficar parado em silêncio */
 window.addEventListener('load', function () {
   setTimeout(function () {
     if (typeof ORION_APP_VERSION !== 'undefined' && ORION_APP_VERSION === '4.2.1') return;
