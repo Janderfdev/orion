@@ -4,13 +4,22 @@ São funções Python comuns. O modelo recebe a lista (nome + descrição + par�
 e DECIDE sozinho quando chamar cada uma. Todas são somente-leitura.
 Para criar uma ferramenta nova: escreva a função e adicione-a em TOOLS.
 """
-import ast, contextvars, datetime as dt, math, operator
+import ast, contextvars, datetime as dt, math, operator, threading
 from urllib.parse import quote
 
 import requests
 
 HEADERS = {"User-Agent": "ORION-AI/4.0 (https://janderfdev.github.io/orion)"}
 TIMEOUT = 8
+_tls = threading.local()
+
+
+def _get(url: str, params: dict | None = None):
+    """GET reaproveitando a conexão (cada thread tem a sua sessão): evita refazer a conexão segura a cada chamada."""
+    sess = getattr(_tls, "s", None)
+    if sess is None:
+        sess = _tls.s = requests.Session()
+    return sess.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
 
 # ── fontes consultadas nesta pergunta (cada pergunta tem a sua lista, mesmo com várias ao mesmo tempo) ──
 _sources: contextvars.ContextVar = contextvars.ContextVar("orion_sources", default=None)
@@ -23,10 +32,10 @@ def collect_sources() -> list:
     return lst
 
 
-def _add_source(title: str, url: str) -> None:
+def _add_source(title: str, url: str, image: str | None = None) -> None:
     lst = _sources.get()
     if lst is not None and all(x["url"] != url for x in lst):
-        lst.append({"title": title, "url": url})
+        lst.append({"title": title, "url": url, "image": image})
 
 
 # ── calculadora (sem eval: percorre a árvore da expressão) ──
@@ -85,32 +94,44 @@ _WMO = {0: "céu limpo", 1: "predominantemente limpo", 2: "parcialmente nublado"
 
 
 def clima(cidade: str) -> str:
-    g = requests.get("https://geocoding-api.open-meteo.com/v1/search",
-                     params={"name": cidade, "count": 1, "language": "pt"}, headers=HEADERS, timeout=TIMEOUT).json()
+    g = _get("https://geocoding-api.open-meteo.com/v1/search", {"name": cidade, "count": 1, "language": "pt"}).json()
     if not g.get("results"):
         return f"Não encontrei a cidade '{cidade}'."
     c = g["results"][0]
-    w = requests.get("https://api.open-meteo.com/v1/forecast", params={
+    w = _get("https://api.open-meteo.com/v1/forecast", {
         "latitude": c["latitude"], "longitude": c["longitude"], "timezone": "auto",
         "current": "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-    }, headers=HEADERS, timeout=TIMEOUT).json()["current"]
+    }).json()["current"]
     return (f"{c['name']} ({c.get('country', '')}): {_WMO.get(w['weather_code'], 'condição desconhecida')}, "
             f"{w['temperature_2m']:.0f} °C (sensação {w['apparent_temperature']:.0f} °C), "
             f"umidade {w['relative_humidity_2m']}%, vento {w['wind_speed_10m']:.0f} km/h.")
 
 
 # ── consulta factual (Wikipédia em português) ──
+def _wiki_summary(title: str):
+    """Resumo do artigo com esse título (segue redirecionamentos). None se não existir ou for página de desambiguação."""
+    r = _get("https://pt.wikipedia.org/api/rest_v1/page/summary/" + quote(title.strip().replace(" ", "_"), safe=""))
+    if r.status_code != 200:
+        return None
+    j = r.json()
+    return j if j.get("type") == "standard" and j.get("extract") else None
+
+
 def pesquisar_wikipedia(consulta: str) -> str:
-    s = requests.get("https://pt.wikipedia.org/w/api.php", params={
-        "action": "query", "list": "search", "srsearch": consulta, "srlimit": 1, "format": "json"},
-        headers=HEADERS, timeout=TIMEOUT).json()
-    hits = s.get("query", {}).get("search", [])
-    if not hits:
-        return "Nada encontrado na Wikipédia."
-    title = hits[0]["title"]
-    r = requests.get("https://pt.wikipedia.org/api/rest_v1/page/summary/" + requests.utils.quote(title.replace(" ", "_"), safe=""),
-                     headers=HEADERS, timeout=TIMEOUT).json()
-    _add_source(title, "https://pt.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),"))
+    # 1ª tentativa: o título direto (uma única chamada). Só se falhar, faz a busca e abre o 1º resultado.
+    r = _wiki_summary(consulta)
+    if r is None:
+        hits = _get("https://pt.wikipedia.org/w/api.php", {
+            "action": "query", "list": "search", "srsearch": consulta, "srlimit": 1, "format": "json"}).json() \
+            .get("query", {}).get("search", [])
+        if not hits:
+            return "Nada encontrado na Wikipédia."
+        r = _wiki_summary(hits[0]["title"])
+        if r is None:
+            return "Nada encontrado na Wikipédia."
+    title = r.get("title") or consulta
+    image = (r.get("thumbnail") or {}).get("source")   # imagem principal do artigo (se houver)
+    _add_source(title, "https://pt.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),"), image)
     return f"{title}: {(r.get('extract') or 'sem resumo disponível.')[:900]}"
 
 
