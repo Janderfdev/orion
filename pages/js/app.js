@@ -426,7 +426,7 @@ const API = (() => {
     (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })());
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
 
-  let curState = 'standby', stateGen = 0, processing = false, hintShown = true;
+  let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null;
   let flashTimer = null;
   let models = [], online = false, loading = false, coreErr = null;
@@ -476,11 +476,6 @@ const API = (() => {
   // estado de repouso: com resposta na tela a Orb continua "respondendo"; sem resposta, standby
   const restState = () => (panelOpen && hasAnswer ? 'responding' : 'standby');
 
-  function hideHint() {
-    if (!hintShown) return;
-    hintShown = false;
-    hintText.style.opacity = '0';
-  }
   function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
 
   /* ── painel de resposta: na hora de responder, a própria Orb cresce no lugar (o anel em volta some) ── */
@@ -534,7 +529,7 @@ const API = (() => {
     orbEl.classList.toggle('answer-error', error);
     respText.textContent = '';
     const words = text.split(/\s+/).filter(Boolean);
-    const step = Math.min(26, 1100 / Math.max(words.length, 1));
+    const step = Math.min(18, 700 / Math.max(words.length, 1));
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     words.forEach((w, i) => {
       const sp = document.createElement('span');
@@ -581,7 +576,7 @@ const API = (() => {
     text = (text || '').trim();
     if (!text || processing) return;
     processing = true; lock(true);
-    hideHint(); closePanel(); clearAnswer();   // a resposta anterior volta a ser Orb; a nova só aparece quando terminar
+    closePanel(); clearAnswer();   // a resposta anterior volta a ser Orb; a nova só aparece quando terminar
     askInput.value = text;                     // mostra o que foi perguntado enquanto processa
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
@@ -623,14 +618,13 @@ const API = (() => {
     chatBtn.classList.toggle('on', open);
     chatBtn.setAttribute('aria-pressed', String(open));
     if (open) {
-      hideHint(); sfx('activate');
+      sfx('activate');
       siri.classList.remove('play'); void siri.offsetWidth; siri.classList.add('play');
       if (finePointer()) setTimeout(() => { if (chatOpen) askInput.focus(); }, 450);
     } else askInput.blur();
   }
   chatBtn.addEventListener('click', () => setChat(!chatOpen));
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
-  askInput.addEventListener('focus', hideHint);
 
   // tocar fora do painel fecha (Orb/painel, campo de pergunta, botões e configurações não contam como "fora")
   document.addEventListener('pointerdown', e => {
@@ -655,7 +649,6 @@ const API = (() => {
   } catch (err) { console.error('[ORION] VOICE.init falhou:', err); }
 
   function activate() {
-    hideHint();
     if (curState === 'listening') { VOICE.stopListening(); setState(restState()); return; }
     if (speaking) { VOICE.stopSpeaking(); speaking = false; return; }
     if (processing || curState === 'error') return;
