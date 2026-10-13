@@ -4,7 +4,7 @@
 
 ### **A digital presence inspired by the Orion Constellation.**
 
-**“O futuro começa com a curiosidade.”**
+**“The future begins with curiosity.”**
 
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/Version-4.2.5-4B287D?style=for-the-badge)](#-version-history)
