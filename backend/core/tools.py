@@ -135,6 +135,24 @@ def pesquisar_wikipedia(consulta: str) -> str:
     return f"{title}: {(r.get('extract') or 'sem resumo disponível.')[:900]}"
 
 
+# ── imagens (Wikimedia Commons, sem chave) ──
+def buscar_imagem(consulta: str) -> str:
+    """Procura uma foto no Wikimedia Commons e a envia para a tela (pela lista de fontes da pergunta)."""
+    j = _get("https://commons.wikimedia.org/w/api.php", {
+        "action": "query", "format": "json", "generator": "search", "gsrnamespace": 6,
+        "gsrsearch": consulta + " filetype:bitmap", "gsrlimit": 6,
+        "prop": "imageinfo", "iiprop": "url|mime", "iiurlwidth": 640}).json()
+    pages = sorted((j.get("query") or {}).get("pages", {}).values(), key=lambda p: p.get("index", 99))
+    for p in pages:
+        ii = (p.get("imageinfo") or [{}])[0]
+        url = ii.get("thumburl") or ii.get("url") or ""
+        if ii.get("mime") in ("image/jpeg", "image/png", "image/webp") and url.startswith("https://upload.wikimedia.org/"):
+            title = p["title"].split(":", 1)[-1]
+            _add_source(title, ii.get("descriptionurl") or url, url)
+            return f"Imagem encontrada e já exibida na tela: {title}. Comente brevemente."
+    return "Nenhuma imagem encontrada."
+
+
 TOOLS = [
     {"name": "calcular", "fn": calcular,
      "description": "Calcula expressões matemáticas com exatidão (+ - * / // % ** , parênteses, sqrt, sin, cos, tan, log, log10, abs, round, pi, e). Use sempre que a resposta depender de uma conta.",
@@ -148,6 +166,9 @@ TOOLS = [
     {"name": "pesquisar_wikipedia", "fn": pesquisar_wikipedia,
      "description": "Busca um resumo factual na Wikipédia em português. Use para fatos, pessoas, lugares e conceitos quando precisar de uma fonte.",
      "input_schema": {"type": "object", "properties": {"consulta": {"type": "string"}}, "required": ["consulta"]}},
+    {"name": "buscar_imagem", "fn": buscar_imagem,
+     "description": "Mostra uma foto/imagem na tela do usuário. Use quando ele pedir para ver, mostrar ou como é algo.",
+     "input_schema": {"type": "object", "properties": {"consulta": {"type": "string", "description": "Ex.: Torre Eiffel"}}, "required": ["consulta"]}},
 ]
 _BY_NAME = {t["name"]: t for t in TOOLS}
 
