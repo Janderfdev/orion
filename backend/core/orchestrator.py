@@ -6,11 +6,17 @@ Ciclo (Request → Execute → Respond):
   3. o modelo decide se chama ferramentas (o provedor executa e devolve o resultado)
   4. resposta final -> salva no histórico -> volta ao usuário
 """
-import asyncio
+import asyncio, re
 
 from core import tools
 
 FALLBACK = "Desculpe, não entendi..."
+
+def is_fallback(reply: str) -> bool:
+    """True se a resposta é o aviso padrão de que o ORION não entendeu (aceita '...' ou '…')."""
+    return re.sub(r"[.…\s]+$", "", reply.strip()).lower() == "desculpe, não entendi"
+
+
 MODEL_TURNS = 10      # trocas reenviadas ao modelo a cada mensagem
 STORED_TURNS = 20     # trocas guardadas na memória
 MAX_REPLY_CHARS = 1000
@@ -68,7 +74,7 @@ class Orchestrator:
         reply = reply.strip() or FALLBACK
         history = (history + [{"user": text[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
         self._persist_later(uid, token, history)
-        return {"reply": reply, "sources": sources}
+        return {"reply": reply, "sources": sources, "understood": not is_fallback(reply)}
 
     async def clear(self, uid: str, token: str) -> None:
         self._persist_later(uid, token, [])
