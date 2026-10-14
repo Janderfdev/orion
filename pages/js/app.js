@@ -404,6 +404,7 @@ const API = (() => {
     ask: (text, model) => call('/ask', { method: 'POST', body: { text, model } }),   // → { reply, model, sources }
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
     speak: text => call('/speak', { method: 'POST', body: { text }, timeoutMs: 20000, blob: true }),   // áudio da voz do ElevenLabs
+    speakDiag: () => call('/speak/diag', { timeoutMs: 30000 }),   // diagnóstico da voz (ver configurações → Fala)
   };
 })();
 
@@ -500,10 +501,13 @@ const API = (() => {
       my.url = URL.createObjectURL(blob);
       my.audio = new Audio(my.url);
       my.audio.onended = my.end;
-      my.audio.onerror = () => { my.audio = null; browserVoice(); };
+      my.audio.onerror = () => { console.warn('[ORION] Áudio do ElevenLabs não pôde ser tocado; usando a voz do navegador.'); my.audio = null; browserVoice(); };
       const p = my.audio.play();
-      if (p && p.catch) p.catch(() => { my.audio = null; browserVoice(); });   // navegador bloqueou o som: usa a voz do navegador
-    }).catch(() => browserVoice());                      // limite de créditos, chave inválida, sem rede...: plano B
+      if (p && p.catch) p.catch(e => { console.warn('[ORION] O navegador bloqueou o áudio do ElevenLabs:', e && e.name); my.audio = null; browserVoice(); });   // navegador bloqueou o som: usa a voz do navegador
+    }).catch(err => {                                    // limite de créditos, chave inválida, sem rede...: plano B (agora com o motivo no console)
+      console.warn('[ORION] ElevenLabs falhou, usando a voz do navegador. Motivo:', err && (err.code || err.message), '— rode "Testar voz" em Configurações para ver o erro exato.');
+      browserVoice();
+    });
   }
   function stopSpeech(notify = true) {
     const my = speech;
@@ -528,20 +532,26 @@ const API = (() => {
     orbEl.classList.remove('panel'); orbZone.classList.remove('panel-open'); document.body.classList.remove('panel-on');
     if (curState === 'responding' || curState === 'error') setState('standby');   // a Orb nunca fica em "respondendo" sem resposta na tela
   }
-  const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(closePanel, ms); };
+  // o painel não fecha sozinho enquanto o ORION ainda está falando
+  const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(() => (speaking ? scheduleHold(1500) : closePanel()), ms); };
 
-  // só aceita da Wikipédia (link) e da Wikimedia (imagem) o que vier do servidor
+  // aceita só links da Wikipédia e imagens da Wikimedia (Wikipédia ou Commons) vindos do servidor
   function pickSource(sources) {
+    let link = null, image = null, alt = '';
     for (const x of Array.isArray(sources) ? sources : []) {
       try {
         const u = new URL(x.url);
-        if (u.protocol !== 'https:' || !/(^|\.)wikipedia\.org$/.test(u.hostname)) continue;
-        let image = null;
-        try { const i = new URL(x.image); if (i.protocol === 'https:' && i.hostname === 'upload.wikimedia.org') image = i.href; } catch (_) {}
-        return { href: u.href, title: String(x.title || '').slice(0, 90), image };
+        if (u.protocol !== 'https:' || !/(^|\.)(wikipedia|wikimedia)\.org$/.test(u.hostname)) continue;
+        if (!link && /(^|\.)wikipedia\.org$/.test(u.hostname)) link = { href: u.href, title: String(x.title || '').slice(0, 90) };
+        if (!image) {
+          try {
+            const i = new URL(x.image);
+            if (i.protocol === 'https:' && i.hostname === 'upload.wikimedia.org') { image = i.href; alt = String(x.title || '').slice(0, 90); }
+          } catch (_) {}
+        }
       } catch (_) {}
     }
-    return null;
+    return (link || image) ? { href: link && link.href, title: (link && link.title) || alt, image } : null;
   }
 
   // tema para a busca na Wikipédia: tira o início da pergunta ("quem foi…", "o que é…") e a pontuação final
@@ -577,7 +587,7 @@ const API = (() => {
     // toda resposta tem um botão da Wikipédia: o artigo consultado, ou (se nenhum foi usado) uma busca pelo assunto
     const src = error ? null : pickSource(sources);
     const topic = topicOf(query);
-    if (src) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = 'Ler na Wikipédia ↗'; answerSrc.hidden = false; }
+    if (src && src.href) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = 'Ler na Wikipédia ↗'; answerSrc.hidden = false; }
     else if (!error && topic) {
       answerSrc.href = 'https://pt.wikipedia.org/w/index.php?search=' + encodeURIComponent(topic);
       answerSrc.title = 'Pesquisar "' + topic + '" na Wikipédia';
@@ -656,7 +666,7 @@ const API = (() => {
     startSpeech(reply, () => { if (stateGen === gen) setState('standby'); });
   }
 
-  // Chat (pergunta escrita): a Orb vira o painel e a resposta aparece dentro dele
+  // Chat (pergunta escrita): a Orb vira o painel e a resposta aparece dentro dele (e também é falada)
   function respondInPanel(reply, understood, sources, query) {
     setState(understood ? 'responding' : 'error', '');   // a cor do contorno acompanha: verde = respondeu, vermelho = não entendeu
     openPanel();
@@ -664,6 +674,10 @@ const API = (() => {
     sfx(understood ? 'answer' : 'error');
     // tempo de leitura proporcional ao tamanho; não fecha enquanto você lê (mouse em cima) ou rola
     scheduleHold(Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400)));
+    // V4.2.5: respostas escritas também são faladas (ElevenLabs, ou a voz do navegador como plano B)
+    if (understood && prefs.voice && (ttsOn || window.speechSynthesis)) {
+      startSpeech(reply, () => { if (panelOpen && curState === 'responding') scheduleHold(5000); });
+    }
   }
 
   /* ── campo de pergunta (botão de chat): sobe da base da tela; a Orb diminui um pouco ── */
@@ -797,6 +811,7 @@ const API = (() => {
           <div class="settings-row"><span>Modelo</span><select id="modelSelect" class="settings-select" aria-label="Modelo"></select></div>
           <div class="settings-row"><span>Voz</span><button id="toggleVoice" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Fala</span><span class="settings-email" id="setTts">—</span></div>
+          <div class="settings-row"><span>Testar voz</span><button id="testTts" class="settings-toggle">Testar</button></div>
           <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
@@ -815,6 +830,22 @@ const API = (() => {
         prefs.model = e.target.value; savePrefs();
         const m = models.find(x => x.id === prefs.model);
         if (m) flash('Modelo: ' + m.label, 2400);
+      });
+      // diagnóstico da voz do ElevenLabs: mostra no próprio botão o resultado e o motivo completo no console
+      panel.querySelector('#testTts').addEventListener('click', async e => {
+        const btn = e.target;
+        btn.textContent = 'Testando…';
+        let txt;
+        try {
+          const d = await API.speakDiag();
+          console.log('[ORION] Diagnóstico da voz:', d);
+          if (d.ok) txt = 'OK ✓';
+          else if (d.motivo) txt = 'Sem chave/ID';
+          else txt = 'Erro ' + (d.status || '?');
+          if (!d.ok) console.warn('[ORION] Voz do ElevenLabs com problema:', d.motivo || d.detalhe);
+        } catch (err) { txt = 'Falhou'; console.warn('[ORION] Não consegui rodar o diagnóstico da voz:', err && err.code); }
+        btn.textContent = txt;
+        setTimeout(() => { btn.textContent = 'Testar'; }, 5000);
       });
       panel.querySelector('#clearChat').addEventListener('click', async e => {
         const btn = e.target;
