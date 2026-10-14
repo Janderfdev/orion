@@ -378,7 +378,7 @@ const API = (() => {
     try { return (window.ORION_GET_TOKEN ? await window.ORION_GET_TOKEN() : '') || ''; } catch (_) { return ''; }
   }
 
-  async function call(path, { method = 'GET', body, timeoutMs = 45000 } = {}) {
+  async function call(path, { method = 'GET', body, timeoutMs = 45000, blob = false } = {}) {
     if (!base()) throw fail('API não configurada.', 'core_unavailable');
     const headers = { 'Authorization': 'Bearer ' + await token() };
     if (body) headers['Content-Type'] = 'application/json';
@@ -395,7 +395,7 @@ const API = (() => {
     if (res.status === 429) throw fail('Limite de uso.', 'rate_limited');
     if (res.status === 503 || res.status === 400) throw fail('Modelo indisponível.', 'model_unavailable');
     if (!res.ok) throw fail('Falha ' + res.status, 'api_error');
-    try { return await res.json(); } catch (_) { throw fail('Resposta ilegível.', 'invalid_response'); }
+    try { return blob ? await res.blob() : await res.json(); } catch (_) { throw fail('Resposta ilegível.', 'invalid_response'); }
   }
 
   return {
@@ -403,6 +403,7 @@ const API = (() => {
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
     ask: (text, model) => call('/ask', { method: 'POST', body: { text, model } }),   // → { reply, model, sources }
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
+    speak: text => call('/speak', { method: 'POST', body: { text }, timeoutMs: 20000, blob: true }),   // áudio da voz do ElevenLabs
   };
 })();
 
@@ -415,7 +416,7 @@ const API = (() => {
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init falhou:', err); }
   const $ = id => document.getElementById(id);
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
-  const statusText = $('statusText'), hintText = $('hintText');
+  const statusText = $('statusText');
   const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerImg = $('answerImg');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
@@ -429,7 +430,7 @@ const API = (() => {
   let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null;
   let flashTimer = null;
-  let models = [], online = false, loading = false, coreErr = null;
+  let models = [], online = false, loading = false, coreErr = null, ttsOn = false;
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
@@ -478,6 +479,41 @@ const API = (() => {
 
   function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
 
+  /* ── fala: ElevenLabs (via backend) quando configurado; senão — ou se falhar — a voz do navegador ── */
+  let speech = null;   // fala em andamento: { over, audio, url, end, done }
+  function startSpeech(text, done) {
+    stopSpeech(false);                                   // se já havia uma fala, para sem avisar
+    const my = speech = { over: false, audio: null, url: null, done };
+    my.end = () => {
+      if (my.over) return;
+      my.over = true;
+      if (my.url) { URL.revokeObjectURL(my.url); my.url = null; }
+      if (speech === my) speech = null;
+      speaking = false;
+      my.done();
+    };
+    speaking = true;
+    const browserVoice = () => { if (!my.over) VOICE.speak(text, () => {}, my.end); };
+    if (!ttsOn) { browserVoice(); return; }
+    API.speak(text).then(blob => {
+      if (my.over) return;                               // foi cancelada enquanto o áudio chegava
+      my.url = URL.createObjectURL(blob);
+      my.audio = new Audio(my.url);
+      my.audio.onended = my.end;
+      my.audio.onerror = () => { my.audio = null; browserVoice(); };
+      const p = my.audio.play();
+      if (p && p.catch) p.catch(() => { my.audio = null; browserVoice(); });   // navegador bloqueou o som: usa a voz do navegador
+    }).catch(() => browserVoice());                      // limite de créditos, chave inválida, sem rede...: plano B
+  }
+  function stopSpeech(notify = true) {
+    const my = speech;
+    VOICE.stopSpeaking();
+    if (!my) { speaking = false; return; }
+    if (my.audio) { my.audio.onended = my.audio.onerror = null; try { my.audio.pause(); } catch (_) {} }
+    if (notify) my.end();
+    else { my.over = true; if (my.url) URL.revokeObjectURL(my.url); speech = null; speaking = false; }
+  }
+
   /* ── painel de resposta: na hora de responder, a própria Orb cresce no lugar (o anel em volta some) ── */
   function openPanel() {
     if (panelOpen) return;
@@ -488,7 +524,7 @@ const API = (() => {
     clearTimeout(holdTimer);
     if (!panelOpen) return;
     panelOpen = false;
-    VOICE.stopSpeaking(); speaking = false;
+    stopSpeech(false);
     orbEl.classList.remove('panel'); orbZone.classList.remove('panel-open'); document.body.classList.remove('panel-on');
     if (curState === 'responding' || curState === 'error') setState('standby');   // a Orb nunca fica em "respondendo" sem resposta na tela
   }
@@ -561,23 +597,34 @@ const API = (() => {
     hasAnswer = !error;   // mensagem de erro não conta como resposta (a Orb volta ao standby)
   }
 
-  /* ── erros: mensagem curta e clara dentro do painel; nada técnico; a Orb volta ao estado seguro ── */
-  function fail(err, stage) {
+  // o ORION respondeu "não entendi" (aviso padrão do backend)
+  const isFallback = r => /^desculpe,?\s+n[ãa]o entendi[.…\s]*$/i.test(String(r).trim());
+
+  /* ── erros: mensagem curta e clara; nada técnico; a Orb volta ao estado seguro ──
+     Pergunta ESCRITA (chat): o erro aparece no painel. Voz: a Orb fica vermelha e a mensagem aparece abaixo dela. */
+  function fail(err, stage, inPanel = false) {
     const handled = ERROR_HANDLER.handle(err, stage);   // só registra código/estágio no console
-    setState('error', '');
     sfx('error');
-    openPanel();
-    showAnswer(handled.message, { error: true });
-    scheduleHold(3400);   // fecha sozinho; closePanel devolve a Orb ao standby
+    if (inPanel) {
+      setState('error', '');
+      openPanel();
+      showAnswer(handled.message, { error: true });
+      scheduleHold(3400);   // fecha sozinho; closePanel devolve a Orb ao standby
+    } else {
+      const gen = setState('error', handled.message);
+      setTimeout(() => { if (stateGen === gen && curState === 'error') setState('standby'); }, 2600);
+    }
   }
 
-  /* ── ciclo principal: pergunta → "Processando…" abaixo da Orb → a Orb vira painel com a resposta ── */
+  /* ── ciclo principal: pergunta → "Processando…" abaixo da Orb → resposta ──
+     Escrita no chat → a Orb vira o painel com a resposta.  Por voz → a Orb responde sozinha, com ondas na cor do estado. */
   async function submit(text, source) {
     text = (text || '').trim();
     if (!text || processing) return;
     processing = true; lock(true);
+    stopSpeech(false);   // corta a fala da resposta anterior
     closePanel(); clearAnswer();   // a resposta anterior volta a ser Orb; a nova só aparece quando terminar
-    askInput.value = text;                     // mostra o que foi perguntado enquanto processa
+    askInput.value = text;         // mostra o que foi perguntado enquanto processa
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
     try {
@@ -586,26 +633,37 @@ const API = (() => {
       if (!reply) { const e = new Error('Resposta vazia.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
       askInput.value = '';
-      respond(reply, source, data.sources, text);
+      const understood = !(data.understood === false || isFallback(reply));
+      if (source === 'voice') respondByVoice(reply, understood);
+      else respondInPanel(reply, understood, data.sources, text);
     } catch (err) {
       processing = false; lock(false);   // o texto fica no campo para tentar de novo
-      fail(err, 'ask');
+      fail(err, 'ask', source !== 'voice');
     }
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  function respond(reply, source, sources, query) {
-    setState('responding');
+  // Voz: a Orb se mexe e solta ondas na cor do estado: verde = respondendo, vermelho = não entendeu
+  function respondByVoice(reply, understood) {
+    const gen = setState(understood ? 'responding' : 'error', reply.length > 46 ? (understood ? 'Respondendo…' : 'Não entendi') : reply);
+    sfx(understood ? 'answer' : 'error');
+    if (!(prefs.voice && (ttsOn || window.speechSynthesis))) {   // sem nenhuma voz disponível: mostra a resposta no painel para não se perder
+      setState('standby');
+      respondInPanel(reply, understood, [], '');
+      return;
+    }
+    if (!understood) orbZone.classList.add('speaking');   // o estado "erro" não solta ondas sozinho; aqui solta, em vermelho
+    startSpeech(reply, () => { if (stateGen === gen) setState('standby'); });
+  }
+
+  // Chat (pergunta escrita): a Orb vira o painel e a resposta aparece dentro dele
+  function respondInPanel(reply, understood, sources, query) {
+    setState(understood ? 'responding' : 'error', '');   // a cor do contorno acompanha: verde = respondeu, vermelho = não entendeu
     openPanel();
-    showAnswer(reply, { sources, query });
-    sfx('answer');
+    showAnswer(reply, { sources, query, error: !understood });
+    sfx(understood ? 'answer' : 'error');
     // tempo de leitura proporcional ao tamanho; não fecha enquanto você lê (mouse em cima) ou rola
-    const hold = Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400));
-    // só fala em voz alta quando a pergunta foi feita por voz (e a voz está ativada)
-    if (source === 'voice' && prefs.voice) {
-      speaking = true;
-      VOICE.speak(reply, () => {}, () => { speaking = false; if (panelOpen) scheduleHold(Math.max(6000, hold * 0.5)); });
-    } else scheduleHold(hold);
+    scheduleHold(Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400)));
   }
 
   /* ── campo de pergunta (botão de chat): sobe da base da tela; a Orb diminui um pouco ── */
@@ -650,7 +708,7 @@ const API = (() => {
 
   function activate() {
     if (curState === 'listening') { VOICE.stopListening(); setState(restState()); return; }
-    if (speaking) { VOICE.stopSpeaking(); speaking = false; return; }
+    if (speaking) { stopSpeech(); return; }
     if (processing || curState === 'error') return;
     if (!prefs.voice) return fail({ code: 'voice_disabled' }, 'voice');
     if (!VOICE.isAvailable) return fail({ code: 'stt_unavailable' }, 'voice');
@@ -687,6 +745,7 @@ const API = (() => {
       const d = await API.models();
       models = Array.isArray(d.models) ? d.models : [];
       if (!models.some(m => m.id === prefs.model)) { prefs.model = d.default || (models[0] && models[0].id) || null; savePrefs(); }
+      ttsOn = !!d.tts;   // o servidor tem a voz do ElevenLabs configurada?
       online = true; coreErr = null;
     } catch (err) {
       online = false; coreErr = err.code || 'api_error';
@@ -716,6 +775,7 @@ const API = (() => {
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || 'Não conectada';
       panel.querySelector('#setCore').textContent = coreLabel();
       panel.querySelector('#toggleVoice').textContent = label('voice', prefs.voice);
+      panel.querySelector('#setTts').textContent = ttsOn ? 'ElevenLabs' : 'Navegador';
       panel.querySelector('#toggleSound').textContent = label('sound', prefs.sound);
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
@@ -736,6 +796,7 @@ const API = (() => {
           <div class="settings-row"><span>Conta</span><span class="settings-email" id="setEmail">—</span></div>
           <div class="settings-row"><span>Modelo</span><select id="modelSelect" class="settings-select" aria-label="Modelo"></select></div>
           <div class="settings-row"><span>Voz</span><button id="toggleVoice" class="settings-toggle"></button></div>
+          <div class="settings-row"><span>Fala</span><span class="settings-email" id="setTts">—</span></div>
           <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
@@ -747,7 +808,7 @@ const API = (() => {
       panel.addEventListener('click', e => { if (e.target === panel) toggle(); });
       panel.querySelector('#toggleVoice').addEventListener('click', () => {
         prefs.voice = !prefs.voice; savePrefs(); sync();
-        if (!prefs.voice) { VOICE.stopSpeaking(); speaking = false; if (curState === 'listening') { VOICE.stopListening(); setState(restState()); } }
+        if (!prefs.voice) { stopSpeech(); if (curState === 'listening') { VOICE.stopListening(); setState(restState()); } }
       });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
       panel.querySelector('#modelSelect').addEventListener('change', e => {
