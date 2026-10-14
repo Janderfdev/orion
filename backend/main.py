@@ -1,7 +1,7 @@
 """ORION AI — backend V4.2.0.
 
 Rodar local:  uvicorn main:app --reload
-Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /memory/clear
+Rotas:  GET /health · GET /models · POST /ask · POST /speak · GET /speak/diag · POST /memory/clear
 Variáveis:
   GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
   ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
@@ -12,8 +12,8 @@ Variáveis:
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
   ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID   (opcionais) ligam a voz do ElevenLabs; ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
-                         ORION_TTS_DAILY_CHARS (3000 por usuário por dia)
-  ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal | low (padrão) | medium | high
+                         ORION_TTS_DAILY_CHARS (10000 por usuário por dia)
+  ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
 import asyncio, datetime, logging, os, time
@@ -34,7 +34,7 @@ ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderf
 ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").split(",") if e.strip()}
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
 PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
-TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "3000"))   # limite de caracteres falados por usuário por dia
+TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "10000"))   # limite de caracteres falados por usuário por dia
 
 app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
@@ -67,6 +67,12 @@ def _tts_ok(uid: str, n: int) -> bool:
         return False
     _tts_used[uid] = (today, used + n)
     return True
+
+
+def _tts_refund(uid: str, n: int) -> None:
+    """Devolve a cota quando a geração da voz falha (não cobra por áudio que não existiu)."""
+    day, used = _tts_used.get(uid, (datetime.date.today(), 0))
+    _tts_used[uid] = (day, max(0, used - n))
 
 
 class SpeakIn(BaseModel):
@@ -145,5 +151,19 @@ async def speak(body: SpeakIn, authorization: str = Header(default="")):
         audio = await asyncio.to_thread(elevenlabs.synthesize, text)
     except Exception as e:
         log.exception("Falha ao gerar a voz")   # detalhes só no log do servidor
+        _tts_refund(uid, len(text))
         raise HTTPException(429 if getattr(e, "status_code", None) == 429 else 502, "Falha ao gerar a voz.")
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/speak/diag")
+async def speak_diag(authorization: str = Header(default="")):
+    """Diagnóstico da voz do ElevenLabs: mostra exatamente por que ela falha (só para contas autorizadas)."""
+    await _auth(authorization)
+    if not elevenlabs.configured():
+        return {"ok": False, "motivo": "ELEVENLABS_API_KEY e/ou ELEVENLABS_VOICE_ID não chegaram ao servidor (confira os nomes no Render e faça redeploy)."}
+    try:
+        audio = await asyncio.to_thread(elevenlabs.synthesize, "Teste de voz do ORION.")
+        return {"ok": True, "bytes": len(audio)}
+    except Exception as e:
+        return {"ok": False, "status": getattr(e, "status_code", None), "detalhe": str(e)[:400]}
