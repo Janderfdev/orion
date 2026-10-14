@@ -17,7 +17,7 @@ def is_fallback(reply: str) -> bool:
     return re.sub(r"[.…\s]+$", "", reply.strip()).lower() == "desculpe, não entendi"
 
 
-MODEL_TURNS = 10      # trocas reenviadas ao modelo a cada mensagem
+MODEL_TURNS = 6       # trocas reenviadas ao modelo a cada mensagem (menos = resposta mais rápida)
 STORED_TURNS = 20     # trocas guardadas na memória
 MAX_REPLY_CHARS = 1000
 
@@ -30,7 +30,8 @@ SYSTEM_PROMPT = (
     "Para código, explique o essencial em palavras e ofereça mais detalhes se a pessoa quiser. "
     "Você entende programação, tecnologia, matemática, conceitos, perguntas gerais, "
     "perguntas com várias etapas e usa o contexto da conversa. "
-    "Ferramentas: calcular (contas exatas), data_hora, clima (clima atual de uma cidade) e pesquisar_wikipedia "
+    "Ferramentas: calcular (contas exatas), data_hora, clima (clima atual de uma cidade), "
+    "buscar_imagem (mostra uma foto na tela; use quando pedirem para ver, mostrar ou como é algo) e pesquisar_wikipedia "
     "(traz o resumo e a imagem do artigo). Use pesquisar_wikipedia para perguntas sobre pessoas, lugares, obras, "
     "eventos e conceitos específicos; use calcular, data_hora e clima quando a resposta depender deles. "
     "Para conversa, opiniões e coisas simples, responda direto, sem ferramenta. "
