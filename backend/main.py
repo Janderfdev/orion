@@ -27,7 +27,7 @@ from auth.firebase import verify
 from core.orchestrator import Orchestrator
 from memory.store import Memory
 from providers.registry import Registry
-from speak import Elevenlabs
+from speak import elevenlabs
 
 log = logging.getLogger("orion")
 ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderfdev.github.io").split(",")]
