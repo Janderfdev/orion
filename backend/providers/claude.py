@@ -26,12 +26,10 @@ class ClaudeProvider:
             text = "".join(b.text for b in resp.content if b.type == "text")
             if resp.stop_reason != "tool_use" or not execute:
                 return text
-            # o modelo pediu ferramentas: executa e devolve os resultados
+            # o modelo pediu ferramentas: executa TODAS ao mesmo tempo e devolve os resultados
             msgs.append({"role": "assistant", "content": resp.content})
-            results = []
-            for b in resp.content:
-                if b.type == "tool_use":
-                    out = await asyncio.to_thread(execute, b.name, b.input)
-                    results.append({"type": "tool_result", "tool_use_id": b.id, "content": out})
+            uses = [b for b in resp.content if b.type == "tool_use"]
+            outs = await asyncio.gather(*[asyncio.to_thread(execute, b.name, b.input) for b in uses])
+            results = [{"type": "tool_result", "tool_use_id": b.id, "content": o} for b, o in zip(uses, outs)]
             msgs.append({"role": "user", "content": results})
         return text or "Não consegui concluir isso agora."
