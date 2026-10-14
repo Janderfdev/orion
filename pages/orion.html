@@ -17,12 +17,12 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;400;500&family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
 
 :root{
-  --font:      'Inter', -apple-system, 'Helvetica Neue', sans-serif;
+  --font:      'Sora', -apple-system, 'Helvetica Neue', sans-serif;
   --font-mono: 'Space Grotesk', 'Inter', sans-serif;
   --orb:  clamp(190px, 32vmin, 320px);
   --halo: calc(var(--orb) * 1.9);
@@ -306,14 +306,14 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processa
           mask-image:linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
 }
 .response-text{
-  font-size:clamp(14px, 2.1vmin, 17px); font-weight:300; line-height:1.75; letter-spacing:.02em;
+  font-size:clamp(14px, 2.1vmin, 17px); font-weight:400; line-height:1.75; letter-spacing:.02em;
   color:rgba(255,255,255,.92); text-shadow:0 0 22px color-mix(in srgb, var(--core-c) 38%, transparent);
 }
 .response-text .w{ display:inline-block; opacity:0; filter:blur(5px); animation:wordin .45s ease forwards; }
 @keyframes wordin{ to{ opacity:1; filter:blur(0); } }
 .orb.answer-error .response-text{ font-size:13px; letter-spacing:.06em; color:#fca5a5; text-shadow:0 0 18px rgba(248,113,113,.3); }
 .answer-img{
-  display:block; max-width:100%; max-height:150px; width:auto; height:auto; margin:0 auto 14px; border-radius:14px;
+  display:block; max-width:100%; max-height:220px; width:auto; height:auto; margin:0 auto 14px; border-radius:14px;
   border:1px solid color-mix(in srgb, var(--core-c) 30%, transparent);
   box-shadow:0 0 24px color-mix(in srgb, var(--core-a) 25%, transparent);
   opacity:0; transition:opacity .5s ease;
@@ -504,6 +504,6 @@ window.ORION_SIGNOUT = async () => {
   location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js?v=4.2.2"></script>
+<script defer src="js/app.js?v=4.2.5"></script>
 </body>
 </html>
