@@ -94,11 +94,9 @@ class GeminiProvider:
             text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
             if not calls or not execute:
                 return text
-            # o modelo pediu ferramentas: executa e devolve os resultados
+            # o modelo pediu ferramentas: executa TODAS ao mesmo tempo e devolve os resultados
             contents.append(content)   # devolvido sem alterações (inclui as assinaturas internas do modelo)
-            results = []
-            for c in calls:
-                out = await asyncio.to_thread(execute, c["name"], c.get("args") or {})
-                results.append({"functionResponse": {"name": c["name"], "response": {"result": out}}})
+            outs = await asyncio.gather(*[asyncio.to_thread(execute, c["name"], c.get("args") or {}) for c in calls])
+            results = [{"functionResponse": {"name": c["name"], "response": {"result": o}}} for c, o in zip(calls, outs)]
             contents.append({"role": "user", "parts": results})
         return text or "Não consegui concluir isso agora."
