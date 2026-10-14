@@ -1,4 +1,4 @@
-"""Voz do ORION via ElevenLabs (opcional).
+"""Voz do ORION via ElevenLabs
 
 A chave (ELEVENLABS_API_KEY) e a voz (ELEVENLABS_VOICE_ID) ficam SÓ no servidor.
 Sem as duas, o recurso fica desligado e o site usa a voz do navegador.
