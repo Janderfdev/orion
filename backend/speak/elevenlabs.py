@@ -21,7 +21,6 @@ _lock = threading.Lock()
 
 
 def configured() -> bool:
-    # CORREÇÃO: Verifica se as duas variáveis de ambiente corretas existem
     return bool(os.getenv("ELEVENLABS_API_KEY") and os.getenv("ELEVENLABS_VOICE_ID"))
 
 
@@ -40,7 +39,6 @@ def clean(text: str) -> str:
 def synthesize(text: str) -> bytes:
     """Devolve o áudio (mp3) da fala. Levanta ProviderError se o ElevenLabs recusar."""
     text = clean(text)
-    # CORREÇÃO: Busca a variável de ambiente correta configurada no servidor
     voice_id = os.getenv("ELEVENLABS_VOICE_ID", "")
     model = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")   # Flash: o mais rápido e o mais barato
     key = (model, voice_id, text)
