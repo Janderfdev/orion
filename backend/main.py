@@ -1,7 +1,7 @@
 """ORION AI — backend V4.2.0.
 
 Rodar local:  uvicorn main:app --reload
-Rotas:  GET /health · GET /models · POST /ask · POST /memory/clear
+Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /memory/clear
 Variáveis:
   GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
   ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
@@ -11,13 +11,15 @@ Variáveis:
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
+  ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID   (opcionais) ligam a voz do ElevenLabs; ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
+                         ORION_TTS_DAILY_CHARS (3000 por usuário por dia)
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal | low (padrão) | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
-import asyncio, logging, os, time
+import asyncio, datetime, logging, os, time
 from collections import deque
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -25,12 +27,14 @@ from auth.firebase import verify
 from core.orchestrator import Orchestrator
 from memory.store import Memory
 from providers.registry import Registry
+from voice import elevenlabs
 
 log = logging.getLogger("orion")
 ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderfdev.github.io").split(",")]
 ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").split(",") if e.strip()}
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
 PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
+TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "3000"))   # limite de caracteres falados por usuário por dia
 
 app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
@@ -39,6 +43,7 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", 
 registry = Registry()
 orchestrator = Orchestrator(Memory())
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
+_tts_used: dict[str, tuple] = {}  # uid -> (dia, caracteres falados hoje)
 
 
 def _rate_ok(uid: str) -> bool:
@@ -50,6 +55,22 @@ def _rate_ok(uid: str) -> bool:
         return False
     q.append(now)
     return True
+
+
+def _tts_ok(uid: str, n: int) -> bool:
+    """Controla os créditos do ElevenLabs: cada usuário tem um limite diário de caracteres falados."""
+    today = datetime.date.today()
+    day, used = _tts_used.get(uid, (today, 0))
+    if day != today:
+        used = 0
+    if used + n > TTS_DAILY_CHARS:
+        return False
+    _tts_used[uid] = (today, used + n)
+    return True
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
 
 
 class AskIn(BaseModel):
@@ -80,7 +101,7 @@ def health():
 @app.get("/models")
 async def models(authorization: str = Header(default="")):
     await _auth(authorization)
-    return {"default": registry.default, "models": registry.models()}
+    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured()}
 
 
 @app.post("/ask")
@@ -101,7 +122,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
             raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": result["reply"], "model": model_id, "sources": result["sources"]}
+    return {"reply": result["reply"], "model": model_id, "sources": result["sources"], "understood": result["understood"]}
 
 
 @app.post("/memory/clear")
@@ -109,3 +130,20 @@ async def clear_memory(authorization: str = Header(default="")):
     uid, token = await _auth(authorization)
     await orchestrator.clear(uid, token)
     return {"ok": True}
+
+
+@app.post("/speak")
+async def speak(body: SpeakIn, authorization: str = Header(default="")):
+    """Fala da resposta com a voz do ElevenLabs. Qualquer falha aqui faz o site voltar à voz do navegador."""
+    uid, _ = await _auth(authorization)
+    if not elevenlabs.configured():
+        raise HTTPException(503, "Voz não configurada.")
+    text = elevenlabs.clean(body.text)
+    if not _tts_ok(uid, len(text)):
+        raise HTTPException(429, "Limite diário de voz atingido.")
+    try:
+        audio = await asyncio.to_thread(elevenlabs.synthesize, text)
+    except Exception as e:
+        log.exception("Falha ao gerar a voz")   # detalhes só no log do servidor
+        raise HTTPException(429 if getattr(e, "status_code", None) == 429 else 502, "Falha ao gerar a voz.")
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
