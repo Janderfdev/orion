@@ -137,11 +137,11 @@ const ORB = (() => {
   let amp = 1, targetAmp = 1;
   let rotSpeed = 1, targetRot = 1;
   let bright = 1, targetBright = 1;
-  let coreAngle = 0, ringAngle = 0;
+  let coreAngle = 0;
   let hovered = false;
   let currentState = 'standby';
 
-  const PARTICLES = Array.from({ length: 16 }, (_, i) => ({
+  const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
     a: Math.random() * Math.PI * 2,
     r: 0.30 + Math.random() * 0.62,
     spd: 0.06 + Math.random() * 0.10,
@@ -149,6 +149,21 @@ const ORB = (() => {
     phase: Math.random() * Math.PI * 2,
     dir: i % 2 === 0 ? 1 : -1,
   }));
+
+  /* Constelação de Órion (a "cara" do ORION AI): ombros Betelgeuse e Bellatrix, cabeça Meissa,
+     Cinturão das Três Marias, pés Saiph e Rigel, e a espada. Coordenadas de -1 a 1 dentro da Orb. */
+  const ORION_STARS = [
+    { x: -0.40, y: -0.52, s: 2.6, c: { r: 253, g: 186, b: 116 } },   // 0 Betelgeuse (laranja)
+    { x:  0.36, y: -0.46, s: 1.9 },                                  // 1 Bellatrix
+    { x:  0.00, y: -0.68, s: 1.2 },                                  // 2 Meissa
+    { x: -0.15, y:  0.04, s: 1.8 },                                  // 3 Alnitak
+    { x:  0.00, y:  0.00, s: 1.9 },                                  // 4 Alnilam
+    { x:  0.15, y: -0.04, s: 1.8 },                                  // 5 Mintaka
+    { x: -0.30, y:  0.60, s: 1.9 },                                  // 6 Saiph
+    { x:  0.38, y:  0.54, s: 2.8, c: { r: 191, g: 219, b: 254 } },   // 7 Rigel (azul-branca)
+    { x:  0.00, y:  0.26, s: 1.1 },                                  // 8 espada
+  ];
+  const ORION_LINES = [[2, 0], [2, 1], [0, 3], [1, 5], [3, 4], [4, 5], [3, 6], [5, 7], [4, 8]];
 
   function hexToRgb(hex) {
     const h = hex.replace('#', '');
@@ -253,14 +268,27 @@ const ORB = (() => {
       ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
     });
 
-    // V4.2.5: dois arcos finos giram em sentidos opostos dentro da Orb (o tamanho dela não muda)
-    ringAngle += 0.006 * rotSpeed;
-    ctx.lineWidth = Math.max(1, R * 0.009); ctx.lineCap = 'round';
-    [[0.80, 1, 0.8, 0.34], [0.62, -1.4, 0.55, 0.24]].forEach(([k, spd, len, al], i) => {
-      const a0 = ringAngle * spd + i * 2.1;
-      ctx.strokeStyle = rgba(colorNow.c, al * b);
-      ctx.beginPath(); ctx.arc(R, R, R * k, a0, a0 + Math.PI * len); ctx.stroke();
-    });
+    // Constelação de Órion: linhas finas + estrelas que cintilam, na cor do estado (o tamanho da Orb não muda)
+    {
+      const rot = Math.sin(t * 1.6) * 0.07, cs = Math.cos(rot), sn = Math.sin(rot), k = R / 150, sc = R * 0.80;
+      const pts = ORION_STARS.map(s => ({ x: R + (s.x * cs - s.y * sn) * sc, y: R + (s.x * sn + s.y * cs) * sc, s: s.s, c: s.c }));
+      ctx.lineWidth = Math.max(0.8, k * 0.9);
+      ctx.strokeStyle = rgba(colorNow.c, 0.17 * b);
+      ctx.beginPath();
+      ORION_LINES.forEach(([a, z]) => { ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[z].x, pts[z].y); });
+      ctx.stroke();
+      pts.forEach((p, i) => {
+        const tw = 0.72 + 0.28 * Math.sin(t * 5 + i * 1.7);
+        const glowC = p.c || colorNow.c, gr = p.s * k * 6;
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr);
+        g.addColorStop(0, rgba(glowC, 0.55 * tw * b));
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, gr, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = rgba({ r: 255, g: 255, b: 255 }, 0.9 * tw);
+        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.s * k * 0.55), 0, Math.PI * 2); ctx.fill();
+      });
+    }
 
     const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
     vig.addColorStop(0, 'transparent');
