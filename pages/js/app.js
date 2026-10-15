@@ -137,11 +137,11 @@ const ORB = (() => {
   let amp = 1, targetAmp = 1;
   let rotSpeed = 1, targetRot = 1;
   let bright = 1, targetBright = 1;
-  let coreAngle = 0;
+  let coreAngle = 0, ringAngle = 0;
   let hovered = false;
   let currentState = 'standby';
 
-  const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
+  const PARTICLES = Array.from({ length: 16 }, (_, i) => ({
     a: Math.random() * Math.PI * 2,
     r: 0.30 + Math.random() * 0.62,
     spd: 0.06 + Math.random() * 0.10,
@@ -251,6 +251,15 @@ const ORB = (() => {
       const tw = 0.35 + 0.45 * Math.sin(t * 2.6 + p.phase);
       ctx.fillStyle = rgba(colorNow.c, 0.55 * tw * b);
       ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // V4.2.5: dois arcos finos giram em sentidos opostos dentro da Orb (o tamanho dela não muda)
+    ringAngle += 0.006 * rotSpeed;
+    ctx.lineWidth = Math.max(1, R * 0.009); ctx.lineCap = 'round';
+    [[0.80, 1, 0.8, 0.34], [0.62, -1.4, 0.55, 0.24]].forEach(([k, spd, len, al], i) => {
+      const a0 = ringAngle * spd + i * 2.1;
+      ctx.strokeStyle = rgba(colorNow.c, al * b);
+      ctx.beginPath(); ctx.arc(R, R, R * k, a0, a0 + Math.PI * len); ctx.stroke();
     });
 
     const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
@@ -812,6 +821,7 @@ const API = (() => {
           <div class="settings-row"><span>Voz</span><button id="toggleVoice" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Fala</span><span class="settings-email" id="setTts">—</span></div>
           <div class="settings-row"><span>Testar voz</span><button id="testTts" class="settings-toggle">Testar</button></div>
+          <p class="settings-hint" id="ttsTip" style="margin:4px 0 0;letter-spacing:.03em;text-transform:none;color:#fca5a5"></p>
           <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
@@ -843,6 +853,7 @@ const API = (() => {
           else if (d.motivo) txt = 'Sem chave/ID';
           else txt = 'Erro ' + (d.status || '?');
           if (!d.ok) console.warn('[ORION] Voz do ElevenLabs com problema:', d.motivo || d.detalhe);
+          panel.querySelector('#ttsTip').textContent = d.ok ? '' : (d.dica || d.motivo || '');
         } catch (err) { txt = 'Falhou'; console.warn('[ORION] Não consegui rodar o diagnóstico da voz:', err && err.code); }
         btn.textContent = txt;
         setTimeout(() => { btn.textContent = 'Testar'; }, 5000);
