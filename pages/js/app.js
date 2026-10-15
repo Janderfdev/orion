@@ -101,6 +101,7 @@ const ERROR_HANDLER = (() => {
     unexpected_input: 'Não entendi o que foi dito.',
     forbidden: 'Esta conta não tem acesso ao ORION.',
     rate_limited: 'Muitas solicitações. Aguarde um instante.',
+    quota_exceeded: 'Você atingiu o limite de perguntas. Faça upgrade para continuar usando a IA em breve.',
     core_unavailable: 'Não consegui falar com o núcleo do ORION.',
     voice_disabled: 'Voz desativada nas configurações.',
     unknown: 'Não consegui processar.',
@@ -412,6 +413,7 @@ const API = (() => {
     if (res.status === 401) { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); throw fail('Sessão expirada.', 'api_error'); }
     if (res.status === 403) throw fail('Conta sem acesso.', 'forbidden');
     if (res.status === 429) throw fail('Limite de uso.', 'rate_limited');
+    if (res.status === 402) throw fail('Limite diário.', 'quota_exceeded');   // cota do plano esgotada
     if (res.status === 503 || res.status === 400) throw fail('Modelo indisponível.', 'model_unavailable');
     if (!res.ok) throw fail('Falha ' + res.status, 'api_error');
     try { return blob ? await res.blob() : await res.json(); } catch (_) { throw fail('Resposta ilegível.', 'invalid_response'); }
@@ -668,7 +670,7 @@ const API = (() => {
       setState('error', '');
       openPanel();
       showAnswer(handled.message, { error: true });
-      scheduleHold(3400);   // fecha sozinho; closePanel devolve a Orb ao standby
+      scheduleHold(handled.code === 'quota_exceeded' ? 7000 : 3400);   // fecha sozinho; closePanel devolve a Orb ao standby
     } else {
       const gen = setState('error', handled.message);
       setTimeout(() => { if (stateGen === gen && curState === 'error') setState('standby'); }, 2600);
