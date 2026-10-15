@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V4.2.0 — Interaction Layer  (pages/js/app.js)
+   ORION AI V4.2.5 — Interaction Layer  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
@@ -17,25 +17,25 @@ const ORION_CONFIG = { API_URL: 'https://orion-backend-9qk5.onrender.com' };
 const VISUAL_STATE = (() => {
   const CFG = {
     standby: {
-      amp: 1.00, rot: 1.00, bright: 1.00, cls: '',
-      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' }, // Roxo Neon Escuro
+      amp: 1.00, rot: 1.00, bright: 0.82, cls: '',
+      color: { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' }, // Roxo profundo
     },
     listening: {
-      amp: 1.20, rot: 1.55, bright: 1.18, cls: 'st-listening',
-      color: { a: '#1d4ed8', b: '#1e3a8a', c: '#60a5fa' }, // Azul Neon Escuro
+      amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening',
+      color: { a: '#1e40af', b: '#172554', c: '#3b82f6' }, // Azul profundo
     },
     thinking: {
       // reaproveita o roxo do STANDBY, com mais atividade interna
-      amp: 1.14, rot: 1.75, bright: 1.05, cls: 'st-thinking',
-      color: { a: '#6d28d9', b: '#4c1d95', c: '#a78bfa' },
+      amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',
+      color: { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' },
     },
     speaking: {
-      amp: 1.26, rot: 1.70, bright: 1.30, cls: 'st-speaking',
-      color: { a: '#15803d', b: '#14532d', c: '#4ade80' }, // Verde Neon Escuro
+      amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',
+      color: { a: '#166534', b: '#052e16', c: '#22c55e' }, // Verde profundo
     },
     error: {
-      amp: 0.80, rot: 0.50, bright: 0.62, cls: 'st-error',
-      color: { a: '#b91c1c', b: '#7f1d1d', c: '#f87171' }, // Vermelho Neon Escuro
+      amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',
+      color: { a: '#991b1b', b: '#450a0a', c: '#ef4444' }, // Vermelho profundo
     },
   };
 
@@ -126,7 +126,7 @@ const ERROR_HANDLER = (() => {
   return { handle, classify, MESSAGES };
 })();
 
-/* ═══ orb.js — motor visual da Orb (cor interpolada quadro a quadro) ═══ */
+/* ═══ orb.js — motor visual da Orb (blobs de luz fluidos, cor interpolada quadro a quadro) ═══ */
 const ORB = (() => {
   const canvas = document.getElementById('orbCanvas');
   const ctx = canvas.getContext('2d');
@@ -136,34 +136,27 @@ const ORB = (() => {
 
   let amp = 1, targetAmp = 1;
   let rotSpeed = 1, targetRot = 1;
-  let bright = 1, targetBright = 1;
-  let coreAngle = 0;
-  let hovered = false;
-  let currentState = 'standby';
+  let bright = 0.82, targetBright = 0.82;
+  let hovered = false, currentState = 'standby';
+  let flow = 0, lastTs = 0;
 
-  const PARTICLES = Array.from({ length: 10 }, (_, i) => ({
+  // blobs de luz que flutuam em órbitas lentas e se misturam (efeito líquido)
+  const BLOBS = [
+    { fx: 0.31, fy: 0.43, px: 0.0, py: 1.3, ox: 0.34, oy: 0.30, r: 0.62, col: 'a', al: 0.55 },
+    { fx: 0.47, fy: 0.29, px: 2.1, py: 0.4, ox: 0.38, oy: 0.34, r: 0.56, col: 'c', al: 0.30 },
+    { fx: 0.23, fy: 0.37, px: 4.0, py: 2.7, ox: 0.30, oy: 0.38, r: 0.66, col: 'b', al: 0.65 },
+    { fx: 0.53, fy: 0.19, px: 5.2, py: 3.9, ox: 0.36, oy: 0.28, r: 0.50, col: 'a', al: 0.40 },
+    { fx: 0.17, fy: 0.51, px: 1.1, py: 5.0, ox: 0.28, oy: 0.32, r: 0.58, col: 'c', al: 0.24 },
+  ];
+
+  const PARTICLES = Array.from({ length: 8 }, (_, i) => ({
     a: Math.random() * Math.PI * 2,
-    r: 0.30 + Math.random() * 0.62,
-    spd: 0.06 + Math.random() * 0.10,
-    size: 0.5 + Math.random() * 1.1,
+    r: 0.28 + Math.random() * 0.62,
+    spd: 0.05 + Math.random() * 0.08,
+    size: 0.5 + Math.random() * 1.0,
     phase: Math.random() * Math.PI * 2,
     dir: i % 2 === 0 ? 1 : -1,
   }));
-
-  /* Constelação de Órion (a "cara" do ORION AI): ombros Betelgeuse e Bellatrix, cabeça Meissa,
-     Cinturão das Três Marias, pés Saiph e Rigel, e a espada. Coordenadas de -1 a 1 dentro da Orb. */
-  const ORION_STARS = [
-    { x: -0.40, y: -0.52, s: 2.6, c: { r: 253, g: 186, b: 116 } },   // 0 Betelgeuse (laranja)
-    { x:  0.36, y: -0.46, s: 1.9 },                                  // 1 Bellatrix
-    { x:  0.00, y: -0.68, s: 1.2 },                                  // 2 Meissa
-    { x: -0.15, y:  0.04, s: 1.8 },                                  // 3 Alnitak
-    { x:  0.00, y:  0.00, s: 1.9 },                                  // 4 Alnilam
-    { x:  0.15, y: -0.04, s: 1.8 },                                  // 5 Mintaka
-    { x: -0.30, y:  0.60, s: 1.9 },                                  // 6 Saiph
-    { x:  0.38, y:  0.54, s: 2.8, c: { r: 191, g: 219, b: 254 } },   // 7 Rigel (azul-branca)
-    { x:  0.00, y:  0.26, s: 1.1 },                                  // 8 espada
-  ];
-  const ORION_LINES = [[2, 0], [2, 1], [0, 3], [1, 5], [3, 4], [4, 5], [3, 6], [5, 7], [4, 8]];
 
   function hexToRgb(hex) {
     const h = hex.replace('#', '');
@@ -219,85 +212,70 @@ const ORB = (() => {
   }
 
   function draw(ts) {
+    requestAnimationFrame(draw);
     const W = canvas.width, H = canvas.height, R = W / 2;
-    if (W === 0) { requestAnimationFrame(draw); return; }
-    ctx.clearRect(0, 0, W, H);
-    ctx.save();
-    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.clip();
+    if (!W) return;
 
-    amp += (targetAmp - amp) * 0.035;
-    rotSpeed += (targetRot - rotSpeed) * 0.035;
-    bright += (targetBright - bright) * 0.05;
-    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, 0.035);
-    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, 0.035);
-    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, 0.035);
+    const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+    lastTs = ts;
+    const k = rate => 1 - Math.exp(-dt * rate);   // suavização independente do FPS
+
+    amp += (targetAmp - amp) * k(1.8);
+    rotSpeed += (targetRot - rotSpeed) * k(1.8);
+    bright += (targetBright - bright) * k(2.2);
+    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, k(1.7));
+    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, k(1.7));
+    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, k(1.7));
 
     root.style.setProperty('--core-a', rgbToHex(colorNow.a));
     root.style.setProperty('--core-b', rgbToHex(colorNow.b));
     root.style.setProperty('--core-c', rgbToHex(colorNow.c));
 
-    const hoverBoost = hovered ? 1.08 : 1.0;
-    coreAngle += 0.00042 * rotSpeed * (hovered ? 1.12 : 1);
-    const b = bright * hoverBoost;
+    flow += dt * rotSpeed * (hovered ? 1.12 : 1);
+    const b = bright * (hovered ? 1.06 : 1);
 
-    const bg = ctx.createRadialGradient(R * 0.78, R * 0.58, 0, R, R, R);
-    bg.addColorStop(0, rgba(colorNow.a, 0.34 * b));
-    bg.addColorStop(0.55, rgba(colorNow.b, 0.42 * b));
-    bg.addColorStop(1, 'rgba(0,0,2,0.94)');
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.clip();
+
+    // fundo escuro
+    const bg = ctx.createRadialGradient(R * 0.8, R * 0.6, 0, R, R, R);
+    bg.addColorStop(0, rgba(colorNow.b, 0.55 * b));
+    bg.addColorStop(1, 'rgba(0,0,3,0.96)');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-    const t = ts * 0.00016;
+    // blobs de luz (mistura aditiva = visual líquido)
+    ctx.globalCompositeOperation = 'lighter';
+    BLOBS.forEach(bl => {
+      const x = R + Math.sin(flow * bl.fx + bl.px) * R * bl.ox;
+      const y = R + Math.cos(flow * bl.fy + bl.py) * R * bl.oy;
+      const rad = R * bl.r * amp * (1 + 0.10 * Math.sin(flow * bl.fx * 1.7 + bl.py));
+      const col = colorNow[bl.col];
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, rgba(col, bl.al * b));
+      g.addColorStop(1, rgba(col, 0));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    });
 
-    const cx = R + Math.cos(coreAngle) * R * 0.16;
-    const cy = R + Math.sin(coreAngle * 1.2) * R * 0.16;
-    const coreRad = R * 0.66 * amp;
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRad);
-    core.addColorStop(0, rgba(colorNow.c, 0.20 * b));
-    core.addColorStop(0.5, rgba(colorNow.a, 0.10 * b));
-    core.addColorStop(1, 'transparent');
-    ctx.fillStyle = core;
-    ctx.beginPath(); ctx.arc(cx, cy, coreRad, 0, Math.PI * 2); ctx.fill();
-
+    // partículas discretas
     PARTICLES.forEach(p => {
-      const ang = p.a + t * p.spd * 6 * p.dir;
-      const rad = R * p.r;
-      const px = R + Math.cos(ang) * rad;
-      const py = R + Math.sin(ang) * rad;
-      const tw = 0.35 + 0.45 * Math.sin(t * 2.6 + p.phase);
-      ctx.fillStyle = rgba(colorNow.c, 0.55 * tw * b);
+      const ang = p.a + flow * p.spd * p.dir;
+      const px = R + Math.cos(ang) * R * p.r;
+      const py = R + Math.sin(ang) * R * p.r;
+      const tw = 0.35 + 0.45 * Math.sin(flow * 0.9 + p.phase);
+      ctx.fillStyle = rgba(colorNow.c, 0.45 * tw * b);
       ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2); ctx.fill();
     });
 
-    // Constelação de Órion: linhas finas + estrelas que cintilam, na cor do estado (o tamanho da Orb não muda)
-    {
-      const rot = Math.sin(t * 1.6) * 0.07, cs = Math.cos(rot), sn = Math.sin(rot), k = R / 150, sc = R * 0.80;
-      const pts = ORION_STARS.map(s => ({ x: R + (s.x * cs - s.y * sn) * sc, y: R + (s.x * sn + s.y * cs) * sc, s: s.s, c: s.c }));
-      ctx.lineWidth = Math.max(0.8, k * 0.9);
-      ctx.strokeStyle = rgba(colorNow.c, 0.17 * b);
-      ctx.beginPath();
-      ORION_LINES.forEach(([a, z]) => { ctx.moveTo(pts[a].x, pts[a].y); ctx.lineTo(pts[z].x, pts[z].y); });
-      ctx.stroke();
-      pts.forEach((p, i) => {
-        const tw = 0.72 + 0.28 * Math.sin(t * 5 + i * 1.7);
-        const glowC = p.c || colorNow.c, gr = p.s * k * 6;
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr);
-        g.addColorStop(0, rgba(glowC, 0.55 * tw * b));
-        g.addColorStop(1, 'transparent');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(p.x, p.y, gr, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = rgba({ r: 255, g: 255, b: 255 }, 0.9 * tw);
-        ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.s * k * 0.55), 0, Math.PI * 2); ctx.fill();
-      });
-    }
-
-    const vig = ctx.createRadialGradient(R, R, R * 0.35, R, R, R);
-    vig.addColorStop(0, 'transparent');
-    vig.addColorStop(1, 'rgba(0,0,4,0.72)');
+    // vinheta escura nas bordas
+    ctx.globalCompositeOperation = 'source-over';
+    const vig = ctx.createRadialGradient(R, R, R * 0.30, R, R, R);
+    vig.addColorStop(0, 'rgba(0,0,4,0)');
+    vig.addColorStop(1, 'rgba(0,0,4,0.80)');
     ctx.fillStyle = vig;
     ctx.beginPath(); ctx.arc(R, R, R - 1, 0, Math.PI * 2); ctx.fill();
 
     ctx.restore();
-    requestAnimationFrame(draw);
   }
 
   function init() {
@@ -377,7 +355,8 @@ const VOICE = (() => {
     rec = new SR();
     rec.lang = 'pt-BR'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
     rec.onstart = () => { isRec = true; onSt('listening'); };
-    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' ? 'standby' : 'error', e.error); };
+    // 'aborted' acontece quando o usuário para a escuta: não é erro
+    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' || e.error === 'aborted' ? 'standby' : 'error', e.error); };
     rec.onend = () => { if (isRec) { isRec = false; onSt('standby'); } };
     rec.onresult = e => {
       let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
@@ -394,9 +373,12 @@ const VOICE = (() => {
     if (!vReady) refreshCache();
     if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = 'pt-BR';
     u.rate = 1.08; u.pitch = 0.55; u.volume = 1.0;
+    // o Chrome às vezes não dispara onend em falas longas: um limite de tempo garante que a Orb não fique presa
+    let finished = false, guard = null;
+    const finish = () => { if (finished) return; finished = true; clearTimeout(guard); if (onEnd) onEnd(); };
+    guard = setTimeout(() => { synth.cancel(); finish(); }, Math.max(8000, text.length * 110));
     u.onstart = () => { if (onStart) onStart(); };
-    u.onend = () => { if (onEnd) onEnd(); };
-    u.onerror = () => { if (onEnd) onEnd(); };
+    u.onend = finish; u.onerror = finish;
     synth.speak(u);
   }
   function stopSpeaking() { if (synth) synth.cancel(); }
@@ -445,7 +427,7 @@ const API = (() => {
   };
 })();
 
-/* ═══ interação — V4.2.0 ═══
+/* ═══ interação — V4.2.5 ═══
    Fluxo: botão de chat (ou voz) → a própria Orb cresce e vira o painel de pesquisa → API → ORION Core
           → "Processando…" abaixo do painel → a resposta aparece DENTRO do painel.
    Estados da Orb: standby · listening · processing · responding · error. */
@@ -455,7 +437,7 @@ const API = (() => {
   const $ = id => document.getElementById(id);
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
   const statusText = $('statusText');
-  const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerImg = $('answerImg');
+  const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
 
@@ -468,7 +450,8 @@ const API = (() => {
   let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null;
   let flashTimer = null;
-  let models = [], online = false, loading = false, coreErr = null, ttsOn = false;
+  // ttsOn: null = ainda não sei (servidor acordando) · true = ElevenLabs ligado · false = servidor sem voz
+  let models = [], online = false, loading = false, coreErr = null, ttsOn = null;
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
@@ -517,7 +500,20 @@ const API = (() => {
 
   function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
 
-  /* ── fala: ElevenLabs (via backend) quando configurado; senão — ou se falhar — a voz do navegador ── */
+  /* ── fala: ElevenLabs (via backend) quando disponível; senão — ou se falhar — a voz do navegador ──
+     Um único <audio> reaproveitado e "destravado" no primeiro toque: sem isso o Safari/iOS e alguns Chromes
+     bloqueiam o play() que acontece depois da espera de rede (NotAllowedError). */
+  const ttsAudio = new Audio();
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    ttsAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    const p = ttsAudio.play();
+    if (p && p.catch) p.catch(() => { audioUnlocked = false; });
+  }
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+
   let speech = null;   // fala em andamento: { over, audio, url, end, done }
   function startSpeech(text, done) {
     stopSpeech(false);                                   // se já havia uma fala, para sem avisar
@@ -532,16 +528,18 @@ const API = (() => {
     };
     speaking = true;
     const browserVoice = () => { if (!my.over) VOICE.speak(text, () => {}, my.end); };
-    if (!ttsOn) { browserVoice(); return; }
+    if (ttsOn === false) { browserVoice(); return; }     // só pula o ElevenLabs se o servidor disse que não tem voz
     API.speak(text).then(blob => {
       if (my.over) return;                               // foi cancelada enquanto o áudio chegava
       my.url = URL.createObjectURL(blob);
-      my.audio = new Audio(my.url);
-      my.audio.onended = my.end;
-      my.audio.onerror = () => { console.warn('[ORION] Áudio do ElevenLabs não pôde ser tocado; usando a voz do navegador.'); my.audio = null; browserVoice(); };
-      const p = my.audio.play();
-      if (p && p.catch) p.catch(e => { console.warn('[ORION] O navegador bloqueou o áudio do ElevenLabs:', e && e.name); my.audio = null; browserVoice(); });   // navegador bloqueou o som: usa a voz do navegador
-    }).catch(err => {                                    // limite de créditos, chave inválida, sem rede...: plano B (agora com o motivo no console)
+      my.audio = ttsAudio;
+      ttsAudio.onended = my.end;
+      ttsAudio.onerror = () => { console.warn('[ORION] Áudio do ElevenLabs não pôde ser tocado; usando a voz do navegador.'); my.audio = null; browserVoice(); };
+      ttsAudio.src = my.url;
+      const p = ttsAudio.play();
+      if (p && p.catch) p.catch(e => { console.warn('[ORION] O navegador bloqueou o áudio:', e && e.name); my.audio = null; browserVoice(); });
+    }).catch(err => {                                    // limite de créditos, chave inválida, sem rede...: plano B
+      if (err && err.code === 'model_unavailable') ttsOn = false;   // 503: servidor sem voz configurada
       console.warn('[ORION] ElevenLabs falhou, usando a voz do navegador. Motivo:', err && (err.code || err.message), '— rode "Testar voz" em Configurações para ver o erro exato.');
       browserVoice();
     });
@@ -550,7 +548,7 @@ const API = (() => {
     const my = speech;
     VOICE.stopSpeaking();
     if (!my) { speaking = false; return; }
-    if (my.audio) { my.audio.onended = my.audio.onerror = null; try { my.audio.pause(); } catch (_) {} }
+    if (my.audio) { ttsAudio.onended = ttsAudio.onerror = null; try { ttsAudio.pause(); } catch (_) {} }
     if (notify) my.end();
     else { my.over = true; if (my.url) URL.revokeObjectURL(my.url); speech = null; speaking = false; }
   }
@@ -572,23 +570,28 @@ const API = (() => {
   // o painel não fecha sozinho enquanto o ORION ainda está falando
   const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(() => (speaking ? scheduleHold(1500) : closePanel()), ms); };
 
-  // aceita só links da Wikipédia e imagens da Wikimedia (Wikipédia ou Commons) vindos do servidor
+  // aceita só links da Wikipédia e imagens da Wikimedia (Wikipédia ou Commons) vindos do servidor; até 3 imagens
   function pickSource(sources) {
-    let link = null, image = null, alt = '';
+    let link = null, alt = '';
+    const images = [];
     for (const x of Array.isArray(sources) ? sources : []) {
       try {
         const u = new URL(x.url);
         if (u.protocol !== 'https:' || !/(^|\.)(wikipedia|wikimedia)\.org$/.test(u.hostname)) continue;
         if (!link && /(^|\.)wikipedia\.org$/.test(u.hostname)) link = { href: u.href, title: String(x.title || '').slice(0, 90) };
-        if (!image) {
+        const list = Array.isArray(x.images) && x.images.length ? x.images : (x.image ? [x.image] : []);
+        for (const s of list) {
           try {
-            const i = new URL(x.image);
-            if (i.protocol === 'https:' && i.hostname === 'upload.wikimedia.org') { image = i.href; alt = String(x.title || '').slice(0, 90); }
+            const i = new URL(s);
+            if (i.protocol === 'https:' && i.hostname === 'upload.wikimedia.org' && !images.includes(i.href) && images.length < 3) {
+              images.push(i.href);
+              if (!alt) alt = String(x.title || '').slice(0, 90);
+            }
           } catch (_) {}
         }
       } catch (_) {}
     }
-    return (link || image) ? { href: link && link.href, title: (link && link.title) || alt, image } : null;
+    return (link || images.length) ? { href: link && link.href, title: (link && link.title) || alt, images } : null;
   }
 
   // tema para a busca na Wikipédia: tira o início da pergunta ("quem foi…", "o que é…") e a pontuação final
@@ -603,11 +606,11 @@ const API = (() => {
 
   function clearAnswer() {
     respText.textContent = ''; answerSrc.hidden = true; answerScroll.classList.remove('scrolls');
-    answerImg.hidden = true; answerImg.classList.remove('loaded'); answerImg.removeAttribute('src');
+    answerGallery.hidden = true; answerGallery.textContent = '';
     orbEl.classList.remove('answer-error'); hasAnswer = false;
   }
 
-  // a resposta aparece palavra por palavra, dentro do painel, com a imagem e o link da Wikipédia quando houver; se for longa, rola
+  // a resposta aparece palavra por palavra, dentro do painel, com a galeria e o link da Wikipédia quando houver; se for longa, rola
   function showAnswer(text, { error = false, sources = [], query = '' } = {}) {
     orbEl.classList.toggle('answer-error', error);
     respText.textContent = '';
@@ -631,14 +634,21 @@ const API = (() => {
       answerSrc.textContent = 'Pesquisar na Wikipédia ↗';
       answerSrc.hidden = false;
     } else answerSrc.hidden = true;
-    answerImg.classList.remove('loaded');
-    if (src && src.image) {
-      answerImg.hidden = false;
-      answerImg.alt = src.title;
-      answerImg.onload = () => { answerImg.classList.add('loaded'); updateScrolls(); };
-      answerImg.onerror = () => { answerImg.hidden = true; updateScrolls(); };
-      answerImg.src = src.image;
-    } else { answerImg.hidden = true; answerImg.removeAttribute('src'); }
+
+    // galeria: até 3 imagens; as que falharem ao carregar somem sozinhas
+    answerGallery.textContent = '';
+    if (src && src.images.length) {
+      answerGallery.hidden = false;
+      src.images.forEach(url => {
+        const im = document.createElement('img');
+        im.alt = src.title; im.referrerPolicy = 'no-referrer';
+        im.onload = () => { im.classList.add('loaded'); updateScrolls(); };
+        im.onerror = () => { im.remove(); if (!answerGallery.children.length) answerGallery.hidden = true; updateScrolls(); };
+        im.src = url;
+        answerGallery.appendChild(im);
+      });
+    } else answerGallery.hidden = true;
+
     answerScroll.scrollTop = 0;
     requestAnimationFrame(updateScrolls);
     hasAnswer = !error;   // mensagem de erro não conta como resposta (a Orb volta ao standby)
@@ -646,6 +656,8 @@ const API = (() => {
 
   // o ORION respondeu "não entendi" (aviso padrão do backend)
   const isFallback = r => /^desculpe,?\s+n[ãa]o entendi[.…\s]*$/i.test(String(r).trim());
+
+  const canSpeak = () => prefs.voice && (ttsOn !== false || !!window.speechSynthesis);
 
   /* ── erros: mensagem curta e clara; nada técnico; a Orb volta ao estado seguro ──
      Pergunta ESCRITA (chat): o erro aparece no painel. Voz: a Orb fica vermelha e a mensagem aparece abaixo dela. */
@@ -681,7 +693,7 @@ const API = (() => {
       processing = false; lock(false);
       askInput.value = '';
       const understood = !(data.understood === false || isFallback(reply));
-      if (source === 'voice') respondByVoice(reply, understood);
+      if (source === 'voice') respondByVoice(reply, understood, data.sources, text);
       else respondInPanel(reply, understood, data.sources, text);
     } catch (err) {
       processing = false; lock(false);   // o texto fica no campo para tentar de novo
@@ -691,12 +703,12 @@ const API = (() => {
   }
 
   // Voz: a Orb se mexe e solta ondas na cor do estado: verde = respondendo, vermelho = não entendeu
-  function respondByVoice(reply, understood) {
+  function respondByVoice(reply, understood, sources, query) {
     const gen = setState(understood ? 'responding' : 'error', reply.length > 46 ? (understood ? 'Respondendo…' : 'Não entendi') : reply);
     sfx(understood ? 'answer' : 'error');
-    if (!(prefs.voice && (ttsOn || window.speechSynthesis))) {   // sem nenhuma voz disponível: mostra a resposta no painel para não se perder
+    if (!canSpeak()) {   // sem nenhuma voz disponível: mostra a resposta no painel para não se perder
       setState('standby');
-      respondInPanel(reply, understood, [], '');
+      respondInPanel(reply, understood, sources || [], query || '');
       return;
     }
     if (!understood) orbZone.classList.add('speaking');   // o estado "erro" não solta ondas sozinho; aqui solta, em vermelho
@@ -711,8 +723,8 @@ const API = (() => {
     sfx(understood ? 'answer' : 'error');
     // tempo de leitura proporcional ao tamanho; não fecha enquanto você lê (mouse em cima) ou rola
     scheduleHold(Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400)));
-    // V4.2.5: respostas escritas também são faladas (ElevenLabs, ou a voz do navegador como plano B)
-    if (understood && prefs.voice && (ttsOn || window.speechSynthesis)) {
+    // respostas escritas também são faladas (ElevenLabs, ou a voz do navegador como plano B)
+    if (understood && canSpeak()) {
       startSpeech(reply, () => { if (panelOpen && curState === 'responding') scheduleHold(5000); });
     }
   }
@@ -751,7 +763,7 @@ const API = (() => {
       onResult: text => submit(text, 'voice'),
       onStateChange: (s, sttCode) => {
         if (s === 'listening') { setState('listening'); sfx('listen'); }
-        else if (s === 'error') fail({ code: 'stt_unavailable', message: sttCode }, 'voice');
+        else if (s === 'error') fail({ code: ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(sttCode) ? 'mic_unavailable' : 'stt_unavailable', message: sttCode }, 'voice');
         else if (curState === 'listening') setState(restState());
       },
     });
@@ -781,7 +793,8 @@ const API = (() => {
   orbZone.addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (_) {} });
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
-    const settingsOpen = !!(document.getElementById('settingsPanel') || { classList: { contains: () => false } }).classList.contains('open');
+    const sp = document.getElementById('settingsPanel');
+    const settingsOpen = !!(sp && sp.classList.contains('open'));
     if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
@@ -826,7 +839,7 @@ const API = (() => {
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || 'Não conectada';
       panel.querySelector('#setCore').textContent = coreLabel();
       panel.querySelector('#toggleVoice').textContent = label('voice', prefs.voice);
-      panel.querySelector('#setTts').textContent = ttsOn ? 'ElevenLabs' : 'Navegador';
+      panel.querySelector('#setTts').textContent = ttsOn === true ? 'ElevenLabs' : (ttsOn === false ? 'Navegador' : 'Verificando…');
       panel.querySelector('#toggleSound').textContent = label('sound', prefs.sound);
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
@@ -854,7 +867,7 @@ const API = (() => {
           <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
           <button id="signOutBtn" class="settings-out">Sair da conta</button>
-          <p class="settings-hint">ORION AI V4.2.0</p>
+          <p class="settings-hint">ORION AI V4.2.5</p>
         </div>`;
       document.body.appendChild(panel);
 
