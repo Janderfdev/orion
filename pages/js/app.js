@@ -387,6 +387,83 @@ const VOICE = (() => {
   return { init, startListening, stopListening, speak, stopSpeaking, isAvailable: !!SR };
 })();
 
+/* ═══ wake.js — ativação por voz ("Olá Orion"): reconhecimento contínuo do navegador ═══
+   Só funciona com a página aberta e visível. Fica desligado até a pessoa ativar em Configurações. */
+const WAKE = (() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // normaliza SEM mudar o tamanho do texto (sem acento, só letras/números/espaço): assim a posição achada vale no texto original
+  const flat = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ');
+  // "olá orion", "oi orion", "ei orion", "hey orion", "e aí orion" (e variações que o reconhecedor costuma escrever)
+  const RE = /\b(?:ola|oi|ei|hey|e ai)\s+(?:o\s+)?(?:horion|orion|oriom|orian|oryon|orio)\b/;
+  const DEBUG = () => { try { return localStorage.getItem('orion_wake_debug') === '1'; } catch (_) { return false; } };
+
+  let rec = null, wanted = false, state = 'idle';   // idle | starting | running
+  let handled = false, hitTimer = null, restartTimer = null, retryDelay = 350;
+  let cb = { onHit() {}, onFault() {} };
+  const starts = [];
+
+  function fire(after) {
+    if (handled) return;
+    handled = true; clearTimeout(hitTimer); hitTimer = null;
+    cb.onHit(after);
+  }
+
+  function build() {
+    rec = new SR();
+    rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
+    rec.onstart = () => { state = 'running'; };
+    rec.onresult = e => {
+      if (handled) return;
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        for (let j = 0; j < r.length; j++) {
+          const orig = r[j].transcript || '';
+          if (DEBUG()) console.debug('[ORION] ouvi:', orig, r.isFinal ? '(final)' : '');
+          const m = RE.exec(flat(orig));
+          if (!m) continue;
+          // o que veio depois de "olá orion" na mesma frase vira a pergunta ("olá orion, que horas são?")
+          const after = orig.slice(m.index + m[0].length).replace(/^[\s,.:;!?-]+/, '').trim();
+          if (r.isFinal) fire(after);
+          else { clearTimeout(hitTimer); hitTimer = setTimeout(() => fire(after), after ? 2500 : 800); }
+          return;
+        }
+      }
+    };
+    rec.onerror = e => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') { wanted = false; cb.onFault('mic'); }
+      else if (e.error === 'network') retryDelay = 4000;
+    };
+    rec.onend = () => {
+      state = 'idle';
+      if (!wanted) return;
+      clearTimeout(restartTimer);
+      restartTimer = setTimeout(() => { restartTimer = null; tryStart(); }, retryDelay);
+      retryDelay = 350;
+    };
+  }
+
+  function tryStart() {
+    if (!wanted || state !== 'idle') return;
+    const now = Date.now();
+    while (starts.length && starts[0] < now - 20000) starts.shift();
+    if (starts.length >= 8) { wanted = false; cb.onFault('loop'); return; }   // reiniciando sem parar: algo está errado
+    starts.push(now);
+    handled = false;
+    try { if (!rec) build(); state = 'starting'; rec.start(); } catch (_) { state = 'idle'; }
+  }
+
+  function start() { wanted = true; if (state === 'idle' && !restartTimer) tryStart(); }
+  function stop() {
+    wanted = false;
+    clearTimeout(restartTimer); restartTimer = null;
+    clearTimeout(hitTimer); hitTimer = null;
+    if (rec && state !== 'idle') { try { rec.abort(); } catch (_) {} }
+  }
+  function init(callbacks) { cb = callbacks; }
+
+  return { init, start, stop, isAvailable: !!SR };
+})();
+
 /* ═══ api — comunicação com o backend (ORION Core) ═══
    O frontend NÃO tem lógica de modelo: só envia a pergunta e mostra a resposta.
    Autenticação: o token do Firebase vem de window.ORION_GET_TOKEN (definido em orion.html). */
@@ -445,13 +522,14 @@ const API = (() => {
 
   /* ── preferências (salvas neste navegador) ── */
   const KEY = 'orion_settings';
-  const prefs = Object.assign({ voice: true, sound: true, model: null },
+  const prefs = Object.assign({ voice: true, sound: true, wake: false, model: null },
     (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })());
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
 
   let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null;
   let flashTimer = null;
+  let wakeFault = null, wakeBlockUntil = 0;   // "Olá Orion": falha atual / pausa curta depois de falar ou ouvir
   // ttsOn: null = ainda não sei (servidor acordando) · true = ElevenLabs ligado · false = servidor sem voz
   let models = [], online = false, loading = false, coreErr = null, ttsOn = null;
 
@@ -526,6 +604,7 @@ const API = (() => {
       if (my.url) { URL.revokeObjectURL(my.url); my.url = null; }
       if (speech === my) speech = null;
       speaking = false;
+      wakeBlockUntil = Date.now() + 1200;   // não escuta o eco do final da fala
       my.done();
     };
     speaking = true;
@@ -779,6 +858,7 @@ const API = (() => {
     if (!VOICE.isAvailable) return fail({ code: 'stt_unavailable' }, 'voice');
     ORB.pressEffect();
     sfx('activate');
+    wakeBlockUntil = Date.now() + 2500;   // o microfone do comando assume; o "Olá Orion" espera
     if (!VOICE.startListening()) fail({ code: 'mic_unavailable' }, 'voice');
   }
   // Orb fechada: clicar fala. Painel aberto: tocar nele fecha (link e texto selecionado não contam)
@@ -843,6 +923,9 @@ const API = (() => {
       panel.querySelector('#toggleVoice').textContent = label('voice', prefs.voice);
       panel.querySelector('#setTts').textContent = ttsOn === true ? 'ElevenLabs' : (ttsOn === false ? 'Navegador' : 'Verificando…');
       panel.querySelector('#toggleSound').textContent = label('sound', prefs.sound);
+      const wk = panel.querySelector('#toggleWake');
+      wk.textContent = !VOICE.isAvailable ? 'Indisponível' : wakeFault ? 'Sem microfone' : prefs.wake ? (prefs.voice ? 'Ativada' : 'Ative a Voz') : 'Desativada';
+      wk.disabled = !VOICE.isAvailable;
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
@@ -865,6 +948,7 @@ const API = (() => {
           <div class="settings-row"><span>Fala</span><span class="settings-email" id="setTts">—</span></div>
           <div class="settings-row"><span>Testar voz</span><button id="testTts" class="settings-toggle">Testar</button></div>
           <p class="settings-hint" id="ttsTip" style="margin:4px 0 0;letter-spacing:.03em;text-transform:none;color:#fca5a5"></p>
+          <div class="settings-row"><span>Olá Orion</span><button id="toggleWake" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Sons</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>Histórico</span><button id="clearChat" class="settings-toggle">Limpar</button></div>
           <div class="settings-row"><span>Núcleo</span><span class="settings-email" id="setCore">—</span></div>
@@ -879,6 +963,12 @@ const API = (() => {
         if (!prefs.voice) { stopSpeech(); if (curState === 'listening') { VOICE.stopListening(); setState(restState()); } }
       });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
+      panel.querySelector('#toggleWake').addEventListener('click', () => {
+        if (!VOICE.isAvailable) return;
+        prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
+        syncWake(); sync();   // o clique é o que permite o navegador pedir o microfone
+        if (prefs.wake) flash('Diga "Olá Orion" para falar', 3200);
+      });
       panel.querySelector('#modelSelect').addEventListener('change', e => {
         prefs.model = e.target.value; savePrefs();
         const m = models.find(x => x.id === prefs.model);
@@ -924,6 +1014,46 @@ const API = (() => {
     });
     return { sync };
   })();
+
+  /* ── "Olá Orion": ativação por voz (reconhecimento contínuo; só com a página aberta e visível) ── */
+  const hintEl = $('hintText'), HINT_BASE = hintEl ? hintEl.textContent : '';
+  function wakeShouldRun() {
+    return prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault && !document.hidden
+      && appEl.classList.contains('on') && !processing && !speaking && Date.now() > wakeBlockUntil
+      && (curState === 'standby' || curState === 'responding');
+  }
+  function syncWake() {
+    if (wakeShouldRun()) WAKE.start(); else WAKE.stop();
+    const txt = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault
+      ? 'diga "olá orion" · toque na orb · ou use o botão de chat' : HINT_BASE;
+    if (hintEl && hintEl.textContent !== txt) hintEl.textContent = txt;
+  }
+  let wakeRetried = false;
+  try {
+    WAKE.init({
+      onHit: after => {
+        WAKE.stop();
+        wakeBlockUntil = Date.now() + 2500;
+        setTimeout(() => {   // dá tempo ao reconhecedor do "Olá Orion" de encerrar antes de abrir o do comando
+          if (processing || curState === 'listening' || curState === 'error') return;
+          closePanel();
+          if (after && after.length > 2) submit(after, 'voice'); else activate();
+        }, 300);
+      },
+      onFault: kind => {
+        wakeFault = kind;
+        flash(kind === 'mic' ? 'Microfone bloqueado: "Olá Orion" desligado' : '"Olá Orion" instável: desligado', 4200);
+        settings.sync();
+        if (!wakeRetried) {   // no próximo toque na tela tenta mais uma vez (o navegador pode exigir um gesto)
+          wakeRetried = true;
+          document.addEventListener('pointerdown', () => { wakeFault = null; syncWake(); settings.sync(); }, { once: true });
+        }
+      },
+    });
+  } catch (err) { console.error('[ORION] WAKE.init falhou:', err); }
+  setInterval(syncWake, 800);
+  document.addEventListener('visibilitychange', syncWake);
+  syncWake();
 
   LOGGER.info('session_started', { sessionId: LOGGER.sessionId, apiConfigured: API.configured(), sttAvailable: VOICE.isAvailable });
   loadModels();   // já durante o boot: também acorda o servidor gratuito
