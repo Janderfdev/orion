@@ -4,7 +4,7 @@ Ciclo (Request → Execute → Respond):
   1. carrega o histórico do usuário (memória persistente)
   2. envia histórico + pergunta + ferramentas ao modelo
   3. o modelo decide se chama ferramentas (o provedor executa e devolve o resultado)
-  4. resposta final -> salva no histórico -> volta ao usuário
+  4. resposta final -> salva no histórico -> volta ao usuário (com as fontes e imagens que as ferramentas coletaram)
 """
 import asyncio, re
 
@@ -31,9 +31,10 @@ SYSTEM_PROMPT = (
     "Você entende programação, tecnologia, matemática, conceitos, perguntas gerais, "
     "perguntas com várias etapas e usa o contexto da conversa. "
     "Ferramentas: calcular (contas exatas), data_hora, clima (clima atual de uma cidade), "
-    "buscar_imagem (mostra uma foto na tela; use quando pedirem para ver, mostrar ou como é algo) e pesquisar_wikipedia "
-    "(traz o resumo e a imagem do artigo). Use pesquisar_wikipedia para perguntas sobre pessoas, lugares, obras, "
+    "buscar_imagem (mostra fotos na tela; use quando pedirem para ver, mostrar ou como é algo) e pesquisar_wikipedia "
+    "(traz o resumo e até 3 imagens do assunto, exibidas na tela). Use pesquisar_wikipedia para perguntas sobre pessoas, lugares, obras, "
     "eventos e conceitos específicos; use calcular, data_hora e clima quando a resposta depender deles. "
+    "Quando as imagens já foram exibidas na tela, não descreva cada foto: apenas responda a pergunta. "
     "Para conversa, opiniões e coisas simples, responda direto, sem ferramenta. "
     "Se precisar de mais de uma ferramenta, chame todas ao mesmo tempo. "
     "Depois de usar uma ferramenta, responda de forma natural, sem citar o nome da ferramenta. "
@@ -67,7 +68,7 @@ class Orchestrator:
         task.add_done_callback(self._bg.discard)
 
     async def ask(self, text: str, uid: str, token: str, provider) -> dict:
-        sources = tools.collect_sources()          # fontes que as ferramentas usarem nesta pergunta
+        sources = tools.collect_sources()          # fontes/imagens que as ferramentas usarem nesta pergunta
         history = await asyncio.to_thread(self.memory.load, uid, token)
         reply = await provider.generate(
             SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
