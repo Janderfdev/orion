@@ -162,8 +162,28 @@ async def speak_diag(authorization: str = Header(default="")):
     await _auth(authorization)
     if not elevenlabs.configured():
         return {"ok": False, "motivo": "ELEVENLABS_API_KEY e/ou ELEVENLABS_VOICE_ID não chegaram ao servidor (confira os nomes no Render e faça redeploy)."}
+    vid = os.getenv("ELEVENLABS_VOICE_ID", "").strip().strip("'\"")
+    info = {"voice_id_tamanho": len(vid), "modelo": os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")}
     try:
         audio = await asyncio.to_thread(elevenlabs.synthesize, "Teste de voz do ORION.")
-        return {"ok": True, "bytes": len(audio)}
+        return {"ok": True, "bytes": len(audio), **info}
     except Exception as e:
-        return {"ok": False, "status": getattr(e, "status_code", None), "detalhe": str(e)[:400]}
+        status, det = getattr(e, "status_code", None), str(e)[:400]
+        low = det.lower()
+        if status == 401:
+            dica = "Chave do ElevenLabs inválida ou sem permissão de Text to Speech."
+        elif status in (402, 403):
+            dica = "O plano não permite essa voz (voz da Voice Library). Adicione-a em My Voices e use o ID de lá."
+        elif status == 404:
+            dica = "Voice ID não existe. Copie o ID (não o nome) em My Voices."
+        elif status == 429:
+            dica = "Limite de uso ou créditos do ElevenLabs esgotados."
+        elif status == 400 and ("voice" in low or "uid" in low):
+            dica = f"Voice ID inválido (o seu tem {len(vid)} caracteres; o normal é 20, sem aspas nem espaços)."
+        elif status == 400 and "model" in low:
+            dica = "Modelo recusado: apague ELEVENLABS_MODEL no Render ou use eleven_flash_v2_5."
+        elif status == 400:
+            dica = "O ElevenLabs recusou o pedido (400): veja o campo detalhe no console."
+        else:
+            dica = "Erro inesperado: veja o campo detalhe no console."
+        return {"ok": False, "status": status, "dica": dica, "detalhe": det, **info}
