@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 import requests
 
-HEADERS = {"User-Agent": "ORION-AI/4.0 (https://janderfdev.github.io/orion)"}
+HEADERS = {"User-Agent": "ORION-AI/4.2 (https://janderfdev.github.io/orion)"}
 TIMEOUT = 8
 _tls = threading.local()
 
@@ -32,10 +32,11 @@ def collect_sources() -> list:
     return lst
 
 
-def _add_source(title: str, url: str, image: str | None = None) -> None:
+def _add_source(title: str, url: str, image: str | None = None, images: list | None = None) -> None:
+    """Registra uma fonte. `images` é a galeria (até 3); `image` continua existindo por compatibilidade."""
     lst = _sources.get()
     if lst is not None and all(x["url"] != url for x in lst):
-        lst.append({"title": title, "url": url, "image": image})
+        lst.append({"title": title, "url": url, "image": image, "images": images or ([image] if image else [])})
 
 
 # ── calculadora (sem eval: percorre a árvore da expressão) ──
@@ -107,6 +108,37 @@ def clima(cidade: str) -> str:
             f"umidade {w['relative_humidity_2m']}%, vento {w['wind_speed_10m']:.0f} km/h.")
 
 
+# ── imagens (Wikimedia Commons, sem chave) ──
+def _commons_images(consulta: str, n: int = 3) -> list[dict]:
+    """Até `n` fotos do Wikimedia Commons para a consulta. Nunca levanta exceção (devolve lista vazia)."""
+    try:
+        j = _get("https://commons.wikimedia.org/w/api.php", {
+            "action": "query", "format": "json", "generator": "search", "gsrnamespace": 6,
+            "gsrsearch": consulta + " filetype:bitmap", "gsrlimit": 8,
+            "prop": "imageinfo", "iiprop": "url|mime", "iiurlwidth": 640}).json()
+    except Exception:
+        return []
+    pages = sorted((j.get("query") or {}).get("pages", {}).values(), key=lambda p: p.get("index", 99))
+    out = []
+    for p in pages:
+        ii = (p.get("imageinfo") or [{}])[0]
+        url = ii.get("thumburl") or ii.get("url") or ""
+        if ii.get("mime") in ("image/jpeg", "image/png", "image/webp") and url.startswith("https://upload.wikimedia.org/"):
+            out.append({"title": p["title"].split(":", 1)[-1], "url": url, "page": ii.get("descriptionurl") or url})
+            if len(out) >= n:
+                break
+    return out
+
+
+def buscar_imagem(consulta: str) -> str:
+    """Procura fotos no Wikimedia Commons e as envia para a tela (pela lista de fontes da pergunta)."""
+    imgs = _commons_images(consulta, 3)
+    if not imgs:
+        return "Nenhuma imagem encontrada."
+    _add_source(imgs[0]["title"], imgs[0]["page"], imgs[0]["url"], [i["url"] for i in imgs])
+    return f"{len(imgs)} imagem(ns) encontrada(s) e já exibida(s) na tela: {imgs[0]['title']}. Comente brevemente."
+
+
 # ── consulta factual (Wikipédia em português) ──
 def _wiki_summary(title: str):
     """Resumo do artigo com esse título (segue redirecionamentos). None se não existir ou for página de desambiguação."""
@@ -130,27 +162,18 @@ def pesquisar_wikipedia(consulta: str) -> str:
         if r is None:
             return "Nada encontrado na Wikipédia."
     title = r.get("title") or consulta
-    image = (r.get("thumbnail") or {}).get("source")   # imagem principal do artigo (se houver)
-    _add_source(title, "https://pt.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),"), image)
+    # galeria: miniatura do artigo + fotos do Commons (até 3 no total)
+    images = []
+    thumb = (r.get("thumbnail") or {}).get("source")
+    if thumb:
+        images.append(thumb)
+    for i in _commons_images(title, 4):
+        if i["url"] not in images:
+            images.append(i["url"])
+    images = images[:3]
+    _add_source(title, "https://pt.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),"),
+                images[0] if images else None, images)
     return f"{title}: {(r.get('extract') or 'sem resumo disponível.')[:900]}"
-
-
-# ── imagens (Wikimedia Commons, sem chave) ──
-def buscar_imagem(consulta: str) -> str:
-    """Procura uma foto no Wikimedia Commons e a envia para a tela (pela lista de fontes da pergunta)."""
-    j = _get("https://commons.wikimedia.org/w/api.php", {
-        "action": "query", "format": "json", "generator": "search", "gsrnamespace": 6,
-        "gsrsearch": consulta + " filetype:bitmap", "gsrlimit": 6,
-        "prop": "imageinfo", "iiprop": "url|mime", "iiurlwidth": 640}).json()
-    pages = sorted((j.get("query") or {}).get("pages", {}).values(), key=lambda p: p.get("index", 99))
-    for p in pages:
-        ii = (p.get("imageinfo") or [{}])[0]
-        url = ii.get("thumburl") or ii.get("url") or ""
-        if ii.get("mime") in ("image/jpeg", "image/png", "image/webp") and url.startswith("https://upload.wikimedia.org/"):
-            title = p["title"].split(":", 1)[-1]
-            _add_source(title, ii.get("descriptionurl") or url, url)
-            return f"Imagem encontrada e já exibida na tela: {title}. Comente brevemente."
-    return "Nenhuma imagem encontrada."
 
 
 TOOLS = [
@@ -164,10 +187,10 @@ TOOLS = [
      "description": "Retorna o clima ATUAL (temperatura, umidade, vento) de uma cidade.",
      "input_schema": {"type": "object", "properties": {"cidade": {"type": "string", "description": "Ex.: Fortaleza"}}, "required": ["cidade"]}},
     {"name": "pesquisar_wikipedia", "fn": pesquisar_wikipedia,
-     "description": "Busca um resumo factual na Wikipédia em português. Use para fatos, pessoas, lugares e conceitos quando precisar de uma fonte.",
+     "description": "Busca um resumo factual na Wikipédia em português (e mostra até 3 imagens na tela). Use para fatos, pessoas, lugares e conceitos quando precisar de uma fonte.",
      "input_schema": {"type": "object", "properties": {"consulta": {"type": "string"}}, "required": ["consulta"]}},
     {"name": "buscar_imagem", "fn": buscar_imagem,
-     "description": "Mostra uma foto/imagem na tela do usuário. Use quando ele pedir para ver, mostrar ou como é algo.",
+     "description": "Mostra fotos/imagens na tela do usuário. Use quando ele pedir para ver, mostrar ou como é algo.",
      "input_schema": {"type": "object", "properties": {"consulta": {"type": "string", "description": "Ex.: Torre Eiffel"}}, "required": ["consulta"]}},
 ]
 _BY_NAME = {t["name"]: t for t in TOOLS}
