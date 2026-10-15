@@ -32,8 +32,17 @@ def _session():
 
 
 def clean(text: str) -> str:
-    """Texto que será realmente falado (e cobrado): espaços normalizados e no máximo MAX_CHARS."""
-    return " ".join(text.split())[:MAX_CHARS]
+    """Texto que será realmente falado (e cobrado): espaços normalizados e no máximo MAX_CHARS.
+    Se passar do limite, corta no fim da última frase (ou na última palavra), nunca no meio de uma palavra."""
+    t = " ".join(text.split())
+    if len(t) <= MAX_CHARS:
+        return t
+    head = t[:MAX_CHARS + 1]
+    end = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
+    if end >= MAX_CHARS * 0.4:
+        return t[:end + 1]
+    sp = t[:MAX_CHARS].rfind(" ")
+    return t[:sp] if sp > 0 else t[:MAX_CHARS]
 
 
 def synthesize(text: str) -> bytes:
