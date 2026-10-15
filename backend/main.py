@@ -13,6 +13,8 @@ Variáveis:
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
   ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID   (opcionais) ligam a voz do ElevenLabs; ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
                          ORION_TTS_DAILY_CHARS (10000 por usuário por dia)
+  FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
+  ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
@@ -25,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from auth.firebase import verify
 from core.orchestrator import Orchestrator
+from core.quota import Quota
 from memory.store import Memory
 from providers.registry import Registry
 from voice import elevenlabs
@@ -42,6 +45,7 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", 
 
 registry = Registry()
 orchestrator = Orchestrator(Memory())
+quota = Quota()   # cota diária por plano (free/plus/pro)
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
 _tts_used: dict[str, tuple] = {}  # uid -> (dia, caracteres falados hoje)
 
@@ -118,9 +122,13 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
     model_id, provider = registry.get(body.model)
     if not provider:
         raise HTTPException(400, "Modelo indisponível.")
+    q = await asyncio.to_thread(quota.consume, uid)
+    if not q["ok"]:                                    # 402: o site mostra "faça upgrade para continuar"
+        raise HTTPException(402, "Limite diário de perguntas atingido.")
     try:
         result = await orchestrator.ask(body.text, uid, token, provider)
     except Exception as e:
+        await asyncio.to_thread(quota.refund, uid)     # a pergunta não deu resposta: devolve a cota
         log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
         status = getattr(e, "status_code", None)
         if status == 429:                              # limite de uso do provedor (ex.: plano gratuito)
@@ -128,7 +136,8 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
             raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": result["reply"], "model": model_id, "sources": result["sources"], "understood": result["understood"]}
+    return {"reply": result["reply"], "model": model_id, "sources": result["sources"], "understood": result["understood"],
+            "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}}
 
 
 @app.post("/memory/clear")
