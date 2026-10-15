@@ -16,7 +16,7 @@ Variáveis:
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
 """
-import asyncio, datetime, logging, os, time
+import asyncio, datetime, logging, os, re, time
 from collections import deque
 
 from fastapi import FastAPI, Header, HTTPException, Response
@@ -170,6 +170,8 @@ async def speak_diag(authorization: str = Header(default="")):
     except Exception as e:
         status, det = getattr(e, "status_code", None), str(e)[:400]
         low = det.lower()
+        mm = re.search(r'"message"\s*:\s*"([^"]+)', det)
+        msg = mm.group(1) if mm else det.split(": ", 1)[-1]   # mensagem real do ElevenLabs
         if status == 401:
             dica = "Chave do ElevenLabs inválida ou sem permissão de Text to Speech."
         elif status in (402, 403):
@@ -183,7 +185,7 @@ async def speak_diag(authorization: str = Header(default="")):
         elif status == 400 and "model" in low:
             dica = "Modelo recusado: apague ELEVENLABS_MODEL no Render ou use eleven_flash_v2_5."
         elif status == 400:
-            dica = "O ElevenLabs recusou o pedido (400): veja o campo detalhe no console."
+            dica = f"ElevenLabs recusou (400): {msg[:220]}"
         else:
-            dica = "Erro inesperado: veja o campo detalhe no console."
+            dica = f"Erro {status}: {msg[:220]}"
         return {"ok": False, "status": status, "dica": dica, "detalhe": det, **info}
