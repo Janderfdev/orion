@@ -1,4 +1,4 @@
-"""ORION AI — backend V4.2.0.
+"""ORION AI — backend V4.2.5.
 
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · GET /speak/diag · POST /memory/clear
@@ -150,7 +150,8 @@ async def speak(body: SpeakIn, authorization: str = Header(default="")):
     try:
         audio = await asyncio.to_thread(elevenlabs.synthesize, text)
     except Exception as e:
-        log.exception("Falha ao gerar a voz")   # detalhes só no log do servidor
+        # o log do servidor (Render → Logs) mostra o status e o motivo exato recusado pelo ElevenLabs
+        log.error("Falha ao gerar a voz: status=%s detalhe=%s", getattr(e, "status_code", None), str(e)[:300])
         _tts_refund(uid, len(text))
         raise HTTPException(429 if getattr(e, "status_code", None) == 429 else 502, "Falha ao gerar a voz.")
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
@@ -172,10 +173,14 @@ async def speak_diag(authorization: str = Header(default="")):
         low = det.lower()
         mm = re.search(r'"message"\s*:\s*"([^"]+)', det)
         msg = mm.group(1) if mm else det.split(": ", 1)[-1]   # mensagem real do ElevenLabs
-        if status == 401:
+        if status == 401 and ("unusual" in low or "free tier" in low or "abuse" in low or "proxy" in low or "vpn" in low):
+            dica = "O ElevenLabs bloqueou o plano gratuito por vir de um servidor em nuvem (Render). Só um plano pago libera."
+        elif status == 401:
             dica = "Chave do ElevenLabs inválida ou sem permissão de Text to Speech."
-        elif status in (402, 403):
-            dica = "O plano não permite essa voz (voz da Voice Library). Adicione-a em My Voices e use o ID de lá."
+        elif status == 402 or "paid_plan_required" in low or "library" in low:
+            dica = "O plano não permite essa voz (voz da Voice Library). Adicione-a em My Voices ou use uma voz padrão (premade)."
+        elif status == 403:
+            dica = "Sem permissão para essa voz ou recurso. Adicione a voz em My Voices e use o ID de lá."
         elif status == 404:
             dica = "Voice ID não existe. Copie o ID (não o nome) em My Voices."
         elif status == 429:
