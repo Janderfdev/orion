@@ -18,7 +18,7 @@
   --halo: calc(var(--orb) * 1.9);
   --panel-w: min(550px, 90vw);
   --panel-h: clamp(280px, 58vh, 400px);
-  /* cor "ao vivo" da Orb — atualizada quadro a quadro por orb.js */
+  /* cor "ao vivo" da Orb — atualizada quadro a quadro por orb.js (a constelação V10 lê estas mesmas variáveis) */
   --core-a: #5b21b6; --core-b: #2e1065; --core-c: #8b5cf6;
 }
 
@@ -71,6 +71,9 @@ html,body{
 /* ═══════ APP ═══════ */
 #app{ position:fixed; inset:0; z-index:2; opacity:0; transition:opacity .75s ease; }
 #app.on{ opacity:1; }
+
+/* V10 — a constelação vive solta na tela (fora da Orb), com a paleta viva da Orb */
+#universe{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
 
 .header{
   position:absolute; top:0; left:0; right:0;
@@ -132,33 +135,18 @@ html,body{
   100%{ transform:translate(-50%,-50%) scale(1.55); opacity:0; }
 }
 
+/* V10 — o elemento .orb deixa de ser uma esfera de vidro: fica invisível e só aparece como painel de resposta */
 .orb{
   position:relative; flex:none; width:var(--orb); height:var(--orb); border-radius:50%;
   overflow:hidden;
-  background:radial-gradient(circle at 34% 30%,
-    color-mix(in srgb, var(--core-c) 12%, transparent) 0%,
-    color-mix(in srgb, var(--core-a) 6%, transparent) 32%,
-    rgba(2,2,8,0.88) 68%, rgba(0,0,0,0.95) 100%);
-  border:1px solid color-mix(in srgb, var(--core-a) 28%, transparent);
-  box-shadow:
-    0 0 60px color-mix(in srgb, var(--core-a) 30%, transparent),
-    0 0 130px color-mix(in srgb, var(--core-b) 22%, transparent),
-    inset 0 0 60px rgba(0,0,0,0.7),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+  background:transparent;
+  border:1px solid transparent;
+  box-shadow:none;
   animation:orbfloat 10s ease-in-out infinite, orbbreathe 6s ease-in-out infinite;
-  transition:box-shadow 0.9s ease, filter 0.6s ease, transform 0.4s ease, opacity .45s ease,
+  transition:box-shadow 0.9s ease, filter 0.6s ease, transform 0.4s ease, opacity .45s ease, border-color .45s ease,
     width .55s cubic-bezier(.16,.9,.24,1), height .55s cubic-bezier(.16,.9,.24,1), border-radius .55s cubic-bezier(.16,.9,.24,1);
   will-change:transform;
   z-index:1;
-}
-.orb-zone:hover .orb{
-  filter:brightness(1.06);
-  box-shadow:
-    0 0 78px color-mix(in srgb, var(--core-a) 40%, transparent),
-    0 0 150px color-mix(in srgb, var(--core-b) 28%, transparent),
-    inset 0 0 60px rgba(0,0,0,0.7),
-    inset 0 1px 0 rgba(255,255,255,0.14);
 }
 .orb.pressed{ transform:scale(1.08) !important; transition:transform 0.15s ease; }
 @keyframes orbfloat{ 0%,100%{margin-top:0;} 50%{margin-top:-14px;} }
@@ -169,12 +157,14 @@ html,body{
 .orb.st-error{ filter:brightness(0.62); animation:orberr 0.42s ease; }
 @keyframes orberr{ 0%{transform:translateX(0);} 25%{transform:translateX(-7px);} 55%{transform:translateX(6px);} 80%{transform:translateX(-3px);} 100%{transform:translateX(0);} }
 
+/* o canvas antigo da Orb continua no DOM (o app.js depende dele), mas fica invisível */
 .orb-canvas{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; mix-blend-mode:screen; }
 .glass-hi{ position:absolute; top:6%; left:9%; width:44%; height:38%; border-radius:50%;
   background:radial-gradient(ellipse at 38% 32%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 46%, transparent 74%);
   transform:rotate(-22deg); pointer-events:none; z-index:2; }
 .glass-rim{ position:absolute; bottom:6%; right:8%; width:24%; height:12%; border-radius:50%;
   background:radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 72%); pointer-events:none; z-index:2; }
+.orb-canvas, .glass-hi, .glass-rim{ opacity:0 !important; }
 
 .status{
   position:absolute; left:0; right:0;
@@ -265,19 +255,25 @@ html,body{
 }
 .settings-out:hover{ background:rgba(248,113,113,0.15); }
 
-/* ═══════ V4.2.5 — na hora de responder, a própria Orb vira o painel ═══════
-   Nada sai da Orb: o anel em volta some, ela cresce no lugar e a resposta aparece dentro dela. */
+/* ═══════ Resposta: a Orb (agora invisível) vira o painel no lugar ═══════
+   O anel em volta some, o painel cresce no centro e a resposta aparece nele. */
 .orb-zone{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
-body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }   /* com o campo de pergunta aberto, a Orb diminui um pouco */
+body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }   /* com o campo de pergunta aberto, a constelação diminui um pouco */
 .orb-zone.panel-open{ cursor:default; }
 .orb-zone.panel-open .halo, .orb-zone.panel-open .wave-ring{ opacity:0 !important; }
 .status{ transition:top .8s cubic-bezier(.16,.9,.24,1); }
 body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }   /* "Processando…" fica logo abaixo do painel */
 
-.orb.panel{ width:var(--panel-w); height:var(--panel-h); border-radius:28px; animation:none !important; filter:none !important; cursor:default; }
+.orb.panel{
+  width:var(--panel-w); height:var(--panel-h); border-radius:28px; animation:none !important; filter:none !important; cursor:default;
+  border-color:color-mix(in srgb, var(--core-c) 45%, transparent);
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--core-a) 30%, transparent),
+    0 0 130px color-mix(in srgb, var(--core-b) 22%, transparent),
+    inset 0 0 60px rgba(0,0,0,0.7);
+  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+}
 .orb-canvas, .glass-hi, .glass-rim{ transition:opacity .45s ease; }
-.orb.panel{ border-color:color-mix(in srgb, var(--core-c) 45%, transparent); }
-.orb.panel .orb-canvas, .orb.panel .glass-hi, .orb.panel .glass-rim{ opacity:0; }   /* o visual da Orb não faz parte da resposta */
 .panel-bg{ position:absolute; inset:0; z-index:1; background:rgba(7,7,15,.94); opacity:0; transition:opacity .35s ease; pointer-events:none; }
 .orb.panel .panel-bg{ opacity:1; }
 
@@ -414,6 +410,9 @@ body.chat-open .hint-text{ opacity:0; }
 <!-- APP -->
 <div id="app">
 
+  <!-- V10: universo/constelação em tela cheia, fora da Orb -->
+  <canvas id="universe" aria-hidden="true"></canvas>
+
   <div class="header">
     <div class="header-dot"></div>
     <img class="header-logo" src="../assets/orion_ai_wordmark.png" alt="ORION AI">
@@ -471,8 +470,132 @@ body.chat-open .hint-text{ opacity:0; }
 <button class="gear" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)">
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 </button>
-<div class="version-tag" id="versionTag">VERSÃO V4.2.5</div>
+<div class="version-tag" id="versionTag">VERSÃO V10.0</div>
 
+<!-- ═══════ V10 — CONSTELAÇÃO 3D (fora da Orb) ═══════
+     Rede de estrelas em 3D, no visual da V10. Não depende do app.js: lê o estado pelas classes da Orb
+     (st-listening/thinking/speaking/error, .speaking, .panel, body.chat-open) e a cor pelas variáveis
+     --core-a/b/c, as mesmas que a Orb atualiza ao vivo. -->
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('universe'), ctx = cv.getContext('2d'), orbEl = $('orb'), zone = $('orbZone'), cs = getComputedStyle(document.documentElement);
+  const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const PD = {
+    standby:   { speed: .5, spin: .12,  radius: .85, turb: .04, wave: 0,  dir: -1, sag: 0,  size: 1,    gain: 1,    voice: 0, gal: 0, link: .5 },
+    listening: { speed: .8, spin: .25,  radius: .55, turb: .05, wave: .8, dir: -1, sag: 0,  size: 1.15, gain: 1.15, voice: 0, gal: 0, link: .7 },
+    thinking:  { speed: 1.3, spin: .9,  radius: .95, turb: .04, wave: 0,  dir: 1,  sag: 0,  size: .95,  gain: 1.1,  voice: 0, gal: 1, link: 1 },
+    speaking:  { speed: 1,  spin: .2,   radius: .9,  turb: .08, wave: 1,  dir: 1,  sag: 0,  size: 1.2,  gain: 1.25, voice: 1, gal: 0, link: .55 },
+    error:     { speed: 2,  spin: -.3,  radius: 1.05, turb: .5, wave: 0,  dir: 1,  sag: .5, size: .9,   gain: .55,  voice: 0, gal: 0, link: 0 },
+  };
+  const BRIGHT = { standby: 1, listening: 1.18, thinking: 1.05, speaking: 1.3, error: .62 };
+  const PERIOD = { standby: 6, listening: 3.4, thinking: 2.2, speaking: 2.6, error: 6 };   // respiração igual à da Orb
+  const S = { ...PD.standby }; let ST = PD.standby, name = 'standby', W = 0, H = 0, dpr = 1, last = 0, fr = 0;
+  let tt = 0, yaw = 0, kick = 0, mx = 0, my = 0, ox = 0, oy = 0, hovered = false, bright = 1, per = 6, bph = 0, fph = 0, zoom = 1, dim = 1, shake = 0;
+  const N = 280, NL = 110, CAM = 3.4, TAU = 6.2832;
+  const STAR = Array.from({ length: N }, (_, i) => {
+    const u = Math.random() * 2 - 1, th = Math.random() * TAU, q = Math.sqrt(1 - u * u), r = .2 + .8 * Math.cbrt(Math.random());
+    const gr = .04 + Math.sqrt(Math.random()) * .96, ga = (i % 3) * 2.094 + gr * 4.5 + (Math.random() - .5) * .6;
+    return { sx: q * Math.cos(th) * r, sy: u * r, sz: q * Math.sin(th) * r, gx: Math.cos(ga) * gr, gy: (Math.random() - .5) * .07 * (1 - gr * .5), gz: Math.sin(ga) * gr,
+      ph: Math.random() * TAU, s0: .6 + Math.random() * 1.2, hi: i < NL, x: 0, y: 0, z: 0, px: 0, py: 0, pd: 1, da: 1 };
+  });
+  const BG = Array.from({ length: 110 }, () => { const u = Math.random() * 2 - 1, th = Math.random() * TAU, q = Math.sqrt(1 - u * u), r = 1.3 + Math.random() * .8;
+    return { x: q * Math.cos(th) * r, y: u * r, z: q * Math.sin(th) * r, ph: Math.random() * TAU, s0: .4 + Math.random() * .7 }; });
+
+  // cor: lida ao vivo das variáveis da Orb
+  const parse = v => { v = (v || '').trim(); let m = /^#([0-9a-f]{6})$/i.exec(v);
+    if (m) { const n = parseInt(m[1], 16); return { r: n >> 16, g: n >> 8 & 255, b: n & 255 }; }
+    if ((m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(v))) return { r: parseInt(m[1] + m[1], 16), g: parseInt(m[2] + m[2], 16), b: parseInt(m[3] + m[3], 16) };
+    if ((m = /rgba?\(([^)]+)\)/.exec(v))) { const p = m[1].split(/[ ,\/]+/).map(Number); return { r: p[0], g: p[1], b: p[2] }; }
+    return null; };
+  const dflt = { a: { r: 91, g: 33, b: 182 }, b: { r: 46, g: 16, b: 101 }, c: { r: 139, g: 92, b: 246 } };
+  const now = { a: { ...dflt.a }, b: { ...dflt.b }, c: { ...dflt.c } }, tgt = { a: { ...dflt.a }, b: { ...dflt.b }, c: { ...dflt.c } };
+  const lerpC = (f, t, k) => ({ r: f.r + (t.r - f.r) * k, g: f.g + (t.g - f.g) * k, b: f.b + (t.b - f.b) * k });
+  const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
+  const white = { r: 255, g: 255, b: 255 };
+  const readState = () => { const c = orbEl.classList;
+    return c.contains('st-error') ? 'error' : (c.contains('st-speaking') || zone.classList.contains('speaking')) ? 'speaking' : c.contains('st-thinking') ? 'thinking' : c.contains('st-listening') ? 'listening' : 'standby'; };
+
+  function resize() { dpr = Math.min(2, window.devicePixelRatio || 1); W = window.innerWidth; H = window.innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+
+  function draw(ts) {
+    requestAnimationFrame(draw);
+    if (!W) return;
+    const dt = Math.min(.05, (ts - last) / 1000 || .016) * (RM ? .25 : 1), f = dt * 60; last = ts; fr++;
+    const sm = c => 1 - Math.pow(1 - c, f);
+    const nn = readState();
+    if (nn !== name) { name = nn; ST = PD[nn]; kick = Math.max(kick, .35); if (nn === 'error') shake = .42; }
+    if (fr % 3 === 0) ['a', 'b', 'c'].forEach(k => { const p = parse(cs.getPropertyValue('--core-' + k)); if (p && isFinite(p.r + p.g + p.b)) tgt[k] = p; });
+    for (const k in ST) S[k] += (ST[k] - S[k]) * sm(.035);
+    bright += (BRIGHT[name] - bright) * sm(.045);
+    ['a', 'b', 'c'].forEach(k => { now[k] = lerpC(now[k], tgt[k], sm(.25)); });
+    per += (PERIOD[name] - per) * sm(.05); bph += dt * TAU / per; fph += dt * TAU / 10; shake = Math.max(0, shake - dt);
+    const panelOn = orbEl.classList.contains('panel'), chatOn = document.body.classList.contains('chat-open');
+    zoom += ((chatOn && !panelOn ? .78 : 1) - zoom) * (1 - Math.exp(-dt * 3.2));   // acompanha o scale da zona
+    dim += ((panelOn ? .4 : 1) - dim) * (1 - Math.exp(-dt * 3.5));                 // com o painel aberto, a constelação recua
+    tt += S.speed * .017 * f; yaw += S.spin * .017 * f; kick *= Math.pow(.94, f); ox += (mx - ox) * sm(.05); oy += (my - oy) * sm(.05);
+
+    ctx.clearRect(0, 0, W, H);
+    const orbPx = Math.max(190, Math.min(320, Math.min(W, H) * .32));
+    const br = 1 + .035 * (.5 - .5 * Math.cos(bph));                                  // respiração da Orb
+    const b = bright * (hovered ? 1.08 : 1) * dim, U = orbPx * 1.02 * zoom * br, sc = U / 260;
+    const cx = W / 2 + (shake > 0 ? Math.sin((1 - shake / .42) * 12.6) * 7 * (shake / .42) : 0), cy = H / 2 - 7 * (.5 - .5 * Math.cos(fph)) * zoom;
+    const env = .5 + .5 * Math.sin(tt * 6.5) * Math.sin(tt * 2.1 + 1.3);
+    const ya = yaw + ox * .9, pa = .28 + oy * .6, cyw = Math.cos(ya), syw = Math.sin(ya), cpi = Math.cos(pa), spi = Math.sin(pa);
+
+    // brilho suave atrás da constelação (o "glow" da Orb, sem a esfera de vidro)
+    const gr = U * 1.5, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+    g.addColorStop(0, rgba(now.a, .17 * b)); g.addColorStop(.55, rgba(now.b, .07 * b)); g.addColorStop(1, rgba(now.b, 0));
+    ctx.fillStyle = g; ctx.fillRect(cx - gr, cy - gr, gr * 2, gr * 2);
+
+    // fundo distante (paralaxe)
+    const UB = Math.max(W, H) * .42, by = ya * .5, cby = Math.cos(by), sby = Math.sin(by);
+    BG.forEach(s => {
+      const x1 = s.x * cby + s.z * sby, z1 = -s.x * sby + s.z * cby, y2 = s.y * cpi - z1 * spi, z2 = s.y * spi + z1 * cpi, pd = CAM / (CAM + z2);
+      ctx.fillStyle = rgba(lerpC(now.c, white, .5), (.16 + .2 * (.5 + .5 * Math.sin(tt * 1.3 + s.ph))) * b);
+      ctx.beginPath(); ctx.arc(W / 2 + x1 * UB * pd, H / 2 + y2 * UB * pd, s.s0 * pd * (UB / 340), 0, TAU); ctx.fill();
+    });
+
+    // estrelas: esfera ↔ galáxia, com onda, voz, turbulência, queda e câmera 3D
+    STAR.forEach(s => {
+      let x = s.sx + (s.gx - s.sx) * S.gal, y = s.sy + (s.gy - s.sy) * S.gal, z = s.sz + (s.gz - s.sz) * S.gal;
+      const r0 = Math.hypot(x, y, z) || 1e-6, k = S.radius * (1 + .05 * Math.sin(tt * .9 + s.ph)) * (1 + .16 * S.voice * env);
+      const disp = S.wave * .09 * Math.sin(9 * r0 - S.dir * tt * 4) + kick * .2, tb = S.turb * .15;
+      x = x * k + x / r0 * disp + tb * (Math.sin(tt * 2.3 + s.ph * 3) + Math.sin(tt * 3.7 + s.ph)) + .02 * Math.sin(tt * .6 + s.ph * 2);
+      y = y * k + y / r0 * disp + tb * (Math.cos(tt * 2.1 + s.ph * 2) + Math.sin(tt * 4.1 + s.ph * 3)) + S.sag * (.25 + .3 * r0) + .02 * Math.cos(tt * .5 + s.ph);
+      z = z * k + z / r0 * disp + tb * (Math.sin(tt * 1.9 + s.ph * 4) + Math.cos(tt * 3.3 + s.ph));
+      const d = Math.hypot(x, y, z); if (d > 1.05) { x *= 1.05 / d; y *= 1.05 / d; z *= 1.05 / d; }
+      const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw, y2 = y * cpi - z1 * spi, z2 = y * spi + z1 * cpi;
+      s.x = x1; s.y = y2; s.z = z2; s.pd = CAM / (CAM + z2); s.px = cx + x1 * U * s.pd; s.py = cy + y2 * U * s.pd; s.da = Math.max(.15, Math.min(1, .6 - .4 * z2));
+    });
+
+    // linhas entre estrelas próximas (rede neural)
+    if (S.link > .02) {
+      const th = .34, th2 = th * th; ctx.lineWidth = .8;
+      for (let i = 0; i < NL; i++) for (let j = i + 1; j < NL; j++) {
+        const p = STAR[i], q = STAR[j], dx = p.x - q.x, dy = p.y - q.y, dz = p.z - q.z, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < th2) { ctx.strokeStyle = rgba(now.c, (1 - Math.sqrt(d2) / th) * .4 * S.link * b * (p.da + q.da) / 2); ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(q.px, q.py); ctx.stroke(); }
+      }
+    }
+
+    // estrelas, de trás para frente
+    STAR.slice().sort((p, q) => q.z - p.z).forEach(s => {
+      const tw = .55 + .45 * Math.sin(tt * 2.2 + s.ph), rr = s.s0 * sc * s.pd * S.size * (s.hi ? 1.5 : 1), al = .85 * s.da * tw * b * S.gain;
+      if (s.hi) { ctx.fillStyle = rgba(now.c, al * .12); ctx.beginPath(); ctx.arc(s.px, s.py, rr * 3.2, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = rgba(s.hi ? lerpC(now.c, white, .5) : now.c, al);
+      ctx.beginPath(); ctx.arc(s.px, s.py, rr, 0, TAU); ctx.fill();
+    });
+  }
+
+  resize(); window.addEventListener('resize', resize);
+  const aim = (x, y) => { mx = x / W - .5; my = y / H - .5; };
+  window.addEventListener('mousemove', e => aim(e.clientX, e.clientY));
+  window.addEventListener('touchmove', e => { const t = e.touches[0]; if (t) aim(t.clientX, t.clientY); }, { passive: true });
+  zone.addEventListener('mouseenter', () => { hovered = true; }); zone.addEventListener('mouseleave', () => { hovered = false; });
+  zone.addEventListener('pointerdown', () => { kick = 1; });
+  requestAnimationFrame(draw);
+})();
+</script>
 
 <script type="module">
 /* Login real (Firebase): sem usuário logado, volta ao index.html.
@@ -505,6 +628,6 @@ window.ORION_SIGNOUT = async () => {
   location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js?v=4.2.5"></script>
+<script defer src="js/app.js?v=10.0"></script>
 </body>
 </html>
