@@ -1,7 +1,7 @@
-"""ORION AI — backend (V4.5.0 em desenvolvimento · última versão publicada: V4.2.5).
+"""ORION AI — backend V4.2.5.
 
 Rodar local:  uvicorn main:app --reload
-Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
+Rotas:  GET /health · GET /models · POST /ask · POST /speak · GET /speak/diag · POST /memory/clear
 Variáveis:
   GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
   ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
@@ -11,9 +11,8 @@ Variáveis:
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
-  ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID_1 … _4   (opcionais) ligam as vozes do ElevenLabs
-                         (o slot 1 aceita também o nome antigo ELEVENLABS_VOICE_ID); ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
-                         ORION_TTS_DAILY_CHARS (10000 por usuário por dia; a prévia de voz também conta)
+  ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID   (opcionais) ligam a voz do ElevenLabs; ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
+                         ORION_TTS_DAILY_CHARS (10000 por usuário por dia)
   FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
   ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
@@ -21,7 +20,6 @@ Variáveis:
 """
 import asyncio, datetime, logging, os, re, time
 from collections import deque
-from typing import Literal
 
 from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,9 +38,6 @@ ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").spli
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
 PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
 TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "10000"))   # limite de caracteres falados por usuário por dia
-
-# Frase fixa da prévia de voz (o site não envia texto: ninguém usa a prévia para falar o que quiser)
-PREVIEW_TEXT = {"en": "Hi, I'm ORION. This is how I sound.", "pt": "Olá, eu sou o ORION. É assim que eu falo."}
 
 app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
@@ -84,19 +79,8 @@ def _tts_refund(uid: str, n: int) -> None:
     _tts_used[uid] = (day, max(0, used - n))
 
 
-class VoiceOpts(BaseModel):
-    """Escolhas de voz vindas do site. Tudo validado aqui: o site nunca manda Voice ID, só o slot."""
-    voice: int = Field(default=1, ge=1, le=4)                                                   # slot da voz (1 a 4)
-    pace: float = Field(default=elevenlabs.PACE_DEFAULT, ge=elevenlabs.PACE_MIN, le=elevenlabs.PACE_MAX)
-    expressivity: float = Field(default=elevenlabs.EXPR_DEFAULT, ge=elevenlabs.EXPR_MIN, le=elevenlabs.EXPR_MAX)
-
-
-class SpeakIn(VoiceOpts):
+class SpeakIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
-
-
-class PreviewIn(VoiceOpts):
-    lang: Literal["en", "pt"] = "en"
 
 
 class AskIn(BaseModel):
@@ -127,10 +111,7 @@ def health():
 @app.get("/models")
 async def models(authorization: str = Header(default="")):
     await _auth(authorization)
-    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured(),
-            "voices": elevenlabs.voices(),   # [{slot, label}] — nunca os Voice IDs
-            "voice_limits": {"pace": [elevenlabs.PACE_MIN, elevenlabs.PACE_MAX, elevenlabs.PACE_DEFAULT],
-                             "expressivity": [elevenlabs.EXPR_MIN, elevenlabs.EXPR_MAX, elevenlabs.EXPR_DEFAULT]}}
+    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured()}
 
 
 @app.post("/ask")
@@ -166,53 +147,35 @@ async def clear_memory(authorization: str = Header(default="")):
     return {"ok": True}
 
 
-async def _speak(uid: str, text: str, opts: VoiceOpts) -> Response:
-    """Gera o áudio (voz + pace + expressividade) respeitando a cota diária. Usado por /speak e /speak/preview."""
+@app.post("/speak")
+async def speak(body: SpeakIn, authorization: str = Header(default="")):
+    """Fala da resposta com a voz do ElevenLabs. Qualquer falha aqui faz o site voltar à voz do navegador."""
+    uid, _ = await _auth(authorization)
     if not elevenlabs.configured():
         raise HTTPException(503, "Voz não configurada.")
-    if not elevenlabs.voice_id(opts.voice):
-        raise HTTPException(400, "Essa voz não está configurada no servidor.")
-    text = elevenlabs.clean(text)
+    text = elevenlabs.clean(body.text)
     if not _tts_ok(uid, len(text)):
         raise HTTPException(429, "Limite diário de voz atingido.")
     try:
-        audio = await asyncio.to_thread(elevenlabs.synthesize, text, opts.voice, opts.pace, opts.expressivity)
+        audio = await asyncio.to_thread(elevenlabs.synthesize, text)
     except Exception as e:
         # o log do servidor (Render → Logs) mostra o status e o motivo exato recusado pelo ElevenLabs
-        log.error("Falha ao gerar a voz: slot=%s status=%s detalhe=%s", opts.voice, getattr(e, "status_code", None), str(e)[:300])
+        log.error("Falha ao gerar a voz: status=%s detalhe=%s", getattr(e, "status_code", None), str(e)[:300])
         _tts_refund(uid, len(text))
         raise HTTPException(429 if getattr(e, "status_code", None) == 429 else 502, "Falha ao gerar a voz.")
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
 
-@app.post("/speak")
-async def speak(body: SpeakIn, authorization: str = Header(default="")):
-    """Fala da resposta com a voz escolhida. Qualquer falha aqui faz o site voltar à voz do navegador."""
-    uid, _ = await _auth(authorization)
-    return await _speak(uid, body.text, body)
-
-
-@app.post("/speak/preview")
-async def speak_preview(body: PreviewIn, authorization: str = Header(default="")):
-    """Prévia curta de uma voz (frase fixa). Conta na cota diária de voz, como qualquer fala."""
-    uid, _ = await _auth(authorization)
-    return await _speak(uid, PREVIEW_TEXT[body.lang], body)
-
-
 @app.get("/speak/diag")
-async def speak_diag(voice: int = 1, authorization: str = Header(default="")):
-    """Diagnóstico da voz do ElevenLabs: mostra exatamente por que ela falha (só para contas autorizadas).
-    ?voice=1..4 testa o slot escolhido; 'slots' mostra quais estão configurados."""
+async def speak_diag(authorization: str = Header(default="")):
+    """Diagnóstico da voz do ElevenLabs: mostra exatamente por que ela falha (só para contas autorizadas)."""
     await _auth(authorization)
-    slots = {s: bool(elevenlabs.voice_id(s)) for s in elevenlabs.SLOTS}
-    if not os.getenv("ELEVENLABS_API_KEY", "").strip():
-        return {"ok": False, "slots": slots, "motivo": "ELEVENLABS_API_KEY não chegou ao servidor (confira o nome no Render e faça redeploy)."}
-    if voice not in elevenlabs.SLOTS or not slots[voice]:
-        return {"ok": False, "slots": slots, "motivo": f"ELEVENLABS_VOICE_ID_{voice} não chegou ao servidor (confira o nome no Render e faça redeploy)."}
-    vid = elevenlabs.voice_id(voice)
-    info = {"slot": voice, "slots": slots, "voice_id_tamanho": len(vid), "modelo": os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")}
+    if not elevenlabs.configured():
+        return {"ok": False, "motivo": "ELEVENLABS_API_KEY e/ou ELEVENLABS_VOICE_ID não chegaram ao servidor (confira os nomes no Render e faça redeploy)."}
+    vid = os.getenv("ELEVENLABS_VOICE_ID", "").strip().strip("'\"")
+    info = {"voice_id_tamanho": len(vid), "modelo": os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")}
     try:
-        audio = await asyncio.to_thread(elevenlabs.synthesize, "Teste de voz do ORION.", voice)
+        audio = await asyncio.to_thread(elevenlabs.synthesize, "Teste de voz do ORION.")
         return {"ok": True, "bytes": len(audio), **info}
     except Exception as e:
         status, det = getattr(e, "status_code", None), str(e)[:400]
