@@ -1,7 +1,14 @@
-"""Voz do ORION via ElevenLabs
+"""Voz do ORION via ElevenLabs (V4.5.0 — etapa 1: backend)
 
-A chave (ELEVENLABS_API_KEY) e a voz (ELEVENLABS_VOICE_ID) ficam SÓ no servidor.
-Sem as duas, o recurso fica desligado e o site usa a voz do navegador.
+A chave (ELEVENLABS_API_KEY) e os IDs das vozes ficam SÓ no servidor. O site nunca vê um Voice ID:
+ele só conhece o "slot" da voz (1 a 4).
+
+Variáveis de ambiente:
+  ELEVENLABS_API_KEY
+  ELEVENLABS_VOICE_ID_1 … ELEVENLABS_VOICE_ID_4   (o slot 1 também aceita o nome antigo ELEVENLABS_VOICE_ID)
+  ELEVENLABS_MODEL                                (padrão eleven_flash_v2_5)
+
+Sem a chave e ao menos uma voz, o recurso fica desligado e o site usa a voz do navegador.
 Para economizar créditos: texto limitado a MAX_CHARS e áudios repetidos ficam em cache na memória.
 """
 import os, threading
@@ -14,14 +21,39 @@ from providers.errors import ProviderError
 
 URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 MAX_CHARS = 600
-CACHE_MAX = 24
+CACHE_MAX = 48
+SLOTS = (1, 2, 3, 4)
+
+# Limites aceitos pelo servidor (o main.py valida com os mesmos valores)
+PACE_MIN, PACE_MAX, PACE_DEFAULT = 0.8, 1.2, 1.0
+EXPR_MIN, EXPR_MAX, EXPR_DEFAULT = 0.0, 1.0, 0.5
+
 _tls = threading.local()
 _cache: OrderedDict = OrderedDict()
 _lock = threading.Lock()
 
 
+def _env(name: str) -> str:
+    return os.getenv(name, "").strip().strip("'\"")   # tira espaços/aspas coladas por engano
+
+
+def voice_id(slot: int = 1) -> str:
+    """Voice ID real do slot (1 a 4). Vazio se o slot não estiver configurado. NUNCA devolver isto ao site."""
+    if slot not in SLOTS:
+        return ""
+    vid = _env(f"ELEVENLABS_VOICE_ID_{slot}")
+    if not vid and slot == 1:
+        vid = _env("ELEVENLABS_VOICE_ID")   # compatibilidade com o nome antigo
+    return vid
+
+
+def voices() -> list[dict]:
+    """Vozes disponíveis para o site: só slot e rótulo provisório (nunca o ID)."""
+    return [{"slot": s, "label": f"Voice {s:02d}"} for s in SLOTS if voice_id(s)]
+
+
 def configured() -> bool:
-    return bool(os.getenv("ELEVENLABS_API_KEY") and os.getenv("ELEVENLABS_VOICE_ID"))
+    return bool(_env("ELEVENLABS_API_KEY") and voices())
 
 
 def _session():
@@ -45,21 +77,35 @@ def clean(text: str) -> str:
     return t[:sp] if sp > 0 else t[:MAX_CHARS]
 
 
-def synthesize(text: str) -> bytes:
+def voice_settings(pace: float, expressivity: float) -> dict:
+    """Converte os dois controles do site nos parâmetros reais da ElevenLabs.
+      Pace         → speed (velocidade da fala)
+      Expressivity → stability (cai quando a expressividade sobe) + style (sobe com ela)
+    No centro (0.5) dá stability 0.50 e style 0.25. style alto pode aumentar a latência, por isso o teto é 0.5."""
+    pace = min(PACE_MAX, max(PACE_MIN, float(pace)))
+    e = min(EXPR_MAX, max(EXPR_MIN, float(expressivity)))
+    return {"speed": round(pace, 2), "stability": round(0.75 - 0.5 * e, 2), "style": round(0.5 * e, 2)}
+
+
+def synthesize(text: str, slot: int = 1, pace: float = PACE_DEFAULT, expressivity: float = EXPR_DEFAULT) -> bytes:
     """Devolve o áudio (mp3) da fala. Levanta ProviderError se o ElevenLabs recusar."""
     text = clean(text)
-    voice_id = os.getenv("ELEVENLABS_VOICE_ID", "").strip().strip("'\"")   # tira espaços/aspas coladas por engano
+    vid = voice_id(slot)
+    if not vid:
+        raise ProviderError(404, "Voz não configurada.")
     model = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")   # Flash: o mais rápido e o mais barato
-    key = (model, voice_id, text)
+    vs = voice_settings(pace, expressivity)
+    key = (model, vid, text, vs["speed"], vs["stability"], vs["style"])   # voz e ajustes fazem parte da chave
     with _lock:
         if key in _cache:
             _cache.move_to_end(key)
             return _cache[key]
+
     def _post(params):
         return _session().post(
-            URL.format(voice_id=quote(voice_id, safe="")), timeout=30, params=params,
-            json={"text": text, "model_id": model},
-            headers={"xi-api-key": os.getenv("ELEVENLABS_API_KEY", "").strip().strip("'\""), "Accept": "audio/mpeg", "Content-Type": "application/json"},
+            URL.format(voice_id=quote(vid, safe="")), timeout=30, params=params,
+            json={"text": text, "model_id": model, "voice_settings": vs},
+            headers={"xi-api-key": _env("ELEVENLABS_API_KEY"), "Accept": "audio/mpeg", "Content-Type": "application/json"},
         )
     r = _post({"output_format": "mp3_22050_32"})   # mp3 menor = baixa e começa a tocar mais rápido
     if r.status_code == 400:                        # se o formato pequeno for recusado, tenta o padrão do ElevenLabs
