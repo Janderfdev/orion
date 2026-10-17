@@ -1,4 +1,4 @@
-"""ORION AI — backend (V4.5.0 em desenvolvimento · última versão publicada: V4.2.5).
+"""ORION AI — backend (V4.5.0).
 
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
