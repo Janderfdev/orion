@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V4.5.0 (beta) — Interaction Layer  (pages/js/app.js)
+   ORION AI V4.5.0 — Interaction Layer  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
@@ -19,7 +19,7 @@ const I18N = (() => {
   const D = {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
-      'online': 'ORION ONLINE', 'version': 'VERSION V4.5.0 BETA',
+      'online': 'ORION ONLINE', 'version': 'VERSION V4.5.0',
       'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'Didn’t catch that',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
@@ -36,7 +36,7 @@ const I18N = (() => {
       'err.voice_unavailable': 'That voice isn’t available.', 'err.unknown': 'I couldn’t process that.',
       'wiki.read': 'Read on Wikipedia ↗', 'wiki.search': 'Search Wikipedia ↗', 'wiki.title': 'Search “{q}” on Wikipedia',
       'set.title': 'Settings', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open ›',
-      'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.history': 'History', 'set.clear': 'Clear',
+      'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.wake': 'Hey ORION', 'set.history': 'History', 'set.clear': 'Clear',
       'set.cleared': 'Cleared', 'set.failed': 'Failed', 'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
       'on': 'On', 'off': 'Off', 'set.nomodel': 'No model', 'set.unavail': 'Unavailable', 'toast.model': 'Model: {m}',
       'core.none': 'Backend not configured', 'core.connecting': 'Connecting…', 'core.ok': 'Connected', 'core.nomodel': 'No model key on the server',
@@ -59,7 +59,7 @@ const I18N = (() => {
     },
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
-      'online': 'ORION ONLINE', 'version': 'VERSÃO V4.5.0 BETA',
+      'online': 'ORION ONLINE', 'version': 'VERSÃO V4.5.0',
       'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
@@ -76,7 +76,7 @@ const I18N = (() => {
       'err.voice_unavailable': 'Essa voz não está disponível.', 'err.unknown': 'Não consegui processar.',
       'wiki.read': 'Ler na Wikipédia ↗', 'wiki.search': 'Pesquisar na Wikipédia ↗', 'wiki.title': 'Pesquisar “{q}” na Wikipédia',
       'set.title': 'Configurações', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir ›',
-      'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.history': 'Histórico', 'set.clear': 'Limpar',
+      'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.wake': 'Hey ORION', 'set.history': 'Histórico', 'set.clear': 'Limpar',
       'set.cleared': 'Limpo', 'set.failed': 'Falhou', 'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
       'on': 'Ativado', 'off': 'Desativado', 'set.nomodel': 'Sem modelo', 'set.unavail': 'Indisponível', 'toast.model': 'Modelo: {m}',
       'core.none': 'Backend não configurado', 'core.connecting': 'Conectando…', 'core.ok': 'Conectado', 'core.nomodel': 'Sem chave de modelo no servidor',
@@ -120,7 +120,7 @@ const t = I18N.t;
 const VISUAL_STATE = (() => {
   const PURPLE = { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' };
   const CFG = {
-    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: PURPLE },                                         // roxo
+    standby:    { amp: 1.00, rot: 0.00, bright: 0.82, cls: '',             color: PURPLE },                                         // roxo
     listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#1e40af', b: '#172554', c: '#3b82f6' } },   // azul
     processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: PURPLE },                                         // roxo, mais atividade
     speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#22c55e' } },   // verde (pulsa com o áudio)
@@ -222,6 +222,7 @@ const ORB = (() => {
 
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
   let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
+  let act = 0, targetAct = 0, breathAmp = 0, breathPeriod = 0, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0;
 
   const BLOBS = [
     { fx: 0.31, fy: 0.43, px: 0.0, py: 1.3, ox: 0.34, oy: 0.30, r: 0.62, col: 'a', al: 0.55 },
@@ -270,6 +271,8 @@ const ORB = (() => {
     applyStateClass(cfg.cls);
     haloEl.classList.toggle('fast', ['listening', 'speaking', 'processing'].includes(cur));
     orbZone.classList.toggle('speaking', cur === 'speaking');   // anéis de energia só enquanto o ORION fala
+    targetAct = cur === 'standby' ? 0 : 1;                       // standby: Orb estável, sem movimento
+    breathPeriod = ({ listening: 3.4, processing: 2.2, speaking: 2.6 })[cur] || 0;
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
@@ -355,22 +358,39 @@ const ORB = (() => {
     requestAnimationFrame(frame);
     const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
     lastTs = ts;
-    const k = rate => 1 - Math.exp(-dt * rate);
+    const k = rate => 1 - Math.exp(-dt * rate);   // suavização independente do FPS
 
-    amp += (targetAmp - amp) * k(1.8);
-    rotSpeed += (targetRot - rotSpeed) * k(1.8);
-    bright += (targetBright - bright) * k(2.2);
-    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, k(1.7));
-    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, k(1.7));
-    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, k(1.7));
+    amp += (targetAmp - amp) * k(2.2);
+    rotSpeed += (targetRot - rotSpeed) * k(2.2);
+    bright += (targetBright - bright) * k(2.6);
+    const kc = k(2.8);
+    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, kc);
+    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, kc);
+    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, kc);
     root.style.setProperty('--core-a', rgbToHex(colorNow.a));
     root.style.setProperty('--core-b', rgbToHex(colorNow.b));
     root.style.setProperty('--core-c', rgbToHex(colorNow.c));
 
-    const target = calm ? 0 : AUDIO.level();             // nível real (ou simulado) do áudio
+    act += (targetAct - act) * k(2.4);                                    // 0 = standby (parada) · 1 = interação
+    breathAmp += ((breathPeriod ? 1 : 0) - breathAmp) * k(3);
+    if (breathPeriod) breathT += dt * Math.PI * 2 / breathPeriod;
+    floatT += dt * Math.PI * 2 / 10;
+    press -= press * k(7);
+
+    const target = calm ? 0 : AUDIO.level();                              // nível real (ou simulado) do áudio
     lvl += (target - lvl) * k(target > lvl ? 18 : 6);
-    flow += dt * rotSpeed * (hovered ? 1.12 : 1) * (calm ? 0.15 : 1);
+    flow += dt * rotSpeed * (hovered ? 1.12 : 1) * (calm ? 0.15 : 1);   // standby: rotSpeed → 0, os blobs param
     const b = bright * (hovered ? 1.06 : 1) * (1 + 0.4 * lvl);
+
+    // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque): sempre suave e proporcional ao estado
+    const live = calm ? 0 : 1, inPanel = orbEl.classList.contains('panel');
+    const sT = inPanel ? 1 : 1 + live * (0.035 * breathAmp * Math.sin(breathT) + 0.05 * lvl + 0.08 * press);
+    const yT = inPanel ? 0 : -10 * live * act * Math.sin(floatT);
+    orbS += (sT - orbS) * k(16); orbY += (yT - orbY) * k(10);
+    root.style.setProperty('--orb-s', orbS.toFixed(4));
+    root.style.setProperty('--orb-y', orbY.toFixed(2) + 'px');
+    haloAng = (haloAng + dt * act * (calm ? 0 : 360 / 14)) % 360;
+    haloEl.style.transform = 'rotate(' + haloAng.toFixed(2) + 'deg)';
 
     if (vsCtx) {                                          // tela Voice & Speech aberta: só ela é desenhada
       const S = fitSquare(vsCanvas);
@@ -378,12 +398,12 @@ const ORB = (() => {
       const d = dprOf();
       vsCtx.setTransform(d, 0, 0, d, 0, 0);
       vsCtx.clearRect(0, 0, S, S);
-      drawRings(vsCtx, S, S * 0.17, b);                   // anéis ondulados (referência); a esfera é o elemento #vsDisc por cima
+      if (act > 0.01) drawRings(vsCtx, S, S * 0.17, b * act);   // anéis só durante a interação (no standby ficam invisíveis)
       const D = vsDisc ? fitSquare(vsDisc) : 0;
       if (D) { vsDiscCtx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vsDiscCtx, D, b); }
       return;
     }
-    if (orbEl.classList.contains('panel')) return;        // Orb virou painel de resposta: nada a desenhar
+    if (inPanel) return;                                  // Orb virou painel de resposta: nada a desenhar
     if (canvas.width) drawDisc(ctx, canvas.width, b);     // tela principal: a Orb de sempre
   }
 
@@ -393,7 +413,7 @@ const ORB = (() => {
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
     setVoiceCanvas: (c, disc) => { vsCanvas = c; vsCtx = c ? c.getContext('2d') : null; vsDisc = disc || null; vsDiscCtx = disc ? disc.getContext('2d') : null; },
-    pressEffect: () => { orbEl.classList.add('pressed'); setTimeout(() => orbEl.classList.remove('pressed'), 150); },
+    pressEffect: () => { press = 1; },
   };
 })();
 
@@ -624,12 +644,13 @@ const API = (() => {
   const stored = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })();
   const prefs = Object.assign({
     voice: true,            // falar as respostas
-    sound: true, wake: false, model: null,
+    sound: true, wake: true, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0
     ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): 'pt' (padrão) ou 'en'
     slot: 1, pace: 1, expr: 0.5, calm: false,
   }, stored);
-  if (stored.v !== 2) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
-  prefs.v = 2;
+  if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
+  if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
+  prefs.v = 3;
   delete prefs.lang;
   prefs.ui = prefs.ui === 'en' ? 'en' : 'pt';
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
@@ -642,7 +663,7 @@ const API = (() => {
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init failed:', err); }
 
   const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
-  const statusText = $('statusText'), micDot = $('micDot'), hintEl = $('hintText');
+  const statusText = $('statusText'), hintEl = $('hintText');
   const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
@@ -690,9 +711,6 @@ const API = (() => {
     flashTimer = setTimeout(() => statusText.classList.remove('show'), ms);
   }
 
-  /* ── indicador de microfone: visível sempre que o microfone está realmente escutando ── */
-  const updateMic = () => { micDot.hidden = !(WAKE.isRunning() || curState === 'listening'); };
-
   /* ── estados da Orb: ponto único de mudança (a Orb só reflete o que está realmente acontecendo) ── */
   function setState(name, msg) {
     curState = name;
@@ -703,7 +721,6 @@ const API = (() => {
     clearTimeout(flashTimer);
     if (m) { statusText.textContent = m; requestAnimationFrame(() => statusText.classList.add('show')); }
     else statusText.classList.remove('show');
-    updateMic();
     return stateGen;
   }
   function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
@@ -1034,22 +1051,23 @@ const API = (() => {
     loading = false; settings.sync();
   }
 
+  const wakeLabel = () => !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : prefs.wake ? (prefs.voice ? t('on') : t('vs.wakeNeed')) : t('off');
+
   /* ── Voice & Speech (tela dedicada) ── */
   const vs = (() => {
     const el = $('voiceScreen');
     const dots = [...el.querySelectorAll('.vs-dot')];
     const pace = $('vsPace'), expr = $('vsExpr'), paceVal = $('vsPaceVal'), exprVal = $('vsExprVal');
-    const msgEl = $('vsMsg'), prevBtn = $('vsPreview'), speakBtn = $('vsSpeak'), wakeBtn = $('vsWake'), testBtn = $('vsTest');
-    const tip = $('vsTip'), engine = $('vsEngine');
-    let open = false, previewing = false, transient = false, testTimer = null;
+    const msgEl = $('vsMsg'), engine = $('vsEngine');
+    let open = false, previewing = false, transient = false;
 
     const fill = inp => inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min) * 100) + '%');
     function msg(text, isErr) { transient = !!text; msgEl.textContent = text || ''; msgEl.classList.toggle('err', !!isErr); }
-    const wakeLabel = () => !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : prefs.wake ? (prefs.voice ? t('on') : t('vs.wakeNeed')) : t('off');
 
-    function syncPreview() {
-      prevBtn.disabled = processing;
-      prevBtn.textContent = !previewing ? t('vs.preview') : (curState === 'speaking' ? t('vs.stop') : t('vs.loading'));
+    function paintSliders() {
+      fill(pace); fill(expr);
+      paceVal.textContent = prefs.pace.toFixed(2) + '×';
+      exprVal.textContent = Math.round(prefs.expr * 100) + '%';
     }
     function sync() {
       const eleven = ttsOn === true;
@@ -1060,19 +1078,13 @@ const API = (() => {
         d.setAttribute('aria-label', v ? v.label : 'Voice ' + s);
         d.title = v ? v.label : '';
       });
-      pace.value = prefs.pace; expr.value = prefs.expr; fill(pace); fill(expr);
-      paceVal.textContent = prefs.pace.toFixed(2).replace(/0$/, '') + '×';
-      exprVal.textContent = Math.round(prefs.expr * 100) + '%';
+      pace.value = prefs.pace; expr.value = prefs.expr; paintSliders();
       expr.disabled = !eleven;
       engine.textContent = ttsOn === true ? t('vs.eleven') : ttsOn === false ? t('vs.browser') : t('vs.checking');
-      speakBtn.textContent = prefs.voice ? t('on') : t('off');
-      wakeBtn.textContent = wakeLabel(); wakeBtn.disabled = !VOICE.isAvailable;
-      if (!testBtn.dataset.busy) testBtn.textContent = t('vs.run');
       if (!transient) {
         msgEl.textContent = ttsOn === false ? t('vs.noVoices') : (ttsOn === true ? t('vs.apply') : '');
         msgEl.classList.remove('err');
       }
-      syncPreview();
     }
 
     function preview() {
@@ -1083,11 +1095,11 @@ const API = (() => {
         return;
       }
       stopSpeech();
-      previewing = true; msg(''); syncPreview();
-      startSpeech('', () => { previewing = false; if (curState === 'speaking') setState('standby'); syncPreview(); }, {
+      previewing = true; msg('');
+      startSpeech('', () => { previewing = false; if (curState === 'speaking') setState('standby'); }, {
         preview: true,
-        onStart: () => { setState('speaking', ''); syncPreview(); },
-        onCancel: () => { previewing = false; syncPreview(); },
+        onStart: () => setState('speaking', ''),
+        onCancel: () => { previewing = false; },
         fail: err => msg(err && err.code === 'rate_limited' ? t('vs.limit') : t('vs.previewFail'), true),
       });
     }
@@ -1112,38 +1124,11 @@ const API = (() => {
       if (previewing) stopSpeech();
       preview();                                                // tocar numa voz toca uma prévia
     }));
-    pace.addEventListener('input', () => { prefs.pace = clamp(+pace.value, 0.8, 1.2); transient = false; sync(); });
-    expr.addEventListener('input', () => { prefs.expr = clamp(+expr.value, 0, 1); transient = false; sync(); });
+    pace.addEventListener('input', () => { prefs.pace = Math.round(clamp(+pace.value, 0.8, 1.2) * 100) / 100; if (transient) msg(''); paintSliders(); });
+    expr.addEventListener('input', () => { prefs.expr = Math.round(clamp(+expr.value, 0, 1) * 100) / 100; if (transient) msg(''); paintSliders(); });
     [pace, expr].forEach(i => i.addEventListener('change', savePrefs));
-    prevBtn.addEventListener('click', preview);
     $('vsOrb').addEventListener('click', preview);
     $('vsOrb').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preview(); } });
-    speakBtn.addEventListener('click', () => {
-      prefs.voice = !prefs.voice; savePrefs(); settings.sync();
-      if (!prefs.voice) { stopSpeech(); if (curState === 'listening') { VOICE.stopListening(); setState('standby'); } }
-    });
-    wakeBtn.addEventListener('click', () => {
-      if (!VOICE.isAvailable) return;
-      prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
-      syncWake(); settings.sync();   // o clique é o que permite o navegador pedir o microfone
-      if (prefs.wake) flash(t('wake.say'), 3200);
-    });
-    // diagnóstico da voz do ElevenLabs (usa a voz selecionada)
-    testBtn.addEventListener('click', async () => {
-      clearTimeout(testTimer);
-      testBtn.dataset.busy = '1'; testBtn.textContent = t('vs.testing');
-      let txt;
-      try {
-        const d = await API.speakDiag(prefs.slot);
-        console.log('[ORION] Voice diagnostic:', d);
-        txt = d.ok ? t('vs.testOk') : (d.motivo ? t('vs.testNoKey') : t('vs.testErr', { n: d.status || '?' }));
-        if (!d.ok) console.warn('[ORION] ElevenLabs voice problem:', d.motivo || d.detalhe);
-        tip.hidden = !!d.ok || !(d.dica || d.motivo);
-        tip.textContent = d.ok ? '' : (d.dica || d.motivo || '');
-      } catch (err) { txt = t('vs.testFail'); console.warn('[ORION] Could not run the voice diagnostic:', err && err.code); }
-      testBtn.textContent = txt;
-      testTimer = setTimeout(() => { delete testBtn.dataset.busy; sync(); }, 5000);
-    });
     $('vsBack').addEventListener('click', back);
     document.addEventListener('keydown', e => { if (open && e.key === 'Escape') { e.preventDefault(); back(); } });
 
@@ -1167,6 +1152,9 @@ const API = (() => {
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || t('set.none');
       panel.querySelector('#setCore').textContent = coreLabel();
       panel.querySelector('#toggleSound').textContent = prefs.sound ? t('on') : t('off');
+      panel.querySelector('#toggleSpeak').textContent = prefs.voice ? t('on') : t('off');
+      const wk = panel.querySelector('#toggleWake'); wk.textContent = wakeLabel(); wk.disabled = !VOICE.isAvailable;
+      const tb = panel.querySelector('#testTts'); if (!tb.dataset.busy) tb.textContent = t('vs.run');
       panel.querySelector('#toggleCalm').textContent = prefs.calm ? t('on') : t('off');
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
@@ -1188,18 +1176,51 @@ const API = (() => {
           <div class="settings-row"><span>${t('set.account')}</span><span class="settings-email" id="setEmail">—</span></div>
           <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
           <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle">${t('set.open')}</button></div>
+          <div class="settings-row"><span>${t('vs.speak')}</span><button id="toggleSpeak" class="settings-toggle"></button></div>
+          <div class="settings-row"><span>${t('set.wake')}</span><button id="toggleWake" class="settings-toggle"></button></div>
+          <p class="settings-note">${t('vs.wakeInfo')}</p>
+          <div class="settings-row"><span>${t('vs.test')}</span><button id="testTts" class="settings-toggle"></button></div>
+          <p class="settings-note warn" id="ttsTip" hidden></p>
           <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>${t('set.calm')}</span><button id="toggleCalm" class="settings-toggle"></button></div>
           <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
           <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
           <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
           <button id="signOutBtn" class="settings-out">${t('set.signout')}</button>
-          <p class="settings-hint">ORION AI V4.5.0 BETA</p>
+          <p class="settings-hint">ORION AI V4.5.0</p>
         </div>`;
       document.body.appendChild(panel);
 
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
+      panel.querySelector('#toggleSpeak').addEventListener('click', () => {
+        prefs.voice = !prefs.voice; savePrefs(); sync();
+        if (!prefs.voice) { stopSpeech(); if (curState === 'listening') { VOICE.stopListening(); setState('standby'); } }
+      });
+      panel.querySelector('#toggleWake').addEventListener('click', () => {
+        if (!VOICE.isAvailable) return;
+        prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
+        syncWake(); sync();   // o clique é o que permite o navegador pedir o microfone
+        if (prefs.wake) flash(t('wake.say'), 3200);
+      });
+      // diagnóstico da voz do ElevenLabs (usa a voz selecionada)
+      let testTimer = null;
+      panel.querySelector('#testTts').addEventListener('click', async e => {
+        const btn = e.target, tip = panel.querySelector('#ttsTip');
+        clearTimeout(testTimer);
+        btn.dataset.busy = '1'; btn.textContent = t('vs.testing');
+        let txt;
+        try {
+          const d = await API.speakDiag(prefs.slot);
+          console.log('[ORION] Voice diagnostic:', d);
+          txt = d.ok ? t('vs.testOk') : (d.motivo ? t('vs.testNoKey') : t('vs.testErr', { n: d.status || '?' }));
+          if (!d.ok) console.warn('[ORION] ElevenLabs voice problem:', d.motivo || d.detalhe);
+          tip.hidden = !!d.ok || !(d.dica || d.motivo);
+          tip.textContent = d.ok ? '' : (d.dica || d.motivo || '');
+        } catch (err) { txt = t('vs.testFail'); console.warn('[ORION] Could not run the voice diagnostic:', err && err.code); }
+        btn.textContent = txt;
+        testTimer = setTimeout(() => { delete btn.dataset.busy; btn.textContent = t('vs.run'); }, 5000);
+      });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
       panel.querySelector('#toggleCalm').addEventListener('click', () => { prefs.calm = !prefs.calm; savePrefs(); applyCalm(); sync(); });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
@@ -1246,7 +1267,6 @@ const API = (() => {
     if (wakeShouldRun()) WAKE.start(); else WAKE.stop();
     const txt = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault ? t('hint.wake') : t('hint.base');
     if (hintEl && hintEl.textContent !== txt) hintEl.textContent = txt;
-    updateMic();
   }
   let wakeRetried = false;
   try {
@@ -1264,7 +1284,7 @@ const API = (() => {
       onFault: kind => {
         wakeFault = kind;
         flash(kind === 'mic' ? t('wake.mic') : t('wake.unstable'), 4200);
-        settings.sync(); updateMic();
+        settings.sync();
         if (!wakeRetried) {   // no próximo toque na tela tenta mais uma vez (o navegador pode exigir um gesto)
           wakeRetried = true;
           document.addEventListener('pointerdown', () => { wakeFault = null; syncWake(); settings.sync(); }, { once: true });
