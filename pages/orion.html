@@ -345,7 +345,14 @@ body.chat-open .hint-text{ opacity:0; }
 .chat-btn.on{ color:#fff; border-color:rgba(167,139,250,.45); background:rgba(167,139,250,.14); }
 .settings-select{
   max-width:160px; font:500 11px var(--font-mono); color:#a78bfa; background:rgba(167,139,250,.10);
-  border:1px solid rgba(167,139,250,.3); border-radius:20px; padding:5px 10px; outline:none; cursor:pointer;
+  border:1px solid rgba(167,139,250,.3); border-radius:20px; padding:5px 30px 5px 12px; outline:none; cursor:pointer;
+  -webkit-appearance:none; appearance:none;   /* seta própria, do mesmo tamanho da do botão "Abrir" */
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; background-size:10px 10px;
+}
+.settings-toggle.has-arrow{ position:relative; padding-right:30px; }
+.settings-toggle.has-arrow::after{
+  content:''; position:absolute; right:12px; top:50%; width:10px; height:10px; margin-top:-5px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a78bfa' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-size:10px 10px; transform:rotate(-90deg);
 }
 .settings-select option{ background:#0b0b14; color:#fff; }
 
@@ -625,6 +632,6 @@ window.ORION_SIGNOUT = async () => {
   location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js?v=4.5.0r2"></script>
+<script defer src="js/app.js?v=4.5.0r3"></script>
 </body>
 </html>
