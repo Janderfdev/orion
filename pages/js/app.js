@@ -357,7 +357,7 @@ const ORB = (() => {
     const haloT = calm ? 0 : (fastHalo ? 360 / 14 : (hovered ? 360 / 20 : 360 / 28));   // halo: 28 s em repouso, 14 s em atividade
     haloV += (haloT - haloV) * k(2);
     haloAng = (haloAng + dt * haloV) % 360;
-    const rot = 'rotate(' + haloAng.toFixed(2) + 'deg)';
+    const rot = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + haloAng.toFixed(2) + 'deg)';   // o arco sobe e desce junto com a Orb
     haloEl.style.transform = rot;
 
     if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
