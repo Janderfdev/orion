@@ -120,7 +120,7 @@ const t = I18N.t;
 const VISUAL_STATE = (() => {
   const PURPLE = { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' };
   const CFG = {
-    standby:    { amp: 1.00, rot: 0.00, bright: 0.82, cls: '',             color: PURPLE },                                         // roxo
+    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: PURPLE },                                         // roxo
     listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#1e40af', b: '#172554', c: '#3b82f6' } },   // azul
     processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: PURPLE },                                         // roxo, mais atividade
     speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#22c55e' } },   // verde (pulsa com o áudio)
@@ -217,12 +217,12 @@ const ORB = (() => {
   const canvas = $('orbCanvas'), ctx = canvas.getContext('2d');
   const orbEl = $('orb'), haloEl = $('halo');
   const root = document.documentElement;
-  let vsCanvas = null, vsCtx = null, vsDisc = null, vsDiscCtx = null;
+  let vs = null;   // elementos da Orb da tela Voice & Speech (réplica da Orb principal)
   const orbZone = $('orbZone');
 
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
   let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
-  let act = 0, targetAct = 0, breathAmp = 0, breathPeriod = 0, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0;
+  let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloV = 360 / 28, fastHalo = false;
 
   const BLOBS = [
     { fx: 0.31, fy: 0.43, px: 0.0, py: 1.3, ox: 0.34, oy: 0.30, r: 0.62, col: 'a', al: 0.55 },
@@ -234,10 +234,6 @@ const ORB = (() => {
   const PARTICLES = Array.from({ length: 8 }, (_, i) => ({
     a: Math.random() * Math.PI * 2, r: 0.28 + Math.random() * 0.62, spd: 0.05 + Math.random() * 0.08,
     size: 0.5 + Math.random() * 1.0, phase: Math.random() * Math.PI * 2, dir: i % 2 === 0 ? 1 : -1,
-  }));
-  const FXP = Array.from({ length: 30 }, () => ({     // partículas atmosféricas fora da Orb
-    a: Math.random() * Math.PI * 2, r: 0.19 + Math.random() * 0.30, spd: 0.03 + Math.random() * 0.06,
-    size: 0.6 + Math.random() * 1.3, ph: Math.random() * Math.PI * 2, dir: Math.random() < 0.5 ? 1 : -1,
   }));
 
   const hexToRgb = hex => { const h = hex.replace('#', ''); return { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) }; };
@@ -259,20 +255,26 @@ const ORB = (() => {
   }
   function resize() { const s = orbEl.offsetWidth; canvas.width = s; canvas.height = s; }
 
-  function applyStateClass(cls) {
-    orbEl.classList.remove('st-listening', 'st-thinking', 'st-speaking', 'st-error');
-    if (cls) orbEl.classList.add(cls);
+  const STATE_CLASSES = ['st-listening', 'st-thinking', 'st-speaking', 'st-error'];
+  // aplica o estado atual às duas Orbs (principal e a da tela Voice & Speech): classe, halo rápido e anéis de energia
+  function decorate() {
+    const cur = VISUAL_STATE.get(), cls = VISUAL_STATE.config(cur).cls;
+    fastHalo = ['listening', 'speaking', 'processing'].includes(cur);
+    breathPeriod = ({ listening: 3.4, processing: 2.2, speaking: 2.6 })[cur] || 6;   // standby: respira devagar, como sempre
+    [[orbEl, haloEl, orbZone], vs && [vs.orb, vs.halo, vs.zone]].forEach(set => {
+      if (!set) return;
+      const [o, h, z] = set;
+      o.classList.remove(...STATE_CLASSES);
+      if (cls) o.classList.add(cls);
+      h.classList.toggle('fast', fastHalo);
+      z.classList.toggle('speaking', cur === 'speaking');   // anéis de energia só enquanto o ORION fala
+    });
   }
   function setState(name) {
     const cfg = VISUAL_STATE.apply(name);
-    const cur = VISUAL_STATE.get();
     targetAmp = cfg.amp; targetRot = cfg.rot; targetBright = cfg.bright;
     colorTarget = triple(cfg.color);
-    applyStateClass(cfg.cls);
-    haloEl.classList.toggle('fast', ['listening', 'speaking', 'processing'].includes(cur));
-    orbZone.classList.toggle('speaking', cur === 'speaking');   // anéis de energia só enquanto o ORION fala
-    targetAct = cur === 'standby' ? 0 : 1;                       // standby: Orb estável, sem movimento
-    breathPeriod = ({ listening: 3.4, processing: 2.2, speaking: 2.6 })[cur] || 0;
+    decorate();
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
@@ -319,41 +321,6 @@ const ORB = (() => {
     c.restore();
   }
 
-  /* anéis ondulados concêntricos + partículas, em volta de um núcleo de raio R0, num quadrado [0,W]² */
-  function drawRings(c, W, R0, b) {
-    const cx = W / 2, cy = W / 2, N = 6, K = 6;
-    const line = lighten(colorNow.c, 0.45);
-    c.globalCompositeOperation = 'lighter';
-    const g = c.createRadialGradient(cx, cy, R0 * 0.7, cx, cy, W / 2);
-    g.addColorStop(0, rgba(colorNow.a, (0.20 + 0.34 * lvl) * b));
-    g.addColorStop(1, rgba(colorNow.a, 0));
-    c.fillStyle = g; c.fillRect(0, 0, W, W);
-    c.lineWidth = Math.max(1, W / 520);
-    for (let i = 0; i < N; i++) {
-      const rr = R0 * (1.22 + i * 0.30);
-      const a = R0 * (0.05 + 0.035 * i) * (1 + lvl * 2.4);
-      const ph = flow * (0.6 + 0.12 * i) * (i % 2 ? -1 : 1) + i * 0.9;
-      c.beginPath();
-      for (let s = 0; s <= 96; s++) {
-        const th = (s / 96) * Math.PI * 2;
-        const r = rr + a * Math.sin(K * th + ph) + a * 0.4 * Math.sin((K + 3) * th - ph * 0.7);
-        const x = cx + Math.cos(th) * r, y = cy + Math.sin(th) * r;
-        s ? c.lineTo(x, y) : c.moveTo(x, y);
-      }
-      c.closePath();
-      c.strokeStyle = rgba(line, 0.30 * (1 - i / (N + 0.6)) * b);
-      c.stroke();
-    }
-    FXP.forEach(p => {
-      const ang = p.a + flow * p.spd * p.dir;
-      const rad = (p.r + 0.015 * Math.sin(flow * 0.4 + p.ph) + 0.05 * lvl) * W;
-      const tw = 0.30 + 0.55 * Math.abs(Math.sin(flow * 0.7 + p.ph));
-      c.fillStyle = rgba(line, 0.55 * tw * b);
-      c.beginPath(); c.arc(cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad, p.size, 0, Math.PI * 2); c.fill();
-    });
-    c.globalCompositeOperation = 'source-over';
-  }
-
   function frame(ts) {
     requestAnimationFrame(frame);
     const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
@@ -371,36 +338,32 @@ const ORB = (() => {
     root.style.setProperty('--core-b', rgbToHex(colorNow.b));
     root.style.setProperty('--core-c', rgbToHex(colorNow.c));
 
-    act += (targetAct - act) * k(2.4);                                    // 0 = standby (parada) · 1 = interação
-    breathAmp += ((breathPeriod ? 1 : 0) - breathAmp) * k(3);
-    if (breathPeriod) breathT += dt * Math.PI * 2 / breathPeriod;
+    breathT += dt * Math.PI * 2 / breathPeriod;
     floatT += dt * Math.PI * 2 / 10;
     press -= press * k(7);
 
     const target = calm ? 0 : AUDIO.level();                              // nível real (ou simulado) do áudio
     lvl += (target - lvl) * k(target > lvl ? 18 : 6);
-    flow += dt * rotSpeed * (hovered ? 1.12 : 1) * (calm ? 0.15 : 1);   // standby: rotSpeed → 0, os blobs param
+    flow += dt * rotSpeed * (hovered ? 1.12 : 1) * (calm ? 0.15 : 1);
     const b = bright * (hovered ? 1.06 : 1) * (1 + 0.4 * lvl);
 
-    // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque): sempre suave e proporcional ao estado
+    // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque) — igual ao de sempre, mas contínuo entre estados
     const live = calm ? 0 : 1, inPanel = orbEl.classList.contains('panel');
-    const sT = inPanel ? 1 : 1 + live * (0.035 * breathAmp * Math.sin(breathT) + 0.05 * lvl + 0.08 * press);
-    const yT = inPanel ? 0 : -10 * live * act * Math.sin(floatT);
+    const sT = inPanel ? 1 : 1 + live * (0.035 * (0.5 - 0.5 * Math.cos(breathT)) + 0.05 * lvl + 0.08 * press);
+    const yT = inPanel ? 0 : -14 * live * (0.5 - 0.5 * Math.cos(floatT));
     orbS += (sT - orbS) * k(16); orbY += (yT - orbY) * k(10);
     root.style.setProperty('--orb-s', orbS.toFixed(4));
     root.style.setProperty('--orb-y', orbY.toFixed(2) + 'px');
-    haloAng = (haloAng + dt * act * (calm ? 0 : 360 / 14)) % 360;
-    haloEl.style.transform = 'rotate(' + haloAng.toFixed(2) + 'deg)';
+    const haloT = calm ? 0 : (fastHalo ? 360 / 14 : (hovered ? 360 / 20 : 360 / 28));   // halo: 28 s em repouso, 14 s em atividade
+    haloV += (haloT - haloV) * k(2);
+    haloAng = (haloAng + dt * haloV) % 360;
+    const rot = 'rotate(' + haloAng.toFixed(2) + 'deg)';
+    haloEl.style.transform = rot;
 
-    if (vsCtx) {                                          // tela Voice & Speech aberta: só ela é desenhada
-      const S = fitSquare(vsCanvas);
-      if (!S) return;
-      const d = dprOf();
-      vsCtx.setTransform(d, 0, 0, d, 0, 0);
-      vsCtx.clearRect(0, 0, S, S);
-      if (act > 0.01) drawRings(vsCtx, S, S * 0.17, b * act);   // anéis só durante a interação (no standby ficam invisíveis)
-      const D = vsDisc ? fitSquare(vsDisc) : 0;
-      if (D) { vsDiscCtx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vsDiscCtx, D, b); }
+    if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
+      vs.halo.style.transform = rot;
+      const D = fitSquare(vs.disc), d = dprOf();
+      if (D) { vs.ctx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vs.ctx, D, b); }
       return;
     }
     if (inPanel) return;                                  // Orb virou painel de resposta: nada a desenhar
@@ -412,7 +375,7 @@ const ORB = (() => {
     init, setState,
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
-    setVoiceCanvas: (c, disc) => { vsCanvas = c; vsCtx = c ? c.getContext('2d') : null; vsDisc = disc || null; vsDiscCtx = disc ? disc.getContext('2d') : null; },
+    setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; if (vs) decorate(); },
     pressEffect: () => { press = 1; },
   };
 })();
@@ -646,13 +609,15 @@ const API = (() => {
     voice: true,            // falar as respostas
     sound: true, wake: true, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0
     ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): 'pt' (padrão) ou 'en'
-    slot: 1, pace: 1, expr: 0.5, calm: false,
+    slot: 1, pace: 1, expr: 0.5,
   }, stored);
   if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
   if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
   prefs.v = 3;
   delete prefs.lang;
   prefs.ui = prefs.ui === 'en' ? 'en' : 'pt';
+  prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
+  delete prefs.calm;
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
@@ -679,7 +644,7 @@ const API = (() => {
 
   /* ── movimento reduzido: sistema operacional OU opção "Reduce motion" ── */
   const mq = matchMedia('(prefers-reduced-motion: reduce)');
-  const calm = () => mq.matches || prefs.calm;
+  const calm = () => mq.matches;   // só o sistema operacional (prefers-reduced-motion)
   function applyCalm() { document.body.classList.toggle('calm', calm()); ORB.setCalm(calm()); }
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
@@ -1051,14 +1016,12 @@ const API = (() => {
     loading = false; settings.sync();
   }
 
-  const wakeLabel = () => !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : prefs.wake ? (prefs.voice ? t('on') : t('vs.wakeNeed')) : t('off');
-
   /* ── Voice & Speech (tela dedicada) ── */
   const vs = (() => {
     const el = $('voiceScreen');
     const dots = [...el.querySelectorAll('.vs-dot')];
     const pace = $('vsPace'), expr = $('vsExpr'), paceVal = $('vsPaceVal'), exprVal = $('vsExprVal');
-    const msgEl = $('vsMsg'), engine = $('vsEngine');
+    const msgEl = $('vsMsg'), engine = $('vsEngine'), wakeBtn = $('vsWake');
     let open = false, previewing = false, transient = false;
 
     const fill = inp => inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min) * 100) + '%');
@@ -1080,6 +1043,11 @@ const API = (() => {
       });
       pace.value = prefs.pace; expr.value = prefs.expr; paintSliders();
       expr.disabled = !eleven;
+      // botão do Hey ORION: verde (cor "respondendo" da Orb) quando ativo, vermelho (cor "não entendi") quando desativado
+      const wakeOn = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault;
+      wakeBtn.setAttribute('aria-pressed', String(wakeOn));
+      wakeBtn.disabled = !VOICE.isAvailable;
+      wakeBtn.textContent = 'Hey ORION · ' + (!VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : wakeOn ? t('on') : t('off'));
       engine.textContent = ttsOn === true ? t('vs.eleven') : ttsOn === false ? t('vs.browser') : t('vs.checking');
       if (!transient) {
         msgEl.textContent = ttsOn === false ? t('vs.noVoices') : (ttsOn === true ? t('vs.apply') : '');
@@ -1106,14 +1074,14 @@ const API = (() => {
 
     function show() {
       open = true; el.classList.add('open'); el.setAttribute('aria-hidden', 'false');
-      ORB.setVoiceCanvas($('vsCanvas'), $('vsDisc'));
+      ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), disc: $('vsDisc') });
       transient = false; sync();
       if (ttsOn === null && !loading) loadModels();
       setTimeout(() => $('vsBack').focus(), 60);
     }
     function hide() {
       open = false; el.classList.remove('open'); el.setAttribute('aria-hidden', 'true');
-      ORB.setVoiceCanvas(null);
+      ORB.setVoiceScreen(null);
       if (previewing) stopSpeech();
     }
     const back = () => { hide(); settings.setOpen(true); };
@@ -1128,6 +1096,14 @@ const API = (() => {
     expr.addEventListener('input', () => { prefs.expr = Math.round(clamp(+expr.value, 0, 1) * 100) / 100; if (transient) msg(''); paintSliders(); });
     [pace, expr].forEach(i => i.addEventListener('change', savePrefs));
     $('vsOrb').addEventListener('click', preview);
+    $('vsOrb').addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (_) {} });
+    $('vsOrb').addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
+    wakeBtn.addEventListener('click', () => {
+      if (!VOICE.isAvailable) return;
+      prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
+      syncWake(); settings.sync();   // o clique é o que permite o navegador pedir o microfone
+      if (prefs.wake) flash(t('wake.say'), 3200);
+    });
     $('vsOrb').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preview(); } });
     $('vsBack').addEventListener('click', back);
     document.addEventListener('keydown', e => { if (open && e.key === 'Escape') { e.preventDefault(); back(); } });
@@ -1152,10 +1128,6 @@ const API = (() => {
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || t('set.none');
       panel.querySelector('#setCore').textContent = coreLabel();
       panel.querySelector('#toggleSound').textContent = prefs.sound ? t('on') : t('off');
-      panel.querySelector('#toggleSpeak').textContent = prefs.voice ? t('on') : t('off');
-      const wk = panel.querySelector('#toggleWake'); wk.textContent = wakeLabel(); wk.disabled = !VOICE.isAvailable;
-      const tb = panel.querySelector('#testTts'); if (!tb.dataset.busy) tb.textContent = t('vs.run');
-      panel.querySelector('#toggleCalm').textContent = prefs.calm ? t('on') : t('off');
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
@@ -1176,13 +1148,7 @@ const API = (() => {
           <div class="settings-row"><span>${t('set.account')}</span><span class="settings-email" id="setEmail">—</span></div>
           <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
           <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle">${t('set.open')}</button></div>
-          <div class="settings-row"><span>${t('vs.speak')}</span><button id="toggleSpeak" class="settings-toggle"></button></div>
-          <div class="settings-row"><span>${t('set.wake')}</span><button id="toggleWake" class="settings-toggle"></button></div>
-          <p class="settings-note">${t('vs.wakeInfo')}</p>
-          <div class="settings-row"><span>${t('vs.test')}</span><button id="testTts" class="settings-toggle"></button></div>
-          <p class="settings-note warn" id="ttsTip" hidden></p>
           <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
-          <div class="settings-row"><span>${t('set.calm')}</span><button id="toggleCalm" class="settings-toggle"></button></div>
           <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
           <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
           <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
@@ -1193,36 +1159,7 @@ const API = (() => {
 
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
-      panel.querySelector('#toggleSpeak').addEventListener('click', () => {
-        prefs.voice = !prefs.voice; savePrefs(); sync();
-        if (!prefs.voice) { stopSpeech(); if (curState === 'listening') { VOICE.stopListening(); setState('standby'); } }
-      });
-      panel.querySelector('#toggleWake').addEventListener('click', () => {
-        if (!VOICE.isAvailable) return;
-        prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
-        syncWake(); sync();   // o clique é o que permite o navegador pedir o microfone
-        if (prefs.wake) flash(t('wake.say'), 3200);
-      });
-      // diagnóstico da voz do ElevenLabs (usa a voz selecionada)
-      let testTimer = null;
-      panel.querySelector('#testTts').addEventListener('click', async e => {
-        const btn = e.target, tip = panel.querySelector('#ttsTip');
-        clearTimeout(testTimer);
-        btn.dataset.busy = '1'; btn.textContent = t('vs.testing');
-        let txt;
-        try {
-          const d = await API.speakDiag(prefs.slot);
-          console.log('[ORION] Voice diagnostic:', d);
-          txt = d.ok ? t('vs.testOk') : (d.motivo ? t('vs.testNoKey') : t('vs.testErr', { n: d.status || '?' }));
-          if (!d.ok) console.warn('[ORION] ElevenLabs voice problem:', d.motivo || d.detalhe);
-          tip.hidden = !!d.ok || !(d.dica || d.motivo);
-          tip.textContent = d.ok ? '' : (d.dica || d.motivo || '');
-        } catch (err) { txt = t('vs.testFail'); console.warn('[ORION] Could not run the voice diagnostic:', err && err.code); }
-        btn.textContent = txt;
-        testTimer = setTimeout(() => { delete btn.dataset.busy; btn.textContent = t('vs.run'); }, 5000);
-      });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
-      panel.querySelector('#toggleCalm').addEventListener('click', () => { prefs.calm = !prefs.calm; savePrefs(); applyCalm(); sync(); });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
         prefs.ui = e.target.value === 'en' ? 'en' : 'pt'; savePrefs();
         I18N.set(prefs.ui); I18N.apply(); applyLang(); vs.sync();
