@@ -179,9 +179,12 @@ async def _speak(uid: str, text: str, opts: VoiceOpts) -> Response:
         audio = await asyncio.to_thread(elevenlabs.synthesize, text, opts.voice, opts.pace, opts.expressivity)
     except Exception as e:
         # o log do servidor (Render → Logs) mostra o status e o motivo exato recusado pelo ElevenLabs
-        log.error("Falha ao gerar a voz: slot=%s status=%s detalhe=%s", opts.voice, getattr(e, "status_code", None), str(e)[:300])
+        status = getattr(e, "status_code", None)
+        log.error("Falha ao gerar a voz: slot=%s status=%s detalhe=%s", opts.voice, status, str(e)[:300])
         _tts_refund(uid, len(text))
-        raise HTTPException(429 if getattr(e, "status_code", None) == 429 else 502, "Falha ao gerar a voz.")
+        kw = re.search(r'"status"\s*:\s*"([a-z_]{1,40})"', str(e))
+        # "tts:<status do ElevenLabs>:<palavra-chave>" — o site traduz isso numa mensagem clara (sem expor texto bruto nem chaves)
+        raise HTTPException(429 if status == 429 else 502, f"tts:{status if isinstance(status, int) else 0}:{kw.group(1) if kw else ''}")
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
 
