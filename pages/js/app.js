@@ -35,7 +35,7 @@ const I18N = (() => {
       'err.core_unavailable': 'I couldn’t reach the ORION core.', 'err.voice_disabled': 'Voice is turned off in settings.',
       'err.voice_unavailable': 'That voice isn’t available.', 'err.unknown': 'I couldn’t process that.',
       'wiki.read': 'Read on Wikipedia ↗', 'wiki.search': 'Search Wikipedia ↗', 'wiki.title': 'Search “{q}” on Wikipedia',
-      'set.title': 'Settings', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open ›',
+      'set.title': 'Settings', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open',
       'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.wake': 'Hey ORION', 'set.history': 'History', 'set.clear': 'Clear',
       'set.cleared': 'Cleared', 'set.failed': 'Failed', 'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
       'on': 'On', 'off': 'Off', 'set.nomodel': 'No model', 'set.unavail': 'Unavailable', 'toast.model': 'Model: {m}',
@@ -53,6 +53,11 @@ const I18N = (() => {
       'vs.noVoices': 'Server voices aren’t available — the browser voice is used instead.',
       'vs.exprNote': 'Expressivity only applies to ElevenLabs voices.',
       'vs.previewFail': 'Preview failed. Check your connection or try another voice.', 'vs.limit': 'Daily voice limit reached.',
+      'pv.quota': 'ElevenLabs credits ran out.', 'pv.plan': 'This voice needs a paid ElevenLabs plan.',
+      'pv.voice': 'Voice {n} doesn’t exist in the ElevenLabs account (check its ID).', 'pv.key': 'The ElevenLabs API key was rejected.',
+      'pv.unusual': 'ElevenLabs blocked the free plan from this server.', 'pv.busy': 'ElevenLabs is limiting usage right now. Try again in a moment.',
+      'pv.eleven': 'ElevenLabs refused the request (error {s}).', 'pv.timeout': 'The server took too long (it may be waking up). Try again.',
+      'pv.core': 'No response from the server.', 'pv.audio': 'The browser couldn’t play the audio.', 'pv.off': 'The server voice is turned off.',
       'vs.slotOff': 'Voice {n} isn’t configured on the server.', 'vs.apply': 'Changes apply to the next spoken reply.',
       'vs.unavailWake': 'Unavailable', 'vs.wakeMic': 'No microphone', 'vs.wakeNeed': 'Turn on Speak replies',
       'wake.say': 'Say “Hey ORION” to talk', 'wake.mic': 'Microphone blocked: wake word turned off', 'wake.unstable': 'Wake word unstable: turned off',
@@ -75,7 +80,7 @@ const I18N = (() => {
       'err.core_unavailable': 'Não consegui falar com o núcleo do ORION.', 'err.voice_disabled': 'Voz desativada nas configurações.',
       'err.voice_unavailable': 'Essa voz não está disponível.', 'err.unknown': 'Não consegui processar.',
       'wiki.read': 'Ler na Wikipédia ↗', 'wiki.search': 'Pesquisar na Wikipédia ↗', 'wiki.title': 'Pesquisar “{q}” na Wikipédia',
-      'set.title': 'Configurações', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir ›',
+      'set.title': 'Configurações', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir',
       'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.wake': 'Hey ORION', 'set.history': 'Histórico', 'set.clear': 'Limpar',
       'set.cleared': 'Limpo', 'set.failed': 'Falhou', 'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
       'on': 'Ativado', 'off': 'Desativado', 'set.nomodel': 'Sem modelo', 'set.unavail': 'Indisponível', 'toast.model': 'Modelo: {m}',
@@ -93,6 +98,11 @@ const I18N = (() => {
       'vs.noVoices': 'As vozes do servidor não estão disponíveis — usando a voz do navegador.',
       'vs.exprNote': 'A expressividade só vale para as vozes da ElevenLabs.',
       'vs.previewFail': 'A prévia falhou. Verifique a conexão ou tente outra voz.', 'vs.limit': 'Limite diário de voz atingido.',
+      'pv.quota': 'Os créditos da ElevenLabs acabaram.', 'pv.plan': 'Essa voz exige plano pago da ElevenLabs.',
+      'pv.voice': 'A voz {n} não existe na conta da ElevenLabs (confira o ID).', 'pv.key': 'A chave da ElevenLabs foi recusada.',
+      'pv.unusual': 'A ElevenLabs bloqueou o plano gratuito neste servidor.', 'pv.busy': 'A ElevenLabs está limitando o uso agora. Tente em instantes.',
+      'pv.eleven': 'A ElevenLabs recusou o pedido (erro {s}).', 'pv.timeout': 'O servidor demorou demais (pode estar acordando). Tente de novo.',
+      'pv.core': 'Sem resposta do servidor.', 'pv.audio': 'O navegador não conseguiu tocar o áudio.', 'pv.off': 'A voz do servidor está desligada.',
       'vs.slotOff': 'A Voz {n} não está configurada no servidor.', 'vs.apply': 'As mudanças valem para a próxima resposta falada.',
       'vs.unavailWake': 'Indisponível', 'vs.wakeMic': 'Sem microfone', 'vs.wakeNeed': 'Ative Falar as respostas',
       'wake.say': 'Diga “Hey ORION” para falar', 'wake.mic': 'Microfone bloqueado: “Hey ORION” desligado', 'wake.unstable': '“Hey ORION” instável: desligado',
@@ -608,13 +618,18 @@ const API = (() => {
     } catch (e) {
       throw fail('No response from core.', e.name === 'AbortError' ? 'timeout' : 'core_unavailable');
     } finally { clearTimeout(timer); }
+    let tts = null;   // motivo da falha da voz vindo do servidor ("tts:<status>:<palavra-chave>")
+    if (!res.ok && path.startsWith('/speak')) {
+      try { const j = await res.clone().json(); const mm = /^tts:(\d+):([a-z_]*)$/.exec(j && j.detail); if (mm) tts = { status: +mm[1], kw: mm[2] }; } catch (_) {}
+    }
+    const failT = (msg, code) => { const e = fail(msg, code); if (tts) e.tts = tts; return e; };
     if (res.status === 401) { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); throw fail('Session expired.', 'api_error'); }
-    if (res.status === 403) throw fail('No access.', 'forbidden');
-    if (res.status === 429) throw fail('Rate limited.', 'rate_limited');
-    if (res.status === 402) throw fail('Daily limit.', 'quota_exceeded');   // cota do plano esgotada
-    if (res.status === 400 && path.startsWith('/speak')) throw fail('Voice unavailable.', 'voice_unavailable');   // slot sem ID no servidor
-    if (res.status === 503 || res.status === 400) throw fail('Model unavailable.', 'model_unavailable');
-    if (!res.ok) throw fail('Failure ' + res.status, 'api_error');
+    if (res.status === 403) throw failT('No access.', 'forbidden');
+    if (res.status === 429) throw failT('Rate limited.', 'rate_limited');
+    if (res.status === 402) throw failT('Daily limit.', 'quota_exceeded');   // cota do plano esgotada
+    if (res.status === 400 && path.startsWith('/speak')) throw failT('Voice unavailable.', 'voice_unavailable');   // slot sem ID no servidor
+    if (res.status === 503 || res.status === 400) throw failT('Model unavailable.', 'model_unavailable');
+    if (!res.ok) throw failT('Failure ' + res.status, 'api_error');
     try { return blob ? await res.blob() : await res.json(); } catch (_) { throw fail('Unreadable response.', 'invalid_response'); }
   }
   return {
@@ -1089,6 +1104,28 @@ const API = (() => {
       }
     }
 
+    // por que a prévia falhou? mensagem específica (motivo vem do servidor / do navegador)
+    function previewMsg(err) {
+      const c = err && err.code, x = err && err.tts, n = prefs.slot;
+      if (x) {
+        if (x.kw === 'detected_unusual_activity') return t('pv.unusual');
+        if (x.kw === 'quota_exceeded') return t('pv.quota');
+        if (x.kw === 'paid_plan_required') return t('pv.plan');
+        if (x.kw === 'voice_not_found' || x.status === 404) return t('pv.voice', { n });
+        if (x.kw === 'invalid_api_key' || x.status === 401) return t('pv.key');
+        if (x.status === 429) return t('pv.busy');
+        return t('pv.eleven', { s: x.status || '?' });
+      }
+      if (c === 'rate_limited') return t('vs.limit');
+      if (c === 'timeout') return t('pv.timeout');
+      if (c === 'core_unavailable') return t('pv.core');
+      if (c === 'tts_unavailable') return t('pv.audio');
+      if (c === 'voice_unavailable') return t('vs.slotOff', { n });
+      if (c === 'model_unavailable') return t('pv.off');
+      if (c === 'forbidden') return t('err.forbidden');
+      return t('vs.previewFail');
+    }
+
     function preview() {
       if (previewing) { stopSpeech(); return; }                 // o botão vira "Stop" enquanto toca
       if (processing) return;
@@ -1102,7 +1139,7 @@ const API = (() => {
         preview: true,
         onStart: () => setState('speaking', ''),
         onCancel: () => { previewing = false; },
-        fail: err => msg(err && err.code === 'rate_limited' ? t('vs.limit') : t('vs.previewFail'), true),
+        fail: err => msg(previewMsg(err), true),
       });
     }
 
@@ -1182,7 +1219,7 @@ const API = (() => {
           <p class="settings-title">${t('set.title')}</p>
           <div class="settings-row"><span>${t('set.account')}</span><span class="settings-email" id="setEmail">—</span></div>
           <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
-          <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle">${t('set.open')}</button></div>
+          <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
           <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
           <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
           <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
