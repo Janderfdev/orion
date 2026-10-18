@@ -243,6 +243,14 @@ const ORB = (() => {
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
   const lighten = (o, k) => ({ r: o.r + (255 - o.r) * k, g: o.g + (255 - o.g) * k, b: o.b + (255 - o.b) * k });
 
+  const VOICE_PALETTE = {   // cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto)
+    1: { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' },   // roxo
+    2: { a: '#1e40af', b: '#172554', c: '#3b82f6' },   // azul
+    3: { a: '#166534', b: '#052e16', c: '#22c55e' },   // verde
+    4: { a: '#991b1b', b: '#450a0a', c: '#ef4444' },   // vermelho
+  };
+  let vsColor = triple(VOICE_PALETTE[1]), vsTarget = triple(VOICE_PALETTE[1]);
+  let rings = [], vsRings = [], lastSpawn = 0, prevTarget = 0, clock = 0;
   let colorNow = triple(VISUAL_STATE.config('standby').color);
   let colorTarget = triple(VISUAL_STATE.config('standby').color);
 
@@ -255,6 +263,11 @@ const ORB = (() => {
   }
   function resize() { const s = orbEl.offsetWidth; canvas.width = s; canvas.height = s; }
 
+  function makeRings(zone) {
+    const els = [...zone.querySelectorAll('.wave-ring')];
+    while (els.length < 6) { const c = els[0].cloneNode(false); zone.insertBefore(c, els[0]); els.push(c); }
+    return els.map(el => ({ el, age: -1, str: 1 }));
+  }
   const STATE_CLASSES = ['st-listening', 'st-thinking', 'st-speaking', 'st-error'];
   // aplica o estado atual às duas Orbs (principal e a da tela Voice & Speech): classe, halo rápido e anéis de energia
   function decorate() {
@@ -278,13 +291,13 @@ const ORB = (() => {
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
-  function drawDisc(c, S, b) {
+  function drawDisc(c, S, b, col = colorNow) {
     const R = S / 2;
     c.clearRect(0, 0, S, S);
     c.save();
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
     const bg = c.createRadialGradient(R * 0.8, R * 0.6, 0, R, R, R);
-    bg.addColorStop(0, rgba(colorNow.b, 0.55 * b));
+    bg.addColorStop(0, rgba(col.b, 0.55 * b));
     bg.addColorStop(1, 'rgba(0,0,3,0.96)');
     c.fillStyle = bg; c.fillRect(0, 0, S, S);
 
@@ -292,23 +305,23 @@ const ORB = (() => {
     BLOBS.forEach(bl => {
       const x = R + Math.sin(flow * bl.fx + bl.px) * R * bl.ox;
       const y = R + Math.cos(flow * bl.fy + bl.py) * R * bl.oy;
-      const rad = R * bl.r * amp * (1 + 0.10 * Math.sin(flow * bl.fx * 1.7 + bl.py)) * (1 + 0.22 * lvl);
-      const col = colorNow[bl.col];
+      const rad = R * bl.r * amp * (1 + 0.10 * Math.sin(flow * bl.fx * 1.7 + bl.py)) * (1 + 0.35 * lvl);
+      const tone = col[bl.col];
       const g = c.createRadialGradient(x, y, 0, x, y, rad);
-      g.addColorStop(0, rgba(col, bl.al * b));
-      g.addColorStop(1, rgba(col, 0));
+      g.addColorStop(0, rgba(tone, bl.al * b));
+      g.addColorStop(1, rgba(tone, 0));
       c.fillStyle = g; c.fillRect(0, 0, S, S);
     });
     PARTICLES.forEach(p => {
       const ang = p.a + flow * p.spd * p.dir;
       const tw = 0.35 + 0.45 * Math.sin(flow * 0.9 + p.phase);
-      c.fillStyle = rgba(colorNow.c, 0.45 * tw * b);
+      c.fillStyle = rgba(col.c, 0.45 * tw * b);
       c.beginPath(); c.arc(R + Math.cos(ang) * R * p.r, R + Math.sin(ang) * R * p.r, p.size, 0, Math.PI * 2); c.fill();
     });
     // brilho central: apagado em repouso, acende com o volume da fala
     const core = c.createRadialGradient(R, R, 0, R, R, R * 0.62);
-    const cl = lighten(colorNow.c, 0.55);
-    core.addColorStop(0, rgba(cl, 0.62 * lvl * b));   // só brilha com o volume da fala
+    const cl = lighten(col.c, 0.55);
+    core.addColorStop(0, rgba(cl, 0.85 * lvl * b));   // só brilha com o volume da fala
     core.addColorStop(1, rgba(cl, 0));
     c.fillStyle = core; c.fillRect(0, 0, S, S);
 
@@ -343,17 +356,33 @@ const ORB = (() => {
     press -= press * k(7);
 
     const target = calm ? 0 : AUDIO.level();                              // nível real (ou simulado) do áudio
-    lvl += (target - lvl) * k(target > lvl ? 18 : 6);
+    lvl += (target - lvl) * k(target > lvl ? 18 : 9);
     flow += dt * rotSpeed * (hovered ? 1.12 : 1) * (calm ? 0.15 : 1);
     const b = bright * (hovered ? 1.06 : 1) * (1 + 0.4 * lvl);
 
     // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque) — igual ao de sempre, mas contínuo entre estados
     const live = calm ? 0 : 1, inPanel = orbEl.classList.contains('panel');
-    const sT = inPanel ? 1 : 1 + live * (0.035 * (0.5 - 0.5 * Math.cos(breathT)) + 0.05 * lvl + 0.08 * press);
+    const sT = inPanel ? 1 : 1 + live * (0.035 * (0.5 - 0.5 * Math.cos(breathT)) + 0.09 * lvl + 0.08 * press);
     const yT = inPanel ? 0 : -14 * live * (0.5 - 0.5 * Math.cos(floatT));
     orbS += (sT - orbS) * k(16); orbY += (yT - orbY) * k(10);
     root.style.setProperty('--orb-s', orbS.toFixed(4));
     root.style.setProperty('--orb-y', orbY.toFixed(2) + 'px');
+    // ondas de energia: nascem nas batidas do áudio e seguem até o fim mesmo depois que a voz para
+    clock += dt;
+    if (!calm && target > 0.16 && ((target - prevTarget > 0.07 && clock - lastSpawn > 0.30) || clock - lastSpawn > 0.9)) {
+      const r = (vs ? vsRings : rings).find(x => x.age < 0);
+      if (r) { r.age = 0; r.str = Math.min(1, 0.4 + target); lastSpawn = clock; }
+    }
+    prevTarget = target;
+    [rings, vsRings].forEach(list => list.forEach(r => {
+      if (r.age < 0) return;
+      r.age += dt;
+      const q = r.age / 1.9;
+      if (q >= 1) { r.age = -1; r.el.style.opacity = '0'; return; }
+      const e = 1 - Math.pow(1 - q, 2.2);
+      r.el.style.opacity = (0.55 * r.str * Math.pow(1 - q, 1.6)).toFixed(3);
+      r.el.style.transform = 'translate(-50%,-50%) translateY(' + orbY.toFixed(1) + 'px) scale(' + (orbS + 0.6 * e).toFixed(3) + ')';
+    }));
     const haloT = calm ? 0 : (fastHalo ? 360 / 14 : (hovered ? 360 / 20 : 360 / 28));   // halo: 28 s em repouso, 14 s em atividade
     haloV += (haloT - haloV) * k(2);
     haloAng = (haloAng + dt * haloV) % 360;
@@ -362,20 +391,25 @@ const ORB = (() => {
 
     if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
       vs.halo.style.transform = rot;
+      vsColor.a = lerpRgb(vsColor.a, vsTarget.a, kc); vsColor.b = lerpRgb(vsColor.b, vsTarget.b, kc); vsColor.c = lerpRgb(vsColor.c, vsTarget.c, kc);
+      vs.zone.style.setProperty('--vs-a', rgbToHex(vsColor.a));
+      vs.zone.style.setProperty('--vs-b', rgbToHex(vsColor.b));
+      vs.zone.style.setProperty('--vs-c', rgbToHex(vsColor.c));
       const D = fitSquare(vs.disc), d = dprOf();
-      if (D) { vs.ctx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vs.ctx, D, b); }
+      if (D) { vs.ctx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vs.ctx, D, b, vsColor); }
       return;
     }
     if (inPanel) return;                                  // Orb virou painel de resposta: nada a desenhar
     if (canvas.width) drawDisc(ctx, canvas.width, b);     // tela principal: a Orb de sempre
   }
 
-  function init() { resize(); window.addEventListener('resize', resize); requestAnimationFrame(frame); }
+  function init() { rings = makeRings(orbZone); resize(); window.addEventListener('resize', resize); requestAnimationFrame(frame); }
   return {
     init, setState,
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
-    setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; if (vs) decorate(); },
+    setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
+    setVoiceColor: (slot, snap) => { vsTarget = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); if (snap) vsColor = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); },
     pressEffect: () => { press = 1; },
   };
 })();
@@ -904,7 +938,6 @@ const API = (() => {
     const toRest = () => { if (curState === 'speaking' || curState === 'processing') setState('standby'); };
     if (!understood) {
       const gen = setState('error', short ? reply : t('status.unheard'));
-      orbZone.classList.add('speaking');   // o estado de erro não solta anéis sozinho; aqui solta, em vermelho
       startSpeech(reply, () => { if (stateGen === gen) setState('standby'); });
       return;
     }
@@ -1045,9 +1078,10 @@ const API = (() => {
       expr.disabled = !eleven;
       // botão do Hey ORION: verde (cor "respondendo" da Orb) quando ativo, vermelho (cor "não entendi") quando desativado
       const wakeOn = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault;
-      wakeBtn.setAttribute('aria-pressed', String(wakeOn));
+      wakeBtn.setAttribute('aria-checked', String(wakeOn));
       wakeBtn.disabled = !VOICE.isAvailable;
-      wakeBtn.textContent = 'Hey ORION · ' + (!VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : wakeOn ? t('on') : t('off'));
+      wakeBtn.title = !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : '';
+      ORB.setVoiceColor(prefs.slot);   // a Orb desta tela fica na cor da voz selecionada
       engine.textContent = ttsOn === true ? t('vs.eleven') : ttsOn === false ? t('vs.browser') : t('vs.checking');
       if (!transient) {
         msgEl.textContent = ttsOn === false ? t('vs.noVoices') : (ttsOn === true ? t('vs.apply') : '');
@@ -1075,6 +1109,7 @@ const API = (() => {
     function show() {
       open = true; el.classList.add('open'); el.setAttribute('aria-hidden', 'false');
       ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), disc: $('vsDisc') });
+      ORB.setVoiceColor(prefs.slot, true);
       transient = false; sync();
       if (ttsOn === null && !loading) loadModels();
       setTimeout(() => $('vsBack').focus(), 60);
