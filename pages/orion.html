@@ -174,7 +174,7 @@ html,body{
 }
 .hint-text{
   font-size:9px; font-weight:500; letter-spacing:0.4em; text-transform:uppercase;
-  color:rgba(255,255,255,0.34); transition:opacity .6s ease; text-align:center; padding:0 16px; line-height:1.8;
+  color:rgba(255,255,255,0.34); transition:opacity 1s ease; text-align:center; padding:0 16px; line-height:1.8;
 }
 
 .version-tag{
@@ -242,8 +242,8 @@ html,body{
 .settings-out:hover{ background:rgba(248,113,113,0.15); }
 
 /* ═══════ painel de resposta: a própria Orb vira o painel ═══════ */
-.orb-zone{ transition:transform .8s cubic-bezier(.22,1,.36,1); }
-body.chat-open .orb-zone:not(.panel-open){ transform:translateY(-3vh) scale(.8); }
+.orb-zone{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
+body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }   /* com o campo de pergunta aberto, a Orb diminui um pouco */
 .orb-zone.panel-open{ cursor:default; }
 .orb-zone.panel-open .halo, .orb-zone.panel-open .wave-ring{ opacity:0 !important; }
 .status{ transition:top .8s cubic-bezier(.16,.9,.24,1); }
@@ -307,13 +307,13 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }
   background:rgba(8,8,18,.62); border:1px solid color-mix(in srgb, var(--core-a) 38%, transparent);
   backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
   opacity:0; visibility:hidden; pointer-events:none;
-  transform:translate(-50%, 40px) scale(.96);
-  transition:transform .7s cubic-bezier(.22,1,.36,1), opacity .45s ease, border-color .4s ease, box-shadow .4s ease, visibility 0s linear .7s;
+  transform:translate(-50%, 70vh) scale(.92);
+  transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease, border-color .4s ease, box-shadow .4s ease, visibility 0s linear .9s;
 }
 .ask.open{
   opacity:1; visibility:visible; pointer-events:auto; transform:translate(-50%, 0) scale(1);
   box-shadow:0 0 34px color-mix(in srgb, var(--core-a) 28%, transparent);
-  transition:transform .7s cubic-bezier(.22,1,.36,1), opacity .5s ease .05s, border-color .4s ease, box-shadow .4s ease, visibility 0s;
+  transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease .08s, border-color .4s ease, box-shadow .4s ease, visibility 0s;
 }
 .ask:focus-within{ border-color:color-mix(in srgb, var(--core-c) 75%, transparent); box-shadow:0 0 38px color-mix(in srgb, var(--core-a) 40%, transparent); }
 .ask-input{ flex:1; min-width:0; height:100%; background:none; border:0; outline:none; color:#fff; font:500 14px var(--font); letter-spacing:.04em; }
