@@ -102,7 +102,7 @@ html,body{
 .wave-ring{
   position:absolute; left:50%; top:50%; border-radius:50%;
   width:var(--orb); height:var(--orb);
-  transform:translate(-50%,-50%) scale(1);
+  transform:translate(-50%, calc(-50% + var(--orb-y, 0px))) scale(1);
   border:1px solid color-mix(in srgb, var(--core-c) 70%, transparent);
   opacity:0; pointer-events:none;
 }
@@ -110,8 +110,8 @@ html,body{
 .orb-zone.speaking .wave-ring:nth-child(2){ animation-delay:0.93s; }
 .orb-zone.speaking .wave-ring:nth-child(3){ animation-delay:1.86s; }
 @keyframes wave-out{
-  0%{ transform:translate(-50%,-50%) scale(1); opacity:0.45; }
-  100%{ transform:translate(-50%,-50%) scale(1.55); opacity:0; }
+  0%{ transform:translate(-50%, calc(-50% + var(--orb-y, 0px))) scale(1); opacity:0.45; }
+  100%{ transform:translate(-50%, calc(-50% + var(--orb-y, 0px))) scale(1.55); opacity:0; }
 }
 
 .orb{
@@ -365,32 +365,35 @@ body.chat-open .hint-text{ opacity:0; }
 }
 .vscreen.open{ opacity:1; visibility:visible; pointer-events:auto; transition:opacity .35s ease, visibility 0s; }
 .vs-top{
-  position:relative; height:64px; display:flex; align-items:center; justify-content:center;
+  position:relative; height:52px; display:flex; align-items:center; justify-content:center;
   padding-top:env(safe-area-inset-top, 0px);
 }
 .vs-top h2{ font:500 10px var(--font); letter-spacing:.34em; text-indent:.34em; text-transform:uppercase; color:rgba(255,255,255,.65); }
 .vs-back{
-  position:absolute; left:12px; top:calc(10px + env(safe-area-inset-top, 0px)); width:44px; height:44px; border-radius:50%; cursor:pointer;
+  position:absolute; left:12px; top:calc(4px + env(safe-area-inset-top, 0px)); width:44px; height:44px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.7); background:transparent; border:1px solid transparent;
   transition:color .25s ease, background .25s ease, border-color .25s ease;
 }
 .vs-back:hover{ color:#fff; background:rgba(167,139,250,.10); border-color:rgba(167,139,250,.3); }
 .vs-back:focus-visible, .vs-dot:focus-visible, .vs-pill:focus-visible, .vs-btn:focus-visible, .vs-zone:focus-visible, .vs-range:focus-visible{ outline:2px solid #a78bfa; outline-offset:3px; }
 .vs-scroll{
-  height:calc(100dvh - 64px - env(safe-area-inset-top, 0px)); overflow-y:auto; padding:0 24px calc(40px + env(safe-area-inset-bottom, 0px));
-  max-width:520px; margin:0 auto; scrollbar-width:thin; scrollbar-color:rgba(167,139,250,.35) transparent;
+  height:calc(100dvh - 52px - env(safe-area-inset-top, 0px)); display:flex; flex-direction:column; overflow-y:auto;
+  padding:0 24px calc(14px + env(safe-area-inset-bottom, 0px)); max-width:520px; margin:0 auto;
+  scrollbar-width:thin; scrollbar-color:rgba(167,139,250,.35) transparent;
 }
-/* Orb da tela Voice & Speech: réplica da Orb principal (mesmas classes .halo / .wave-ring / .orb), em tamanho menor */
+/* Orb da tela Voice & Speech: réplica da Orb principal; o tamanho se ajusta ao espaço livre (a tela inteira cabe sem rolar) */
+.vs-orbwrap{ flex:1 1 0; min-height:120px; display:flex; align-items:center; justify-content:center; container-type:size; }
 .vs-zone{
-  --orb:min(44vw, 26vh, 240px); --halo:calc(var(--orb) * 1.9);
-  position:relative; width:var(--halo); height:var(--halo); margin:0 auto 4px;
+  --orb:min(36vw, 17vh, 180px); --halo:calc(var(--orb) * 1.9);   /* reserva, se o navegador não tiver container queries */
+  position:relative; width:var(--halo); height:var(--halo); flex:none;
   display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:50%; -webkit-tap-highlight-color:transparent;
 }
+@supports (height:1cqh){ .vs-zone{ --orb:min(46cqw, 46cqh, 230px); } }
 .vs-zone.speaking .wave-ring{ animation:wave-out 2.8s ease-out infinite; }
 .vs-zone.speaking .wave-ring:nth-child(2){ animation-delay:0.93s; }
 .vs-zone.speaking .wave-ring:nth-child(3){ animation-delay:1.86s; }
 .vs-zone:hover .halo{ opacity:0.62; filter:brightness(1.1); }
-.vs-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 0 10px; font-size:19px; font-weight:500; color:#fff; }
+.vs-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 0 2px; font-size:17px; font-weight:500; color:#fff; }
 .vs-row label, .vs-row > span:first-child{ color:#fff; }
 .vs-note{ font:500 10px var(--font-mono); letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.4); }
 .vs-pill{
@@ -398,16 +401,16 @@ body.chat-open .hint-text{ opacity:0; }
   padding:9px 16px; outline:none; cursor:pointer; max-width:60%;
 }
 .vs-pill option{ background:#111; color:#fff; }
-.vs-dots{ display:flex; justify-content:space-between; gap:8px; padding:6px 4px 22px; }
+.vs-dots{ display:flex; justify-content:space-between; gap:8px; padding:4px 4px 10px; }
 .vs-dot{
-  --c:#8b5cf6; width:48px; height:48px; border-radius:50%; border:0; cursor:pointer; background:var(--c);
-  font:600 17px var(--font); color:rgba(255,255,255,.92); transition:transform .2s ease, box-shadow .25s ease, opacity .25s ease;
+  --c:#8b5cf6; width:42px; height:42px; border-radius:50%; border:0; cursor:pointer; background:var(--c);
+  font:600 16px var(--font); color:rgba(255,255,255,.92); transition:transform .2s ease, box-shadow .25s ease, opacity .25s ease;
 }
 .vs-dot:nth-child(1){ --c:#5b21b6; } .vs-dot:nth-child(2){ --c:#1e40af; } .vs-dot:nth-child(3){ --c:#166534; } .vs-dot:nth-child(4){ --c:#991b1b; }   /* = cor 'a' da Orb: repouso · ouvindo · respondendo · não entendi */
 .vs-dot[aria-checked="true"]{ box-shadow:0 0 0 3px #000, 0 0 0 5.5px var(--c); transform:scale(1.04); }
 .vs-dot:disabled{ opacity:.28; cursor:default; }
-.vs-slider{ padding:8px 0 16px; }
-.vs-slider-head{ display:flex; justify-content:space-between; align-items:baseline; font-size:19px; font-weight:500; color:rgba(255,255,255,.75); margin-bottom:12px; }
+.vs-slider{ padding:2px 0 8px; }
+.vs-slider-head{ display:flex; justify-content:space-between; align-items:baseline; font-size:16px; font-weight:500; color:rgba(255,255,255,.75); margin-bottom:8px; }
 .vs-slider-head output{ font:500 12px var(--font-mono); letter-spacing:.1em; color:rgba(255,255,255,.45); }
 @property --p{ syntax:'<percentage>'; inherits:false; initial-value:50%; }
 .vs-range{
@@ -420,10 +423,10 @@ body.chat-open .hint-text{ opacity:0; }
 .vs-range:active::-webkit-slider-thumb{ transform:scale(1.1); }
 .vs-range:active::-moz-range-thumb{ transform:scale(1.1); }
 .vs-range:disabled{ opacity:.35; cursor:default; }
-.vs-ends{ display:flex; justify-content:space-between; margin-top:8px; font:500 9px var(--font-mono); letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.28); }
+.vs-ends{ display:flex; justify-content:space-between; margin-top:5px; font:500 9px var(--font-mono); letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.28); }
 /* Hey ORION: verde = cor "respondendo" da Orb · vermelho = cor "não entendi" (tons escuros exatos) */
 .vs-wake{
-  --w:#991b1b; display:block; width:100%; height:52px; margin:6px 0 4px; border-radius:26px; border:0; cursor:pointer;
+  --w:#991b1b; display:block; width:100%; height:46px; margin:4px 0 2px; flex:none; border-radius:26px; border:0; cursor:pointer;
   font:600 12px var(--font); letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.95); background:var(--w);
   transition:background .35s ease, transform .15s ease, opacity .25s ease;
 }
@@ -431,7 +434,7 @@ body.chat-open .hint-text{ opacity:0; }
 .vs-wake:active{ transform:scale(.985); }
 .vs-wake:disabled{ --w:#27272a; opacity:.6; cursor:default; }
 .vs-wake:focus-visible{ outline:2px solid #a78bfa; outline-offset:3px; }
-.vs-msg{ min-height:18px; margin:2px 0 10px; font-size:12px; line-height:1.5; color:rgba(255,255,255,.45); text-align:center; }
+.vs-msg{ min-height:16px; margin:2px 0 0; font-size:11px; line-height:1.5; color:rgba(255,255,255,.45); text-align:center; }
 .vs-msg.err{ color:#fca5a5; }
 .vs-btn{
   display:block; width:100%; height:48px; border-radius:24px; cursor:pointer;
@@ -542,15 +545,17 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
     <h2 id="vsTitle" data-i18n="vs.title">Voice &amp; Speech</h2>
   </header>
   <div class="vs-scroll">
-    <div class="vs-zone" id="vsOrb" role="button" tabindex="0" aria-label="Ouvir prévia da voz" data-i18n-aria="vs.orbAria">
-      <div class="wave-ring"></div>
-      <div class="wave-ring"></div>
-      <div class="wave-ring"></div>
-      <div class="halo" id="vsHalo"></div>
-      <div class="orb" id="vsSphere">
-        <canvas class="orb-canvas" id="vsDisc"></canvas>
-        <div class="glass-hi"></div>
-        <div class="glass-rim"></div>
+    <div class="vs-orbwrap">
+      <div class="vs-zone" id="vsOrb" role="button" tabindex="0" aria-label="Ouvir prévia da voz" data-i18n-aria="vs.orbAria">
+        <div class="wave-ring"></div>
+        <div class="wave-ring"></div>
+        <div class="wave-ring"></div>
+        <div class="halo" id="vsHalo"></div>
+        <div class="orb" id="vsSphere">
+          <canvas class="orb-canvas" id="vsDisc"></canvas>
+          <div class="glass-hi"></div>
+          <div class="glass-rim"></div>
+        </div>
       </div>
     </div>
 
