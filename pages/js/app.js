@@ -54,7 +54,8 @@ const I18N = (() => {
       'vs.exprNote': 'Expressivity only applies to ElevenLabs voices.',
       'vs.previewFail': 'Preview failed. Check your connection or try another voice.', 'vs.limit': 'Daily voice limit reached.',
       'pv.quota': 'ElevenLabs credits ran out.', 'pv.plan': 'This voice needs a paid ElevenLabs plan.',
-      'pv.voice': 'Voice {n} doesn’t exist in the ElevenLabs account (check its ID).', 'pv.key': 'The ElevenLabs API key was rejected.',
+      'pv.voice': 'Voice {n} doesn’t exist in the ElevenLabs account (check its ID).', 'pv.key': 'The ElevenLabs API key was rejected.', 'pv.perm': 'The ElevenLabs key has no Text to Speech permission.',
+      'pv.auth': 'ElevenLabs refused access (error {s}{k}). Check the key and its permissions.',
       'pv.unusual': 'ElevenLabs blocked the free plan from this server.', 'pv.busy': 'ElevenLabs is limiting usage right now. Try again in a moment.',
       'pv.eleven': 'ElevenLabs refused the request (error {s}).', 'pv.timeout': 'The server took too long (it may be waking up). Try again.',
       'pv.core': 'No response from the server.', 'pv.audio': 'The browser couldn’t play the audio.', 'pv.off': 'The server voice is turned off.',
@@ -99,7 +100,8 @@ const I18N = (() => {
       'vs.exprNote': 'A expressividade só vale para as vozes da ElevenLabs.',
       'vs.previewFail': 'A prévia falhou. Verifique a conexão ou tente outra voz.', 'vs.limit': 'Limite diário de voz atingido.',
       'pv.quota': 'Os créditos da ElevenLabs acabaram.', 'pv.plan': 'Essa voz exige plano pago da ElevenLabs.',
-      'pv.voice': 'A voz {n} não existe na conta da ElevenLabs (confira o ID).', 'pv.key': 'A chave da ElevenLabs foi recusada.',
+      'pv.voice': 'A voz {n} não existe na conta da ElevenLabs (confira o ID).', 'pv.key': 'A chave da ElevenLabs foi recusada.', 'pv.perm': 'A chave da ElevenLabs não tem permissão de Text to Speech.',
+      'pv.auth': 'A ElevenLabs recusou o acesso (erro {s}{k}). Confira a chave e as permissões.',
       'pv.unusual': 'A ElevenLabs bloqueou o plano gratuito neste servidor.', 'pv.busy': 'A ElevenLabs está limitando o uso agora. Tente em instantes.',
       'pv.eleven': 'A ElevenLabs recusou o pedido (erro {s}).', 'pv.timeout': 'O servidor demorou demais (pode estar acordando). Tente de novo.',
       'pv.core': 'Sem resposta do servidor.', 'pv.audio': 'O navegador não conseguiu tocar o áudio.', 'pv.off': 'A voz do servidor está desligada.',
@@ -635,7 +637,7 @@ const API = (() => {
   return {
     configured: () => !!base(),
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
-    ask: (text, model) => call('/ask', { method: 'POST', body: { text, model } }),
+    ask: (text, model, lang) => call('/ask', { method: 'POST', body: { text, model, lang } }),   // lang: idioma da conversa (busca das imagens)
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
     speak: (text, o) => call('/speak', { method: 'POST', body: { text, voice: o.voice, pace: o.pace, expressivity: o.expressivity }, timeoutMs: 20000, blob: true }),
     preview: o => call('/speak/preview', { method: 'POST', body: { voice: o.voice, pace: o.pace, expressivity: o.expressivity, lang: o.lang }, timeoutMs: 20000, blob: true }),
@@ -930,7 +932,7 @@ const API = (() => {
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
     try {
-      const data = await API.ask(text, prefs.model);
+      const data = await API.ask(text, prefs.model, speechLang());
       const reply = data && typeof data.reply === 'string' ? data.reply.trim() : '';
       if (!reply) { const e = new Error('Empty response.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
@@ -1112,7 +1114,9 @@ const API = (() => {
         if (x.kw === 'quota_exceeded') return t('pv.quota');
         if (x.kw === 'paid_plan_required') return t('pv.plan');
         if (x.kw === 'voice_not_found' || x.status === 404) return t('pv.voice', { n });
-        if (x.kw === 'invalid_api_key' || x.status === 401) return t('pv.key');
+        if (x.kw === 'missing_permissions') return t('pv.perm');
+        if (x.kw === 'invalid_api_key') return t('pv.key');
+        if (x.status === 401) return t('pv.auth', { s: x.status, k: x.kw ? ' · ' + x.kw : '' });
         if (x.status === 429) return t('pv.busy');
         return t('pv.eleven', { s: x.status || '?' });
       }
