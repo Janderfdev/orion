@@ -7,6 +7,7 @@ Variáveis de ambiente:
   ELEVENLABS_API_KEY
   ELEVENLABS_VOICE_ID_1 … ELEVENLABS_VOICE_ID_4   (o slot 1 também aceita o nome antigo ELEVENLABS_VOICE_ID)
   ELEVENLABS_MODEL                                (padrão eleven_flash_v2_5)
+  ELEVENLABS_MAX_CHARS                            (padrão 350: máximo de caracteres falados por resposta)
 
 Sem a chave e ao menos uma voz, o recurso fica desligado e o site usa a voz do navegador.
 Para economizar créditos: texto limitado a MAX_CHARS e áudios repetidos ficam em cache na memória.
@@ -20,7 +21,7 @@ import requests
 from providers.errors import ProviderError
 
 URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-MAX_CHARS = 600
+MAX_CHARS = int(os.getenv("ELEVENLABS_MAX_CHARS", "350"))   # só a fala é limitada; o texto escrito sai completo
 CACHE_MAX = 48
 SLOTS = (1, 2, 3, 4)
 
