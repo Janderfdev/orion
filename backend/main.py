@@ -11,9 +11,10 @@ Variáveis:
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
+  Imagens: toda resposta recebe 2–3 fotos da Wikipédia/Wikimedia (core/images.py, sem chave); só upload.wikimedia.org
   ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID_1 … _4   (opcionais) ligam as vozes do ElevenLabs
                          (o slot 1 aceita também o nome antigo ELEVENLABS_VOICE_ID); ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
-                         ORION_TTS_DAILY_CHARS (10000 por usuário por dia; a prévia de voz também conta)
+                         ORION_TTS_DAILY_CHARS (4000 por usuário por dia; a prévia de voz também conta)
   FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
   ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
@@ -28,6 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from auth.firebase import verify
+from core import images
 from core.orchestrator import Orchestrator
 from core.quota import Quota
 from memory.store import Memory
@@ -39,7 +41,7 @@ ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderf
 ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").split(",") if e.strip()}
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
 PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
-TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "10000"))   # limite de caracteres falados por usuário por dia
+TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "4000"))   # limite de caracteres falados por usuário por dia
 
 # Frase fixa da prévia de voz (o site não envia texto: ninguém usa a prévia para falar o que quiser)
 PREVIEW_TEXT = {"en": "Hi, I'm ORION. This is how I sound.", "pt": "Olá, eu sou o ORION. É assim que eu falo."}
@@ -102,6 +104,26 @@ class PreviewIn(VoiceOpts):
 class AskIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     model: str | None = Field(default=None, max_length=80)  # id vindo de GET /models
+    lang: Literal["pt", "en"] = "pt"                          # idioma da conversa (busca das imagens)
+
+
+async def _with_images(sources, task):
+    """Garante 2 a 3 imagens por resposta: se a resposta já trouxe ao menos 2, não faz nada; senão completa com fotos da Wikipédia."""
+    srcs = list(sources) if isinstance(sources, list) else []
+    have = 0
+    for s in srcs:
+        if isinstance(s, dict):
+            have += len(s.get("images") or ([s["image"]] if s.get("image") else []))
+    if have >= 2:
+        task.cancel()
+        return srcs
+    try:
+        extra = await asyncio.wait_for(asyncio.shield(task), timeout=4)
+    except Exception:
+        return srcs                                    # imagens são um extra: sem elas a resposta segue normal
+    if extra and extra.get("images"):
+        srcs.append({"url": extra["url"], "title": extra["title"], "images": extra["images"][:max(1, 3 - have)]})
+    return srcs
 
 
 async def _auth(authorization: str, count: bool = False):
@@ -144,6 +166,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
     q = await asyncio.to_thread(quota.consume, uid)
     if not q["ok"]:                                    # 402: o site mostra "faça upgrade para continuar"
         raise HTTPException(402, "Limite diário de perguntas atingido.")
+    img_task = asyncio.create_task(asyncio.to_thread(images.find, body.text, body.lang))   # busca as fotos enquanto o modelo responde
     try:
         result = await orchestrator.ask(body.text, uid, token, provider)
     except Exception as e:
@@ -155,7 +178,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
             raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": result["reply"], "model": model_id, "sources": result["sources"], "understood": result["understood"],
+    return {"reply": result["reply"], "model": model_id, "sources": await _with_images(result["sources"], img_task), "understood": result["understood"],
             "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}}
 
 
@@ -183,8 +206,12 @@ async def _speak(uid: str, text: str, opts: VoiceOpts) -> Response:
         log.error("Falha ao gerar a voz: slot=%s status=%s detalhe=%s", opts.voice, status, str(e)[:300])
         _tts_refund(uid, len(text))
         kw = re.search(r'"status"\s*:\s*"([a-z_]{1,40})"', str(e))
+        reason = kw.group(1) if kw else ""
+        low = str(e).lower()
+        if "exceeds your quota" in low or "credits remaining" in low or "quota_exceeded" in low:
+            reason = "quota_exceeded"   # créditos do ElevenLabs esgotados (às vezes vêm como 401, às vezes como 429)
         # "tts:<status do ElevenLabs>:<palavra-chave>" — o site traduz isso numa mensagem clara (sem expor texto bruto nem chaves)
-        raise HTTPException(429 if status == 429 else 502, f"tts:{status if isinstance(status, int) else 0}:{kw.group(1) if kw else ''}")
+        raise HTTPException(429 if status == 429 else 502, f"tts:{status if isinstance(status, int) else 0}:{reason}")
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
 
