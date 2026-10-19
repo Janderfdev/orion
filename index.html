@@ -98,7 +98,7 @@ body.is-standby{background:#030406;}
 const STANDBY_START = new Date('2026-10-19T08:15:00:').getTime();
 const STANDBY_END   = new Date('2026-10-22T00:00:00').getTime();
 
-/* Teste local: index.html?simular=2026-10-19T07:45:00 (só localhost / file://) */
+/* Teste local: index.html?simular=2026-10-19T08:15:00 (só localhost / file://) */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
 const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
