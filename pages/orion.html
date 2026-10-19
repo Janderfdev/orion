@@ -274,14 +274,14 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }
 .answer-gallery{ display:flex; gap:10px; justify-content:center; margin:0 auto 14px; }
 .answer-gallery[hidden]{ display:none; }
 .answer-gallery img{
-  flex:1 1 0; min-width:0; height:170px; object-fit:cover; border-radius:14px;
+  flex:1 1 0; min-width:0; height:140px; object-fit:cover; border-radius:14px;
   border:1px solid color-mix(in srgb, var(--core-c) 30%, transparent);
   box-shadow:0 0 24px color-mix(in srgb, var(--core-a) 25%, transparent);
   opacity:0; transition:opacity .5s ease;
 }
 .answer-gallery img.loaded{ opacity:1; }
-.answer-gallery img:only-child{ flex:none; height:auto; max-height:220px; max-width:100%; object-fit:contain; }
-@media (max-width:520px){ .answer-gallery img{ height:120px; } }
+.answer-gallery img:only-child{ flex:none; height:auto; max-height:180px; max-width:100%; object-fit:contain; }
+@media (max-width:520px){ .answer-gallery img{ height:100px; } }
 
 .answer-source{
   flex:none; align-self:center; margin:0 0 8px; padding:6px 14px; border-radius:16px;
@@ -632,6 +632,6 @@ window.ORION_SIGNOUT = async () => {
   location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js?v=4.5.0r3"></script>
+<script defer src="js/app.js?v=4.5.0r4"></script>
 </body>
 </html>
