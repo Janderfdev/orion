@@ -93,18 +93,28 @@ body.is-standby{background:#030406;}
 <script>
 /* ═══════════════════════════════════════════════════════════════
    ORION AI — entrada: STANDBY → LOGIN → pages/orion.html
-   O estado é SEMPRE derivado do relógio (UTC-3), nunca de variáveis do navegador.
+   O estado é SEMPRE derivado do relógio, nunca de variáveis do navegador.
    ═══════════════════════════════════════════════════════════════ */
-const STANDBY_START = new Date('2026-10-31T22:00:00').getTime();
-const STANDBY_END   = new Date('2026-11-01T07:30:00').getTime();
 
-/* Teste local: index.html?simular=2026-10-31T22:00:00 (só localhost / file://) */
+/* Janela do standby — SEMPRE no horário de Brasília (UTC-3, sem horário de verão).
+   O "-03:00" no fim fixa o mesmo instante para todo mundo, seja qual for o fuso do aparelho
+   (sem ele, cada navegador usa o fuso do próprio aparelho e a pessoa veria o standby em outro horário).
+   Formato: AAAA-MM-DDTHH:MM:SS-03:00  (cuidado para não sobrar nenhum caractere no fim). */
+const STANDBY_START = Date.parse('2026-10-31T00:00:00-03:00');   // 31/10/2026 às 00:00:00
+const STANDBY_END   = Date.parse('2026-11-01T07:30:00-03:00');   // 01/11/2026 às 07:30:00 (libera a V5.0)
+
+/* Se uma das datas estiver inválida (erro de digitação), NÃO prende ninguém no standby: libera o login. */
+const DATES_OK = Number.isFinite(STANDBY_START) && Number.isFinite(STANDBY_END) && STANDBY_START < STANDBY_END;
+if (!DATES_OK) console.error('[ORION] Datas do standby inválidas — standby desativado.', { STANDBY_START, STANDBY_END });
+
+/* Teste local: index.html?simular=2026-10-31T00:00:00-03:00 (só localhost / file://) */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
 const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
 const nowMs = () => Date.now() + clockOffset;
 
 function phase(t) {
+  if (!DATES_OK) return 'released';
   if (t < STANDBY_START) return 'before';
   if (t < STANDBY_END)   return 'standby';
   return 'released';
