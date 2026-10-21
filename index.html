@@ -211,9 +211,9 @@ let mode = 'in', busy = false, entering = false;
 function enter() {
   if (entering) return;
   entering = true;
-  document.body.style.transition = 'opacity .9s ease';
-  document.body.style.opacity = '0';
-  setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
+  document.body.style.transition = 'opacity .45s ease';
+document.body.style.opacity = '0';
+setTimeout(() => { location.href = 'pages/orion.html'; }, 450);
 }
 window.__orionEnter = enter;
 
