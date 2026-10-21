@@ -17,7 +17,7 @@ def is_fallback(reply: str) -> bool:
     return re.sub(r"[.…\s]+$", "", reply.strip()).lower() == "desculpe, não entendi"
 
 
-MODEL_TURNS = 6       # trocas reenviadas ao modelo a cada mensagem (menos = resposta mais rápida)
+MODEL_TURNS = 4       # trocas reenviadas ao modelo a cada mensagem (menos = resposta mais rápida)
 STORED_TURNS = 20     # trocas guardadas na memória
 MAX_REPLY_CHARS = 1000
 
