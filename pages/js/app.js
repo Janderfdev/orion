@@ -5,7 +5,7 @@
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
    O app.js NÃO substitui o ORION Core.
 
-   V4.5.0: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
+   V4.5.5: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
            4 vozes + Pace/Expressivity, "Hey ORION".
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    ═══════════════════════════════════════════════════════════════ */
