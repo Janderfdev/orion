@@ -1,4 +1,4 @@
-"""Voz do ORION via ElevenLabs (V4.5.0 — etapa 1: backend)
+"""Voz do ORION via ElevenLabs (V4.5.5 — etapa 1: backend)
 
 A chave (ELEVENLABS_API_KEY) e os IDs das vozes ficam SÓ no servidor. O site nunca vê um Voice ID:
 ele só conhece o "slot" da voz (1 a 4).
