@@ -107,7 +107,7 @@ const STANDBY_END   = Date.parse('2026-11-01T10:45:00-03:00');   // 01/11/2026 �
 const DATES_OK = Number.isFinite(STANDBY_START) && Number.isFinite(STANDBY_END) && STANDBY_START < STANDBY_END;
 if (!DATES_OK) console.error('[ORION] Datas do standby inválidas — standby desativado.', { STANDBY_START, STANDBY_END });
 
-/* Teste local: index.html?simular=2026-10-21T10:45:00-03:00 (só localhost / file://) */
+/* Teste local: index.html?simular=2026-10-31T10:45:00-03:00 (só localhost / file://) */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
 const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
