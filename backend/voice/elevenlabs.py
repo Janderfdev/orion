@@ -68,7 +68,7 @@ def clean(text: str) -> str:
     """Texto que será realmente falado (e cobrado): espaços normalizados e no máximo MAX_CHARS.
     Se passar do limite, corta no fim da última frase (ou na última palavra), nunca no meio de uma palavra."""
     t = " ".join(text.split())
-    if len(t) <= MAX_CHARS = int(os.getenv("ELEVENLABS_MAX_CHARS", "280"))
+    if len(t) <= MAX_CHARS:
         return t
     head = t[:MAX_CHARS + 1]
     end = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
