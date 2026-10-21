@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V4.5.5 — Interaction Layer  (pages/js/app.js)
+   ORION AI V4.5.0 — Interaction Layer  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
@@ -7,7 +7,6 @@
 
    V4.5.0: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
            4 vozes + Pace/Expressivity, "Hey ORION".
-   V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Se um dia mudar, troque aqui (sem barra no final). */
@@ -20,7 +19,7 @@ const I18N = (() => {
   const D = {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
-      'online': 'ORION ONLINE', 'version': 'VERSION V4.5.5',
+      'online': 'ORION ONLINE', 'version': 'VERSION V4.5.0',
       'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'Didn’t catch that',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
@@ -66,7 +65,7 @@ const I18N = (() => {
     },
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
-      'online': 'ORION ONLINE', 'version': 'VERSÃO V4.5.5',
+      'online': 'ORION ONLINE', 'version': 'VERSÃO V4.5.0',
       'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
@@ -646,7 +645,7 @@ const API = (() => {
   };
 })();
 
-/* ═══ interação — V4.5.5 ═══
+/* ═══ interação — V4.5.0 ═══
    Fluxo: botão de chat (ou voz) → a própria Orb cresce e vira o painel → API → ORION Core → resposta DENTRO do painel.
    Estados da Orb: standby (roxo) · listening (verde) · processing (azul) · speaking (roxo + áudio) · error (vermelho). */
 (function () {
@@ -707,19 +706,19 @@ const API = (() => {
   const voiceOpts = () => ({ voice: prefs.slot, pace: prefs.pace, expressivity: prefs.expr });
   const previewOpts = () => Object.assign(voiceOpts(), { lang: speechLang() });
 
-  /* ── boot (V4.5.5: mais rápido — ~1,9 s no total) ── */
+  /* ── boot ── */
   ['boot.init', 'boot.core', 'boot.online'].forEach((key, i) => {
     if (i === 0) return;
     setTimeout(() => {
       bootStatus.style.opacity = '0';
-      setTimeout(() => { bootStatus.textContent = t(key); bootStatus.style.opacity = '1'; }, 100);
-    }, i * 350);
+      setTimeout(() => { bootStatus.textContent = t(key); bootStatus.style.opacity = '1'; }, 170);
+    }, i * 730);
   });
   setTimeout(() => {
     bootEl.classList.add('out');
     try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init failed:', err); }
     setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); flash(t('online'), 3200); }, 670);
-  }, 1200);
+  }, 2400);
 
   function flash(msg, ms = 2600) {
     clearTimeout(flashTimer);
@@ -1230,7 +1229,7 @@ const API = (() => {
           <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
           <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
           <button id="signOutBtn" class="settings-out">${t('set.signout')}</button>
-          <p class="settings-hint">ORION AI V4.5.5</p>
+          <p class="settings-hint">ORION AI V4.5.0</p>
         </div>`;
       document.body.appendChild(panel);
 
