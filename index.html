@@ -12,41 +12,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --font:'Sora',-apple-system,'Helvetica Neue',sans-serif;
-  --mono:'Space Grotesk','Inter',sans-serif;
-  --violet:#a78bfa; --blue:#60a5fa;
-  --text:rgba(255,255,255,.90); --muted:rgba(255,255,255,.68); --faint:rgba(255,255,255,.52);
-  --line:rgba(167,139,250,.22); --card:rgba(10,10,22,.72);
-  --ok:#86efac; --soon:#fcd34d;
-}
+:root{--font:'Sora',-apple-system,'Helvetica Neue',sans-serif;--mono:'Space Grotesk','Inter',sans-serif;--violet:#a78bfa;
+  --text:rgba(255,255,255,.90);--muted:rgba(255,255,255,.68);--faint:rgba(255,255,255,.52);--line:rgba(167,139,250,.22);--card:rgba(10,10,22,.72);--ok:#86efac;--soon:#fcd34d;}
 html{scroll-behavior:smooth;}
 body{background:#000;color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.65;overflow-x:hidden;}
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(circle at 50% 20%,rgba(91,33,182,.16) 0%,transparent 46%),radial-gradient(circle at 80% 80%,rgba(30,64,175,.10) 0%,transparent 40%);}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 50% 20%,rgba(91,33,182,.16) 0%,transparent 46%),radial-gradient(circle at 80% 80%,rgba(30,64,175,.10) 0%,transparent 40%);}
 main,header,footer{position:relative;z-index:1;}
 a{color:inherit;}
 .wrap{width:min(1080px,100% - 40px);margin:0 auto;}
-
-/* topo */
 .top{display:flex;align-items:center;justify-content:space-between;padding:18px 0;}
 .top img{height:30px;width:auto;display:block;}
 .nav{display:flex;align-items:center;gap:8px;}
 .nav a.txt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 12px;border-radius:20px;}
 .nav a.txt:hover{color:#fff;}
 @media (max-width:640px){.nav a.txt{display:none;}}
-
-/* botões */
-.btn{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 26px;border-radius:24px;text-decoration:none;
-  font:500 12px var(--font);letter-spacing:.2em;text-transform:uppercase;color:#fff;
-  background:linear-gradient(135deg,rgba(30,64,175,.30),rgba(91,33,182,.38));border:1px solid rgba(139,120,255,.65);
-  box-shadow:0 0 26px rgba(91,33,182,.24);transition:box-shadow .3s ease,filter .3s ease;}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 26px;border-radius:24px;text-decoration:none;font:500 12px var(--font);letter-spacing:.2em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,rgba(30,64,175,.30),rgba(91,33,182,.38));border:1px solid rgba(139,120,255,.65);box-shadow:0 0 26px rgba(91,33,182,.24);transition:box-shadow .3s ease,filter .3s ease;}
 .btn:hover{box-shadow:0 0 40px rgba(91,33,182,.45);filter:brightness(1.15);}
 .btn.ghost{background:rgba(8,8,18,.6);border-color:rgba(139,120,255,.32);box-shadow:none;}
 .btn.small{height:38px;padding:0 18px;font-size:11px;}
 .btn:focus-visible,a:focus-visible{outline:2px solid var(--violet);outline-offset:3px;}
-
-/* hero */
 .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:56px 0 72px;}
 .eyebrow{font:500 11px var(--mono);letter-spacing:.3em;text-transform:uppercase;color:var(--violet);margin-bottom:18px;}
 h1{font-size:clamp(34px,6vw,60px);line-height:1.08;font-weight:700;letter-spacing:-.01em;}
@@ -56,16 +40,14 @@ h1 span{background:linear-gradient(120deg,#c4b5fd,#60a5fa);-webkit-background-cl
 .version{margin-top:22px;font:500 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);}
 .sky{display:flex;justify-content:center;}
 .sky svg{width:min(360px,80vw);height:auto;overflow:visible;}
-.sky line{stroke:rgba(167,139,250,.38);stroke-width:1;}
-.sky circle{fill:#fff;}
-.sky .big{fill:#c4b5fd;}
-.sky circle{animation:tw 4.5s ease-in-out infinite;}
-.sky circle:nth-of-type(2n){animation-delay:-1.3s;}
-.sky circle:nth-of-type(3n){animation-delay:-2.6s;}
-@keyframes tw{0%,100%{opacity:1;}50%{opacity:.45;}}
-@media (max-width:820px){.hero{grid-template-columns:1fr;padding-top:28px;}.sky{order:-1;}.sky svg{width:min(220px,60vw);}}
-
-/* seções */
+.sky line{stroke:rgba(200,220,255,.75);stroke-width:1.3;stroke-linecap:round;}
+.sky .core{fill:#fff;}
+.sky .glow{fill:url(#glow);}
+.sky .star{animation:tw 4.5s ease-in-out infinite;}
+.sky .star:nth-of-type(2n){animation-delay:-1.3s;}
+.sky .star:nth-of-type(3n){animation-delay:-2.6s;}
+@keyframes tw{0%,100%{opacity:1;}50%{opacity:.6;}}
+@media (max-width:820px){.hero{grid-template-columns:1fr;padding-top:28px;}.sky{order:-1;}.sky svg{width:min(240px,64vw);}}
 section{padding:56px 0;border-top:1px solid rgba(255,255,255,.06);}
 .sec-head{max-width:62ch;margin-bottom:30px;}
 .sec-head h2{font-size:clamp(24px,4vw,34px);font-weight:600;line-height:1.2;}
@@ -78,27 +60,20 @@ section{padding:56px 0;border-top:1px solid rgba(255,255,255,.06);}
 .badge.ok{color:var(--ok);border-color:rgba(134,239,172,.4);background:rgba(34,197,94,.08);}
 .badge.soon{color:var(--soon);border-color:rgba(252,211,77,.4);background:rgba(245,158,11,.08);}
 .note{margin-top:22px;font-size:13px;color:var(--faint);max-width:70ch;}
-
-/* princípio */
 .principle{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .principle .card strong{display:block;font:600 11px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--violet);margin-bottom:8px;}
 .principle .card p{font-size:15px;color:var(--text);}
 @media (max-width:700px){.principle{grid-template-columns:1fr;}}
-
-/* privacidade */
 .list{list-style:none;display:grid;gap:12px;max-width:78ch;}
 .list li{position:relative;padding-left:22px;font-size:14.5px;color:var(--muted);}
 .list li::before{content:"";position:absolute;left:0;top:.7em;width:8px;height:8px;border-radius:50%;background:var(--violet);}
 .list b{color:var(--text);font-weight:600;}
-
-/* final */
 .final{text-align:center;padding:72px 0 64px;}
 .final h2{font-size:clamp(26px,4.5vw,38px);font-weight:600;}
 .final p{margin:12px auto 0;color:var(--muted);max-width:50ch;}
 .final .cta{justify-content:center;}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align:center;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
-
-@media (prefers-reduced-motion:reduce){.sky circle{animation:none;}html{scroll-behavior:auto;}.btn{transition:none;}}
+@media (prefers-reduced-motion:reduce){.sky .star{animation:none;}html{scroll-behavior:auto;}.btn{transition:none;}}
 </style>
 </head>
 <body>
@@ -123,17 +98,43 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
         <a class="btn" href="login.html">Entrar</a>
         <a class="btn ghost" href="login.html?criar=1">Criar conta</a>
       </div>
-      <p class="version">Versão atual: V4.5.5</p>
+      <p class="version">Versão beta V4.5.5 · lançamento oficial previsto para 2027</p>
     </div>
     <div class="sky" aria-hidden="true">
-      <svg viewBox="0 0 400 470" focusable="false">
-        <line x1="205" y1="40" x2="140" y2="120"/><line x1="205" y1="40" x2="270" y2="125"/>
-        <line x1="140" y1="120" x2="175" y2="260"/><line x1="270" y1="125" x2="235" y2="244"/>
-        <line x1="175" y1="260" x2="205" y2="252"/><line x1="205" y1="252" x2="235" y2="244"/>
-        <line x1="175" y1="260" x2="150" y2="410"/><line x1="235" y1="244" x2="280" y2="400"/>
-        <circle cx="205" cy="40" r="3.5"/><circle class="big" cx="140" cy="120" r="7"/><circle cx="270" cy="125" r="4.5"/>
-        <circle cx="175" cy="260" r="4"/><circle cx="205" cy="252" r="4.5"/><circle cx="235" cy="244" r="4"/>
-        <circle cx="150" cy="410" r="4.5"/><circle class="big" cx="280" cy="400" r="7.5"/>
+      <svg viewBox="0 0 412 495" focusable="false">
+        <defs>
+          <radialGradient id="glow">
+            <stop offset="0" stop-color="#cfe0ff" stop-opacity=".95"/>
+            <stop offset=".35" stop-color="#6aa0ff" stop-opacity=".38"/>
+            <stop offset="1" stop-color="#3b6cf0" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <line x1="90" y1="130" x2="62" y2="97"/>
+        <line x1="90" y1="130" x2="172" y2="88"/>
+        <line x1="172" y1="88" x2="210" y2="148"/>
+        <line x1="210" y1="148" x2="353" y2="133"/>
+        <line x1="90" y1="130" x2="148" y2="282"/>
+        <line x1="210" y1="148" x2="183" y2="254"/>
+        <line x1="148" y1="282" x2="183" y2="254"/>
+        <line x1="148" y1="282" x2="118" y2="405"/>
+        <line x1="183" y1="254" x2="255" y2="380"/>
+        <line x1="118" y1="405" x2="255" y2="380"/>
+        <g class="star"><circle class="glow" cx="90" cy="130" r="38"/><circle class="core" cx="90" cy="130" r="5"/></g>
+        <g class="star"><circle class="glow" cx="62" cy="97" r="16"/><circle class="core" cx="62" cy="97" r="3"/></g>
+        <g class="star"><circle class="glow" cx="172" cy="88" r="22"/><circle class="core" cx="172" cy="88" r="4"/></g>
+        <g class="star"><circle class="glow" cx="210" cy="148" r="26"/><circle class="core" cx="210" cy="148" r="4.5"/></g>
+        <g class="star"><circle class="glow" cx="148" cy="282" r="16"/><circle class="core" cx="148" cy="282" r="3.5"/></g>
+        <g class="star"><circle class="glow" cx="166" cy="268" r="16"/><circle class="core" cx="166" cy="268" r="3.5"/></g>
+        <g class="star"><circle class="glow" cx="183" cy="254" r="16"/><circle class="core" cx="183" cy="254" r="3.5"/></g>
+        <g class="star"><circle class="glow" cx="118" cy="405" r="34"/><circle class="core" cx="118" cy="405" r="5"/></g>
+        <g class="star"><circle class="glow" cx="255" cy="380" r="38"/><circle class="core" cx="255" cy="380" r="5.5"/></g>
+        <g class="star"><circle class="glow" cx="330" cy="80" r="12"/><circle class="core" cx="330" cy="80" r="2.8"/></g>
+        <g class="star"><circle class="glow" cx="348" cy="100" r="12"/><circle class="core" cx="348" cy="100" r="3"/></g>
+        <g class="star"><circle class="glow" cx="353" cy="133" r="16"/><circle class="core" cx="353" cy="133" r="3.5"/></g>
+        <g class="star"><circle class="glow" cx="349" cy="160" r="12"/><circle class="core" cx="349" cy="160" r="3"/></g>
+        <g class="star"><circle class="glow" cx="343" cy="190" r="12"/><circle class="core" cx="343" cy="190" r="2.8"/></g>
+        <g class="star"><circle class="glow" cx="333" cy="208" r="12"/><circle class="core" cx="333" cy="208" r="3"/></g>
+        <g class="star"><circle class="glow" cx="318" cy="222" r="14"/><circle class="core" cx="318" cy="222" r="3.2"/></g>
       </svg>
     </div>
   </div>
@@ -152,27 +153,18 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
     <div class="wrap">
       <div class="sec-head">
         <h2 id="agora-t">O que a ORION faz hoje</h2>
-        <p>Tudo nesta lista existe no código atual do projeto.</p>
+        <p>Tudo nesta lista existe no código atual do projeto. A ORION está em fase beta: pode haver falhas e mudanças.</p>
       </div>
       <div class="grid">
-        <article class="card"><span class="badge ok">Disponível</span><h3>Conversa com IA</h3>
-          <p>Faça perguntas, peça explicações, ajuda com programação, matemática e conceitos. Você escolhe entre os modelos Gemini e Claude que o servidor tiver ativos.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Ferramentas</h3>
-          <p>Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. A ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Imagens nas respostas</h3>
-          <p>Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Voz</h3>
-          <p>Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>“Hey ORION”</h3>
-          <p>Ative a ORION dizendo o nome dela, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>A Orb</h3>
-          <p>Uma esfera de luz que muda de cor e de movimento conforme o estado: em espera, ouvindo, processando, respondendo ou com erro.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Continuidade da conversa</h3>
-          <p>A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Português e inglês</h3>
-          <p>Interface e voz nos dois idiomas, com a escolha salva no seu navegador.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Conta</h3>
-          <p>Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Conversa com IA</h3><p>Faça perguntas, peça explicações, ajuda com programação, matemática e conceitos. Você escolhe entre os modelos Gemini e Claude que o servidor tiver ativos.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Ferramentas</h3><p>Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. A ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Imagens nas respostas</h3><p>Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Voz</h3><p>Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>“Hey ORION”</h3><p>Ative a ORION dizendo o nome dela, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>A Orb</h3><p>Uma esfera de luz que muda de cor e de movimento conforme o estado: em espera, ouvindo, processando, respondendo ou com erro.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Continuidade da conversa</h3><p>A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Português e inglês</h3><p>Interface e voz nos dois idiomas, com a escolha salva no seu navegador.</p></article>
+        <article class="card"><span class="badge ok">Disponível</span><h3>Conta</h3><p>Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
       </div>
     </div>
   </section>
@@ -184,14 +176,10 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
         <p>Nada desta lista está disponível para uso ainda. Entra no ar só depois de testado.</p>
       </div>
       <div class="grid">
-        <article class="card"><span class="badge soon">Em desenvolvimento</span><h3>Agent Engine</h3>
-          <p>Resolver tarefas de várias etapas, como comparar dados de dois lugares e calcular a diferença, com ferramentas autorizadas e limites de tempo e de passos.</p></article>
-        <article class="card"><span class="badge soon">Planejado</span><h3>Memória controlada por você</h3>
-          <p>Lembrar o que você pedir para guardar, com consulta, edição e exclusão sob seu controle.</p></article>
-        <article class="card"><span class="badge soon">Planejado</span><h3>Visão</h3>
-          <p>Interpretar imagens e documentos enviados por você.</p></article>
-        <article class="card"><span class="badge soon">Contínuo</span><h3>Segurança e testes</h3>
-          <p>Revisão das proteções do servidor, das permissões e dos testes automatizados, ao longo de todas as versões.</p></article>
+        <article class="card"><span class="badge soon">Em desenvolvimento</span><h3>Agent Engine</h3><p>Resolver tarefas de várias etapas, como comparar dados de dois lugares e calcular a diferença, com ferramentas autorizadas e limites de tempo e de passos.</p></article>
+        <article class="card"><span class="badge soon">Planejado</span><h3>Memória controlada por você</h3><p>Lembrar o que você pedir para guardar, com consulta, edição e exclusão sob seu controle.</p></article>
+        <article class="card"><span class="badge soon">Planejado</span><h3>Visão</h3><p>Interpretar imagens e documentos enviados por você.</p></article>
+        <article class="card"><span class="badge soon">Contínuo</span><h3>Segurança e testes</h3><p>Revisão das proteções do servidor, das permissões e dos testes automatizados, ao longo de todas as versões.</p></article>
       </div>
       <p class="note">As datas e a ordem podem mudar. O projeto prioriza funcionar bem e com segurança antes de crescer em quantidade de recursos.</p>
     </div>
@@ -224,7 +212,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
   </section>
 </main>
 
-<footer>ORION AI · V4.5.5 · O futuro começa com a curiosidade.</footer>
+<footer>ORION AI · beta V4.5.5 · O futuro começa com a curiosidade.</footer>
 
 </body>
 </html>
