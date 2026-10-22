@@ -68,7 +68,7 @@ html,body{
   padding-top:clamp(28px, 6vh, 56px);
   pointer-events:none; user-select:none;
 }
-.header-logo{ width:min(290px, 74vw); height:auto; filter:drop-shadow(0 0 12px rgba(120,100,255,.25)); }
+.header-logo{ width:min(220px, 62vw); height:auto; filter:drop-shadow(0 0 12px rgba(120,100,255,.25)); }
 
 /* ═══════ STAGE ═══════ */
 .stage{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
@@ -478,7 +478,6 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
     <div class="boot-ring"></div>
     <div class="boot-ring"></div>
   </div>
-  <p class="boot-status" id="bootStatus" data-i18n="boot.init">inicializando</p>
 </div>
 
 <!-- APP -->
@@ -533,7 +532,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 </div>
 
-<!-- V4.5.5 — Voice & Speech -->
+<!-- V4.5.0 — Voice & Speech -->
 <section class="vscreen" id="voiceScreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vsTitle">
   <header class="vs-top">
     <button class="vs-back" id="vsBack" aria-label="Voltar às configurações" title="Voltar" data-i18n-aria="vs.back">
@@ -600,7 +599,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/fireba
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const auth = getAuth(initializeApp({
-  apiKey: "AIzaSyBpYSGxHqD_XbZszZiF5HbN-pIZOaveh9s",
+  apiKey: "AIzaSyApS5PXcQvApRfjCsEkqktinwXF29ViHg",
   authDomain: "orion-ai-b8d39.firebaseapp.com",
   projectId: "orion-ai-b8d39",
   storageBucket: "orion-ai-b8d39.firebasestorage.app",
