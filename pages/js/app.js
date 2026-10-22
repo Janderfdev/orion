@@ -5,7 +5,7 @@
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
    O app.js NÃO substitui o ORION Core.
 
-   V4.5.5: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
+   V4.5.0: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
            4 vozes + Pace/Expressivity, "Hey ORION".
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    ═══════════════════════════════════════════════════════════════ */
@@ -679,7 +679,7 @@ const API = (() => {
   I18N.set(prefs.ui); I18N.apply();
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init failed:', err); }
 
-  const bootEl = $('boot'), bootStatus = $('bootStatus'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
+  const bootEl = $('boot'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
   const statusText = $('statusText'), hintEl = $('hintText');
   const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
@@ -707,14 +707,7 @@ const API = (() => {
   const voiceOpts = () => ({ voice: prefs.slot, pace: prefs.pace, expressivity: prefs.expr });
   const previewOpts = () => Object.assign(voiceOpts(), { lang: speechLang() });
 
-  /* ── boot (V4.5.5: mais rápido — ~1,9 s no total) ── */
-  ['boot.init', 'boot.core', 'boot.online'].forEach((key, i) => {
-    if (i === 0) return;
-    setTimeout(() => {
-      bootStatus.style.opacity = '0';
-      setTimeout(() => { bootStatus.textContent = t(key); bootStatus.style.opacity = '1'; }, 100);
-    }, i * 350);
-  });
+  /* ── boot (V4.5.5: mais rápido, sem textos de status) ── */
   setTimeout(() => {
     bootEl.classList.add('out');
     try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init failed:', err); }
