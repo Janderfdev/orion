@@ -15,17 +15,23 @@
 :root{--font:'Sora',-apple-system,'Helvetica Neue',sans-serif;--mono:'Space Grotesk','Inter',sans-serif;--violet:#a78bfa;
   --text:rgba(255,255,255,.90);--muted:rgba(255,255,255,.68);--faint:rgba(255,255,255,.52);--line:rgba(167,139,250,.22);--card:rgba(10,10,22,.72);--ok:#86efac;--soon:#fcd34d;}
 html{scroll-behavior:smooth;}
-body{background:#000;color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.65;overflow-x:hidden;}
+body{background:#000;color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.65;overflow-x:hidden;animation:pageIn .45s ease both;}
+@keyframes pageIn{from{opacity:0;}to{opacity:1;}}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 50% 20%,rgba(91,33,182,.16) 0%,transparent 46%),radial-gradient(circle at 80% 80%,rgba(30,64,175,.10) 0%,transparent 40%);}
 main,header,footer{position:relative;z-index:1;}
 a{color:inherit;}
 .wrap{width:min(1080px,100% - 40px);margin:0 auto;}
-.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0;}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;}
 .top img{height:30px;width:auto;display:block;}
 .nav{display:flex;align-items:center;gap:8px;}
 .nav a.txt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 12px;border-radius:20px;}
 .nav a.txt:hover{color:#fff;}
-@media (max-width:640px){.nav a.txt{display:none;}}
+@media (max-width:640px){.nav a.txt{display:none;}.top img{height:24px;}}
+.lang{display:flex;gap:2px;padding:3px;border-radius:20px;border:1px solid rgba(139,120,255,.28);background:rgba(8,8,18,.6);}
+.lang button{height:30px;min-width:38px;padding:0 10px;border:0;border-radius:16px;background:transparent;color:var(--muted);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:background .3s ease,color .3s ease;}
+.lang button:hover{color:#fff;}
+.lang button[aria-pressed="true"]{background:linear-gradient(135deg,rgba(30,64,175,.35),rgba(91,33,182,.42));color:#fff;}
+.lang button:focus-visible{outline:2px solid var(--violet);outline-offset:2px;}
 .btn{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 26px;border-radius:24px;text-decoration:none;font:500 12px var(--font);letter-spacing:.2em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,rgba(30,64,175,.30),rgba(91,33,182,.38));border:1px solid rgba(139,120,255,.65);box-shadow:0 0 26px rgba(91,33,182,.24);transition:box-shadow .3s ease,filter .3s ease;}
 .btn:hover{box-shadow:0 0 40px rgba(91,33,182,.45);filter:brightness(1.15);}
 .btn.ghost{background:rgba(8,8,18,.6);border-color:rgba(139,120,255,.32);box-shadow:none;}
@@ -34,7 +40,7 @@ a{color:inherit;}
 .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:56px 0 72px;}
 .eyebrow{font:500 11px var(--mono);letter-spacing:.3em;text-transform:uppercase;color:var(--violet);margin-bottom:18px;}
 h1{font-size:clamp(34px,6vw,60px);line-height:1.08;font-weight:700;letter-spacing:-.01em;}
-h1 span{background:linear-gradient(120deg,#c4b5fd,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;}
+h1 .grad{background:linear-gradient(120deg,#c4b5fd,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .lead{margin-top:20px;font-size:clamp(15px,2.2vw,18px);color:var(--muted);max-width:56ch;}
 .cta{margin-top:30px;display:flex;flex-wrap:wrap;gap:12px;}
 .version{margin-top:22px;font:500 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--faint);}
@@ -73,32 +79,36 @@ section{padding:56px 0;border-top:1px solid rgba(255,255,255,.06);}
 .final p{margin:12px auto 0;color:var(--muted);max-width:50ch;}
 .final .cta{justify-content:center;}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align:center;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
-@media (prefers-reduced-motion:reduce){.sky .star{animation:none;}html{scroll-behavior:auto;}.btn{transition:none;}}
+@media (prefers-reduced-motion:reduce){body{animation:none;}.sky .star{animation:none;}html{scroll-behavior:auto;}.btn,.lang button{transition:none;}}
 </style>
 </head>
 <body>
 
 <header class="wrap top">
   <img src="assets/orion_ai_wordmark.png" alt="ORION AI">
-  <nav class="nav" aria-label="Principal">
-    <a class="txt" href="#agora">O que faz</a>
-    <a class="txt" href="#breve">Em desenvolvimento</a>
-    <a class="txt" href="#privacidade">Privacidade</a>
-    <a class="btn small" href="login.html">Entrar</a>
+  <nav class="nav" aria-label="ORION AI">
+    <a class="txt" href="#agora" data-t="n1">O que faz</a>
+    <a class="txt" href="#breve" data-t="n2">Em desenvolvimento</a>
+    <a class="txt" href="#privacidade" data-t="n3">Privacidade</a>
+    <div class="lang" role="group" aria-label="Idioma / Language">
+      <button type="button" data-lang="pt" aria-pressed="true">PT</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+    <a class="btn small" href="login.html" data-t="in">Entrar</a>
   </nav>
 </header>
 
 <main>
   <div class="wrap hero">
     <div>
-      <p class="eyebrow">Uma presença digital inteligente</p>
-      <h1>O futuro começa com a <span>curiosidade.</span></h1>
-      <p class="lead">O ORION AI é um projeto de inteligência artificial com identidade própria, inspirado na constelação de Órion. Ela conversa, usa ferramentas, mostra imagens e fala com você. Abaixo está, com honestidade, o que ela faz hoje e o que ainda está sendo construído.</p>
+      <p class="eyebrow" data-t="eyebrow">Uma presença digital inteligente</p>
+      <h1><span data-t="h1a">O futuro começa com a </span><span class="grad" data-t="h1b">curiosidade.</span></h1>
+      <p class="lead" data-t="lead">A ORION AI é um projeto de inteligência artificial com identidade própria, inspirado na constelação de Órion. Ela conversa, usa ferramentas, mostra imagens e fala com você. Abaixo está, com honestidade, o que ela faz hoje e o que ainda está sendo construído.</p>
       <div class="cta">
-        <a class="btn" href="login.html">Entrar</a>
-        <a class="btn ghost" href="login.html?criar=1">Criar conta</a>
+        <a class="btn" href="login.html" data-t="in">Entrar</a>
+        <a class="btn ghost" href="login.html?criar=1" data-t="up">Criar conta</a>
       </div>
-      <p class="version">Versão beta V4.5.5 · lançamento oficial previsto para 2027</p>
+      <p class="version" data-t="ver">Versão beta V4.5.5 · lançamento oficial previsto para 2027</p>
     </div>
     <div class="sky" aria-hidden="true">
       <svg viewBox="0 0 412 495" focusable="false">
@@ -141,10 +151,10 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
 
   <section aria-labelledby="princ">
     <div class="wrap">
-      <div class="sec-head"><h2 id="princ">A ideia por trás</h2></div>
+      <div class="sec-head"><h2 id="princ" data-t="pr">A ideia por trás</h2></div>
       <div class="principle">
-        <div class="card"><strong>O modelo</strong><p>Fornece a inteligência: entende a pergunta e escreve a resposta.</p></div>
-        <div class="card"><strong>O ORION</strong><p>É o sistema ao redor: identidade, contexto, ferramentas, voz, regras e interação.</p></div>
+        <div class="card"><strong data-t="pm">O modelo</strong><p data-t="pmp">Fornece a inteligência: entende a pergunta e escreve a resposta.</p></div>
+        <div class="card"><strong data-t="po">A ORION</strong><p data-t="pop">É o sistema ao redor: identidade, contexto, ferramentas, voz, regras e interação.</p></div>
       </div>
     </div>
   </section>
@@ -152,19 +162,19 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
   <section id="agora" aria-labelledby="agora-t">
     <div class="wrap">
       <div class="sec-head">
-        <h2 id="agora-t">O que o ORION faz hoje</h2>
-        <p>Tudo nesta lista existe no código atual do projeto. O ORION está em fase beta: pode haver falhas e mudanças.</p>
+        <h2 id="agora-t" data-t="ah">O que a ORION faz hoje</h2>
+        <p data-t="ap">Tudo nesta lista existe no código atual do projeto. A ORION está em fase beta: pode haver falhas e mudanças.</p>
       </div>
       <div class="grid">
-        <article class="card"><span class="badge ok">Disponível</span><h3>Conversa com IA</h3><p>Faça perguntas, peça explicações, ajuda com programação, matemática e conceitos. Você escolhe entre os modelos Gemini e Claude que o servidor tiver ativos.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Ferramentas</h3><p>Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. A ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Imagens nas respostas</h3><p>Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Voz</h3><p>Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>“Hey ORION”</h3><p>Ative a ORION dizendo o nome dela, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>A Orb</h3><p>Uma esfera de luz que muda de cor e de movimento conforme o estado: em espera, ouvindo, processando, respondendo ou com erro.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Continuidade da conversa</h3><p>A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Português e inglês</h3><p>Interface e voz nos dois idiomas, com a escolha salva no seu navegador.</p></article>
-        <article class="card"><span class="badge ok">Disponível</span><h3>Conta</h3><p>Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c1h">Conversa com IA</h3><p data-t="c1p">Faça perguntas, peça explicações, ajuda com programação, matemática e conceitos. Você escolhe entre os modelos Gemini e Claude que o servidor tiver ativos.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c2h">Ferramentas</h3><p data-t="c2p">Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. A ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c3h">Imagens nas respostas</h3><p data-t="c3p">Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c4h">Voz</h3><p data-t="c4p">Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c5h">“Hey ORION”</h3><p data-t="c5p">Ative a ORION dizendo o nome dela, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c6h">A Orb</h3><p data-t="c6p">Uma esfera de luz que muda de cor e de movimento conforme o estado: em espera, ouvindo, processando, respondendo ou com erro.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c7h">Continuidade da conversa</h3><p data-t="c7p">A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c8h">Português e inglês</h3><p data-t="c8p">Interface e voz nos dois idiomas, com a escolha salva no seu navegador.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c9h">Conta</h3><p data-t="c9p">Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
       </div>
     </div>
   </section>
@@ -172,47 +182,109 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
   <section id="breve" aria-labelledby="breve-t">
     <div class="wrap">
       <div class="sec-head">
-        <h2 id="breve-t">Em desenvolvimento</h2>
-        <p>Nada desta lista está disponível para uso ainda. Entra no ar só depois de testado.</p>
+        <h2 id="breve-t" data-t="bh">Em desenvolvimento</h2>
+        <p data-t="bp">Nada desta lista está disponível para uso ainda. Entra no ar só depois de testado.</p>
       </div>
       <div class="grid">
-        <article class="card"><span class="badge soon">Em desenvolvimento</span><h3>Agent Engine</h3><p>Resolver tarefas de várias etapas, como comparar dados de dois lugares e calcular a diferença, com ferramentas autorizadas e limites de tempo e de passos.</p></article>
-        <article class="card"><span class="badge soon">Planejado</span><h3>Memória controlada por você</h3><p>Lembrar o que você pedir para guardar, com consulta, edição e exclusão sob seu controle.</p></article>
-        <article class="card"><span class="badge soon">Planejado</span><h3>Visão</h3><p>Interpretar imagens e documentos enviados por você.</p></article>
-        <article class="card"><span class="badge soon">Contínuo</span><h3>Segurança e testes</h3><p>Revisão das proteções do servidor, das permissões e dos testes automatizados, ao longo de todas as versões.</p></article>
+        <article class="card"><span class="badge soon" data-t="bdev">Em desenvolvimento</span><h3 data-t="d1h">Agent Engine</h3><p data-t="d1p">Resolver tarefas de várias etapas, como comparar dados de dois lugares e calcular a diferença, com ferramentas autorizadas e limites de tempo e de passos.</p></article>
+        <article class="card"><span class="badge soon" data-t="bplan">Planejado</span><h3 data-t="d2h">Memória controlada por você</h3><p data-t="d2p">Lembrar o que você pedir para guardar, com consulta, edição e exclusão sob seu controle.</p></article>
+        <article class="card"><span class="badge soon" data-t="bplan">Planejado</span><h3 data-t="d3h">Visão</h3><p data-t="d3p">Interpretar imagens e documentos enviados por você.</p></article>
+        <article class="card"><span class="badge soon" data-t="bon">Contínuo</span><h3 data-t="d4h">Segurança e testes</h3><p data-t="d4p">Revisão das proteções do servidor, das permissões e dos testes automatizados, ao longo de todas as versões.</p></article>
       </div>
-      <p class="note">As datas e a ordem podem mudar. O projeto prioriza funcionar bem e com segurança antes de crescer em quantidade de recursos.</p>
+      <p class="note" data-t="bnote">As datas e a ordem podem mudar. O projeto prioriza funcionar bem e com segurança antes de crescer em quantidade de recursos.</p>
     </div>
   </section>
 
   <section id="privacidade" aria-labelledby="priv-t">
     <div class="wrap">
-      <div class="sec-head"><h2 id="priv-t">Privacidade e limites</h2></div>
+      <div class="sec-head"><h2 id="priv-t" data-t="vh">Privacidade e limites</h2></div>
       <ul class="list">
-        <li><b>O ORION pode errar.</b> Confira informações importantes em fontes confiáveis. Ela só consulta a internet pelas ferramentas listadas acima e não acessa seus arquivos.</li>
-        <li><b>Respostas curtas.</b> Ela foi desenhada para responder de forma breve e natural, também para serem faladas em voz alta.</li>
-        <li><b>Seu histórico</b> fica salvo na sua conta (Firestore, do projeto Firebase da ORION). Cada pessoa acessa só o próprio histórico, e você pode limpá-lo nas configurações.</li>
-        <li><b>Voz e “Hey ORION”:</b> o reconhecimento de fala é do seu navegador. No Chrome, o áudio é enviado ao serviço de fala do Google. A ORION não guarda áudio nem transcrições.</li>
-        <li><b>Voz das respostas:</b> o texto da resposta é enviado ao ElevenLabs para gerar o áudio. Se isso falhar, o navegador fala no lugar.</li>
-        <li><b>Chaves e senhas</b> dos serviços ficam só no servidor, nunca no site.</li>
-        <li><b>Acesso e limites:</b> há um limite diário de perguntas e de voz por conta, e o acesso pode ser restrito a contas autorizadas.</li>
+        <li><b data-t="v1b">A ORION pode errar.</b><span data-t="v1t"> Confira informações importantes em fontes confiáveis. Ela só consulta a internet pelas ferramentas listadas acima e não acessa seus arquivos.</span></li>
+        <li><b data-t="v2b">Respostas curtas.</b><span data-t="v2t"> Ela foi desenhada para responder de forma breve e natural, também para serem faladas em voz alta.</span></li>
+        <li><b data-t="v3b">Seu histórico</b><span data-t="v3t"> fica salvo na sua conta (Firestore, do projeto Firebase da ORION). Cada pessoa acessa só o próprio histórico, e você pode limpá-lo nas configurações.</span></li>
+        <li><b data-t="v4b">Voz e “Hey ORION”:</b><span data-t="v4t"> o reconhecimento de fala é do seu navegador. No Chrome, o áudio é enviado ao serviço de fala do Google. A ORION não guarda áudio nem transcrições.</span></li>
+        <li><b data-t="v5b">Voz das respostas:</b><span data-t="v5t"> o texto da resposta é enviado ao ElevenLabs para gerar o áudio. Se isso falhar, o navegador fala no lugar.</span></li>
+        <li><b data-t="v6b">Chaves e senhas</b><span data-t="v6t"> dos serviços ficam só no servidor, nunca no site.</span></li>
+        <li><b data-t="v7b">Acesso e limites:</b><span data-t="v7t"> há um limite diário de perguntas e de voz por conta, e o acesso pode ser restrito a contas autorizadas.</span></li>
       </ul>
     </div>
   </section>
 
   <section class="final" aria-labelledby="fim">
     <div class="wrap">
-      <h2 id="fim">Pronto para conversar com o ORION?</h2>
-      <p>Entre ou crie sua conta em poucos segundos.</p>
+      <h2 id="fim" data-t="fh">Pronto para conversar com a ORION?</h2>
+      <p data-t="fp">Entre ou crie sua conta em poucos segundos.</p>
       <div class="cta">
-        <a class="btn" href="login.html">Entrar</a>
-        <a class="btn ghost" href="login.html?criar=1">Criar conta</a>
+        <a class="btn" href="login.html" data-t="in">Entrar</a>
+        <a class="btn ghost" href="login.html?criar=1" data-t="up">Criar conta</a>
       </div>
     </div>
   </section>
 </main>
 
-<footer>ORION AI · beta V4.5.5 · O futuro começa com a curiosidade.</footer>
+<footer data-t="foot">ORION AI · beta V4.5.5 · O futuro começa com a curiosidade.</footer>
+
+<script>
+/* Idioma da landing: o texto em português é o padrão do HTML; aqui só existe o inglês.
+   A escolha é salva em orion_settings.ui, a MESMA chave que o app (pages/js/app.js) lê. */
+const EN = {
+  n1:'What it does', n2:'In development', n3:'Privacy', in:'Sign in', up:'Create account',
+  eyebrow:'An intelligent digital presence', h1a:'The future begins with ', h1b:'curiosity.',
+  lead:'ORION AI is an artificial intelligence project with its own identity, inspired by the Orion constellation. It chats, uses tools, shows images and speaks with you. Below is an honest look at what it does today and what is still being built.',
+  ver:'Beta V4.5.5 · official launch planned for 2027',
+  pr:'The idea behind it', pm:'The model', pmp:'Provides the intelligence: it understands the question and writes the answer.',
+  po:'ORION', pop:'Is the system around it: identity, context, tools, voice, rules and interaction.',
+  ah:'What ORION does today', ap:'Everything in this list exists in the project’s current code. ORION is in beta: there may be bugs and changes.',
+  bok:'Available',
+  c1h:'Conversation with AI', c1p:'Ask questions, request explanations, get help with programming, math and concepts. You choose among the Gemini and Claude models the server has active.',
+  c2h:'Tools', c2p:'Exact calculator, date and time, current weather for a city and Wikipedia summaries. ORION decides on its own when to use each one. All of them only read information.',
+  c3h:'Images in answers', c3p:'Photos from Wikipedia and Wikimedia Commons appear next to the answer, with a link to the article when there is one.',
+  c4h:'Voice', c4p:'Speak into the microphone and hear the answers. There are 4 ElevenLabs voices with pace and expressivity controls, and the browser voice as a fallback.',
+  c5h:'“Hey ORION”', c5p:'Activate ORION by saying its name, with the tab open and visible. It can be turned off in Voice & Speech.',
+  c6h:'The Orb', c6p:'A sphere of light that changes color and motion with the state: idle, listening, processing, responding or error.',
+  c7h:'Conversation continuity', c7p:'ORION keeps the last 20 exchanges of your account to maintain context. You can erase everything anytime in Settings. This is conversation history, not a full memory.',
+  c8h:'Portuguese and English', c8p:'Interface and voice in both languages, with your choice saved in your browser.',
+  c9h:'Account', c9p:'Sign in with email and password or with Google. There is password recovery by email and a daily question limit.',
+  bh:'In development', bp:'Nothing in this list is available yet. It goes live only after being tested.',
+  bdev:'In development', bplan:'Planned', bon:'Ongoing',
+  d1h:'Agent Engine', d1p:'Solve multi-step tasks, such as comparing data from two places and calculating the difference, with authorized tools and limits on time and steps.',
+  d2h:'Memory you control', d2p:'Remember what you ask it to keep, with viewing, editing and deletion under your control.',
+  d3h:'Vision', d3p:'Interpret images and documents you send.',
+  d4h:'Security and testing', d4p:'Ongoing review of server protections, permissions and automated tests, across all versions.',
+  bnote:'Dates and order may change. The project prioritizes working well and safely before growing in number of features.',
+  vh:'Privacy and limits',
+  v1b:'ORION can make mistakes.', v1t:' Check important information in reliable sources. It only reaches the internet through the tools listed above and does not access your files.',
+  v2b:'Short answers.', v2t:' It is designed to answer briefly and naturally, also so answers can be spoken aloud.',
+  v3b:'Your history', v3t:' is saved in your account (Firestore, in ORION’s Firebase project). Each person accesses only their own history, and you can clear it in settings.',
+  v4b:'Voice and “Hey ORION”:', v4t:' speech recognition is done by your browser. In Chrome, audio is sent to Google’s speech service. ORION does not store audio or transcripts.',
+  v5b:'Answer voice:', v5t:' the answer text is sent to ElevenLabs to generate the audio. If that fails, the browser speaks instead.',
+  v6b:'Keys and passwords', v6t:' for the services stay only on the server, never on the site.',
+  v7b:'Access and limits:', v7t:' there is a daily limit of questions and voice per account, and access may be restricted to authorized accounts.',
+  fh:'Ready to talk to ORION?', fp:'Sign in or create your account in seconds.',
+  foot:'ORION AI · beta V4.5.5 · The future begins with curiosity.',
+  title:'ORION AI — The future begins with curiosity',
+  desc:'ORION AI: an intelligent digital presence. See what it does today and what is in development.'
+};
+const KEY = 'orion_settings';
+const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } };
+const save = l => { try { const s = read(); s.ui = l; if (s.v !== 2 && s.v !== 3) s.v = 3; localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {} };
+const PT_TITLE = document.title, metaDesc = document.querySelector('meta[name="description"]'), PT_DESC = metaDesc.content;
+
+function setLang(l, persist) {
+  document.documentElement.lang = l === 'en' ? 'en' : 'pt-BR';
+  document.querySelectorAll('[data-t]').forEach(el => {
+    if (el.dataset.pt === undefined) el.dataset.pt = el.textContent;
+    el.textContent = l === 'en' ? (EN[el.dataset.t] || el.dataset.pt) : el.dataset.pt;
+  });
+  document.title = l === 'en' ? EN.title : PT_TITLE;
+  metaDesc.content = l === 'en' ? EN.desc : PT_DESC;
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  if (persist) save(l);
+}
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
+const saved = read().ui;
+setLang(saved === 'en' || saved === 'pt' ? saved : (/^en/i.test(navigator.language || '') ? 'en' : 'pt'), true);
+</script>
 
 </body>
 </html>
