@@ -138,7 +138,7 @@ The model provides intelligence. ORION Core coordinates the surrounding system, 
                                   ▼
                        ┌──────────────────────┐
                        │         ORB          │
-                       │  Visual System State│
+                       │  Visual System State │
                        └──────────┬───────────┘
                                   │
                                   ▼
