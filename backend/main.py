@@ -1,4 +1,4 @@
-"""ORION AI — backend (V4.5.0).
+"""ORION AI — backend (V4.5.5).
 
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
@@ -7,6 +7,10 @@ Variáveis:
   ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
   ORION_ALLOWED_EMAILS   (recomendada) e-mails com acesso, separados por vírgula.
                          Vazio = qualquer conta criada no Firebase pode usar (e gastar seu crédito!)
+  ORION_MAX_DAILY_USERS  (300) máximo de contas DIFERENTES que usam a ORION por dia (freio contra criação em massa
+                         de contas). 0 = sem limite. Não vale quando ORION_ALLOWED_EMAILS está preenchida.
+  ORION_REQUIRE_VERIFIED "1" exige e-mail verificado no token (padrão: desligado; o login atual não envia verificação)
+  ORION_AGENT            "1" liga o Agent Engine (padrão: desligado)
   ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
@@ -15,6 +19,7 @@ Variáveis:
   ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID_1 … _4   (opcionais) ligam as vozes do ElevenLabs
                          (o slot 1 aceita também o nome antigo ELEVENLABS_VOICE_ID); ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
                          ORION_TTS_DAILY_CHARS (4000 por usuário por dia; a prévia de voz também conta)
+  ORION_DIAG             "1" liga o /speak/diag (padrão: desligado; exige ORION_ALLOWED_EMAILS preenchida)
   FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
   ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
@@ -42,6 +47,11 @@ ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").spli
 PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
 PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
 TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "4000"))   # limite de caracteres falados por usuário por dia
+DIAG_ENABLED = os.getenv("ORION_DIAG", "0") == "1"                   # diagnóstico de voz: desligado por padrão
+DIAG_TEXT = "Teste de voz do ORION."
+MAX_DAILY_USERS = int(os.getenv("ORION_MAX_DAILY_USERS", "300"))     # contas diferentes por dia (0 = sem limite)
+REQUIRE_VERIFIED = os.getenv("ORION_REQUIRE_VERIFIED", "0") == "1"
+PRUNE_AT = 2000                                                       # tamanho a partir do qual os mapas em memória são limpos
 
 # Frase fixa da prévia de voz (o site não envia texto: ninguém usa a prévia para falar o que quiser)
 PREVIEW_TEXT = {"en": "Hi, I'm ORION. This is how I sound.", "pt": "Olá, eu sou o ORION. É assim que eu falo."}
@@ -55,10 +65,28 @@ orchestrator = Orchestrator(Memory())
 quota = Quota()   # cota diária por plano (free/plus/pro)
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
 _tts_used: dict[str, tuple] = {}  # uid -> (dia, caracteres falados hoje)
+_seen: dict = {"day": None, "uids": set()}   # contas que usaram a ORION hoje
+
+
+def _user_ok(uid: str) -> bool:
+    """Freio contra criação em massa de contas: no máximo MAX_DAILY_USERS contas diferentes por dia.
+    Quem já usou hoje continua passando. Zera à meia-noite e quando o servidor reinicia."""
+    today = datetime.date.today()
+    if _seen["day"] != today:
+        _seen["day"], _seen["uids"] = today, set()
+    if uid in _seen["uids"]:
+        return True
+    if MAX_DAILY_USERS and len(_seen["uids"]) >= MAX_DAILY_USERS:
+        return False
+    _seen["uids"].add(uid)
+    return True
 
 
 def _rate_ok(uid: str) -> bool:
     now = time.time()
+    if len(_hits) >= PRUNE_AT:   # poda: tira quem não pergunta há mais de um dia
+        for k in [k for k, d in _hits.items() if not d or d[-1] < now - 86400]:
+            del _hits[k]
     q = _hits.setdefault(uid, deque())
     while q and q[0] < now - 86400:
         q.popleft()
@@ -71,6 +99,9 @@ def _rate_ok(uid: str) -> bool:
 def _tts_ok(uid: str, n: int) -> bool:
     """Controla os créditos do ElevenLabs: cada usuário tem um limite diário de caracteres falados."""
     today = datetime.date.today()
+    if len(_tts_used) >= PRUNE_AT:   # poda: tira registros de dias anteriores
+        for k in [k for k, (d, _) in _tts_used.items() if d != today]:
+            del _tts_used[k]
     day, used = _tts_used.get(uid, (today, 0))
     if day != today:
         used = 0
@@ -127,7 +158,7 @@ async def _with_images(sources, task):
 
 
 async def _auth(authorization: str, count: bool = False):
-    """Valida o login do Firebase e a lista de e-mails. Devolve (uid, token).
+    """Valida o login do Firebase, a lista de e-mails e o limite de contas por dia. Devolve (uid, token).
     count=True também aplica o limite de uso (perguntas ao modelo)."""
     token = authorization.removeprefix("Bearer ").strip()
     claims = await asyncio.to_thread(verify, token)
@@ -135,7 +166,11 @@ async def _auth(authorization: str, count: bool = False):
         raise HTTPException(401, "Não autorizado.")
     if ALLOWED and (claims.get("email") or "").lower() not in ALLOWED:
         raise HTTPException(403, "Conta sem acesso.")
+    if REQUIRE_VERIFIED and not claims.get("email_verified"):
+        raise HTTPException(403, "Conta sem acesso.")
     uid = claims.get("sub", "?")
+    if not ALLOWED and not _user_ok(uid):
+        raise HTTPException(429, "Muitos usuários agora. Tente mais tarde.")
     if count and not _rate_ok(uid):
         raise HTTPException(429, "Muitas solicitações. Aguarde um instante.")
     return uid, token
@@ -231,9 +266,12 @@ async def speak_preview(body: PreviewIn, authorization: str = Header(default="")
 
 @app.get("/speak/diag")
 async def speak_diag(voice: int = 1, authorization: str = Header(default="")):
-    """Diagnóstico da voz do ElevenLabs: mostra exatamente por que ela falha (só para contas autorizadas).
+    """Diagnóstico da voz do ElevenLabs. Desligado por padrão: exige ORION_DIAG=1 e ORION_ALLOWED_EMAILS preenchida.
+    Conta na cota de voz e nunca devolve o texto bruto do erro (ele vai só para o log do servidor).
     ?voice=1..4 testa o slot escolhido; 'slots' mostra quais estão configurados."""
-    await _auth(authorization)
+    uid, _ = await _auth(authorization)
+    if not DIAG_ENABLED or not ALLOWED:
+        raise HTTPException(404, "Not found")
     slots = {s: bool(elevenlabs.voice_id(s)) for s in elevenlabs.SLOTS}
     if not os.getenv("ELEVENLABS_API_KEY", "").strip():
         return {"ok": False, "slots": slots, "motivo": "ELEVENLABS_API_KEY não chegou ao servidor (confira o nome no Render e faça redeploy)."}
@@ -241,11 +279,15 @@ async def speak_diag(voice: int = 1, authorization: str = Header(default="")):
         return {"ok": False, "slots": slots, "motivo": f"ELEVENLABS_VOICE_ID_{voice} não chegou ao servidor (confira o nome no Render e faça redeploy)."}
     vid = elevenlabs.voice_id(voice)
     info = {"slot": voice, "slots": slots, "voice_id_tamanho": len(vid), "modelo": os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")}
+    if not _tts_ok(uid, len(DIAG_TEXT)):
+        raise HTTPException(429, "Limite diário de voz atingido.")
     try:
-        audio = await asyncio.to_thread(elevenlabs.synthesize, "Teste de voz do ORION.", voice)
+        audio = await asyncio.to_thread(elevenlabs.synthesize, DIAG_TEXT, voice)
         return {"ok": True, "bytes": len(audio), **info}
     except Exception as e:
+        _tts_refund(uid, len(DIAG_TEXT))
         status, det = getattr(e, "status_code", None), str(e)[:400]
+        log.error("Diag de voz: slot=%s status=%s detalhe=%s", voice, status, det)   # detalhe só no log
         low = det.lower()
         mm = re.search(r'"message"\s*:\s*"([^"]+)', det)
         msg = mm.group(1) if mm else det.split(": ", 1)[-1]   # mensagem real do ElevenLabs
@@ -269,4 +311,4 @@ async def speak_diag(voice: int = 1, authorization: str = Header(default="")):
             dica = f"ElevenLabs recusou (400): {msg[:220]}"
         else:
             dica = f"Erro {status}: {msg[:220]}"
-        return {"ok": False, "status": status, "dica": dica, "detalhe": det, **info}
+        return {"ok": False, "status": status, "dica": dica, **info}   # sem "detalhe": o texto bruto fica só no log
