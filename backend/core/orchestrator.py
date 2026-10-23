@@ -5,10 +5,16 @@ Ciclo (Request → Execute → Respond):
   2. envia histórico + pergunta + ferramentas ao modelo
   3. o modelo decide se chama ferramentas (o provedor executa e devolve o resultado)
   4. resposta final -> salva no histórico -> volta ao usuário (com as fontes e imagens que as ferramentas coletaram)
+
+V5.0: com ORION_AGENT=1, perguntas de várias etapas passam antes pelo Agent Engine (core/agent.py).
+Se o Agent não assumir a tarefa, o fluxo abaixo roda exatamente como antes.
+V5.0 (S7): perguntas do MESMO usuário rodam uma de cada vez (senão duas perguntas simultâneas leem o mesmo
+histórico e uma apaga a outra), e as gravações levam número de versão (ver memory/store.py).
 """
-import asyncio, re
+import asyncio, re, weakref
 
 from core import tools
+from core.agent import Agent, enabled as agent_enabled, should_use as agent_should_use
 
 FALLBACK = "Desculpe, não entendi..."
 
@@ -48,7 +54,17 @@ SYSTEM_PROMPT = (
 class Orchestrator:
     def __init__(self, memory):
         self.memory = memory
+        self.agent = Agent()
         self._bg: set = set()   # referências às gravações em segundo plano
+        self._locks: "weakref.WeakValueDictionary[str, asyncio.Lock]" = weakref.WeakValueDictionary()
+
+    def _lock(self, uid: str) -> asyncio.Lock:
+        """Uma trava por usuário. Some sozinha quando ninguém a usa (não cresce com o tempo)."""
+        lk = self._locks.get(uid)
+        if lk is None:
+            lk = asyncio.Lock()
+            self._locks[uid] = lk
+        return lk
 
     @staticmethod
     def _messages(text: str, history: list[dict]) -> list[dict]:
@@ -62,21 +78,30 @@ class Orchestrator:
 
     def _persist_later(self, uid: str, token: str, history: list[dict]) -> None:
         """Grava no Firestore sem fazer o usuário esperar."""
-        self.memory.stage(uid, history)
-        task = asyncio.create_task(asyncio.to_thread(self.memory.flush, uid, token, history))
+        ver = self.memory.stage(uid, history)
+        args = (uid, token, history) if ver is None else (uid, token, history, ver)
+        task = asyncio.create_task(asyncio.to_thread(self.memory.flush, *args))
         self._bg.add(task)
         task.add_done_callback(self._bg.discard)
 
     async def ask(self, text: str, uid: str, token: str, provider) -> dict:
-        sources = tools.collect_sources()          # fontes/imagens que as ferramentas usarem nesta pergunta
-        history = await asyncio.to_thread(self.memory.load, uid, token)
-        reply = await provider.generate(
-            SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
-        )
-        reply = reply.strip() or FALLBACK
-        history = (history + [{"user": text[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
-        self._persist_later(uid, token, history)
-        return {"reply": reply, "sources": sources, "understood": not is_fallback(reply)}
+        async with self._lock(uid):
+            sources = tools.collect_sources()          # fontes/imagens que as ferramentas usarem nesta pergunta
+            history = await asyncio.to_thread(self.memory.load, uid, token)
+            reply = None
+            if agent_enabled() and agent_should_use(text):
+                out = await self.agent.run(text, provider, SYSTEM_PROMPT, history)
+                if out:                                # None = não era tarefa de agente: segue o fluxo normal
+                    reply = out["reply"]
+            if reply is None:
+                reply = await provider.generate(
+                    SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
+                )
+            reply = reply.strip() or FALLBACK
+            history = (history + [{"user": text[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
+            self._persist_later(uid, token, history)
+            return {"reply": reply, "sources": sources, "understood": not is_fallback(reply)}
 
     async def clear(self, uid: str, token: str) -> None:
-        self._persist_later(uid, token, [])
+        async with self._lock(uid):
+            self._persist_later(uid, token, [])
