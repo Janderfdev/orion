@@ -1,17 +1,30 @@
-"""Ferramentas do ORION (tool calling).
+"""Ferramentas do ORION (tool calling) — Tool Registry V5.0.
 
 São funções Python comuns. O modelo recebe a lista (nome + descrição + parâmetros)
 e DECIDE sozinho quando chamar cada uma. Todas são somente-leitura.
 Para criar uma ferramenta nova: escreva a função e adicione-a em TOOLS.
+
+V5.0:
+  - cada ferramenta tem metadados: permission ("read"), sensitive (exige confirmação) e timeout;
+  - validate_args() confere nome, tipos, campos obrigatórios/inesperados e tamanho ANTES de executar;
+  - execute() nunca levanta exceção e nunca devolve texto interno: só mensagens nossas (ToolError)
+    ou frases genéricas. Detalhes técnicos não saem daqui (o log guarda só o tipo do erro).
 """
-import ast, contextvars, datetime as dt, math, operator, threading
+import ast, contextvars, datetime as dt, logging, math, operator, threading
 from urllib.parse import quote
 
 import requests
 
-HEADERS = {"User-Agent": "ORION-AI/4.2 (https://janderfdev.github.io/orion)"}
+log = logging.getLogger("orion.tools")
+
+HEADERS = {"User-Agent": "ORION-AI/5.0 (https://janderfdev.github.io/orion)"}
 TIMEOUT = 8
+MAX_ARG_CHARS = 300   # tamanho máximo de qualquer argumento de texto (cada ferramenta pode ter um limite menor)
 _tls = threading.local()
+
+
+class ToolError(Exception):
+    """Erro com mensagem SEGURA (escrita por nós). É a única exceção cujo texto chega ao modelo."""
 
 
 def _get(url: str, params: dict | None = None):
@@ -54,7 +67,7 @@ def _eval(n):
     if isinstance(n, ast.BinOp) and type(n.op) in _BIN:
         a, b = _eval(n.left), _eval(n.right)
         if isinstance(n.op, ast.Pow) and (abs(b) > 1000 or abs(a) > 1e6):
-            raise ValueError("Potência grande demais.")
+            raise ToolError("Potência grande demais.")
         return _BIN[type(n.op)](a, b)
     if isinstance(n, ast.UnaryOp) and type(n.op) in _UN:
         return _UN[type(n.op)](_eval(n.operand))
@@ -62,17 +75,28 @@ def _eval(n):
         return _CONST[n.id]
     if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in _FN and not n.keywords:
         return _FN[n.func.id](*[_eval(a) for a in n.args])
-    raise ValueError("Expressão não suportada.")
+    raise ToolError("Expressão não suportada.")
 
 
 def calcular(expressao: str) -> str:
     if len(expressao) > 200:
-        raise ValueError("Expressão longa demais.")
-    r = _eval(ast.parse(expressao.strip(), mode="eval").body)
-    if isinstance(r, float):
-        r = round(r, 10)
-        r = int(r) if r == int(r) and abs(r) < 1e15 else r
-    return str(r)
+        raise ToolError("Expressão longa demais.")
+    try:
+        r = _eval(ast.parse(expressao.strip(), mode="eval").body)
+        if isinstance(r, float):
+            r = round(r, 10)
+            r = int(r) if r == int(r) and abs(r) < 1e15 else r
+        return str(r)
+    except ToolError:
+        raise
+    except SyntaxError:
+        raise ToolError("Expressão inválida.")
+    except ZeroDivisionError:
+        raise ToolError("Divisão por zero.")
+    except (OverflowError, RecursionError, MemoryError):
+        raise ToolError("Resultado grande ou complexo demais.")
+    except (ValueError, TypeError):
+        raise ToolError("Operação matemática inválida.")
 
 
 # ── data e hora ──
@@ -176,37 +200,86 @@ def pesquisar_wikipedia(consulta: str) -> str:
     return f"{title}: {(r.get('extract') or 'sem resumo disponível.')[:900]}"
 
 
+# permission: "read" = só consulta (nada é alterado). sensitive=True exigiria confirmação explícita do usuário
+# (nenhuma ferramenta atual é sensível). timeout: segundos máximos de uma execução.
+# max_len: limite de tamanho por argumento de texto (fora do input_schema, para não ir ao provedor do modelo).
 TOOLS = [
-    {"name": "calcular", "fn": calcular,
+    {"name": "calcular", "fn": calcular, "permission": "read", "sensitive": False, "timeout": 12, "max_len": {"expressao": 200},
      "description": "Calcula expressões matemáticas com exatidão (+ - * / // % ** , parênteses, sqrt, sin, cos, tan, log, log10, abs, round, pi, e). Use sempre que a resposta depender de uma conta.",
      "input_schema": {"type": "object", "properties": {"expressao": {"type": "string", "description": "Ex.: 12*(3+4)/5"}}, "required": ["expressao"]}},
-    {"name": "data_hora", "fn": data_hora,
+    {"name": "data_hora", "fn": data_hora, "permission": "read", "sensitive": False, "timeout": 12, "max_len": {},
      "description": "Retorna a data e a hora atuais (horário de Brasília).",
      "input_schema": {"type": "object", "properties": {}}},
-    {"name": "clima", "fn": clima,
+    {"name": "clima", "fn": clima, "permission": "read", "sensitive": False, "timeout": 12, "max_len": {"cidade": 120},
      "description": "Retorna o clima ATUAL (temperatura, umidade, vento) de uma cidade.",
      "input_schema": {"type": "object", "properties": {"cidade": {"type": "string", "description": "Ex.: Fortaleza"}}, "required": ["cidade"]}},
-    {"name": "pesquisar_wikipedia", "fn": pesquisar_wikipedia,
+    {"name": "pesquisar_wikipedia", "fn": pesquisar_wikipedia, "permission": "read", "sensitive": False, "timeout": 12, "max_len": {"consulta": 200},
      "description": "Busca um resumo factual na Wikipédia em português (e mostra até 3 imagens na tela). Use para fatos, pessoas, lugares e conceitos quando precisar de uma fonte.",
      "input_schema": {"type": "object", "properties": {"consulta": {"type": "string"}}, "required": ["consulta"]}},
-    {"name": "buscar_imagem", "fn": buscar_imagem,
+    {"name": "buscar_imagem", "fn": buscar_imagem, "permission": "read", "sensitive": False, "timeout": 12, "max_len": {"consulta": 200},
      "description": "Mostra fotos/imagens na tela do usuário. Use quando ele pedir para ver, mostrar ou como é algo.",
      "input_schema": {"type": "object", "properties": {"consulta": {"type": "string", "description": "Ex.: Torre Eiffel"}}, "required": ["consulta"]}},
 ]
 _BY_NAME = {t["name"]: t for t in TOOLS}
+_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool}
 
 
 def specs() -> list[dict]:
-    """Descrição das ferramentas no formato que o modelo recebe."""
+    """Descrição das ferramentas no formato que o modelo recebe (só nome, descrição e parâmetros)."""
     return [{k: t[k] for k in ("name", "description", "input_schema")} for t in TOOLS]
 
 
+def meta(name: str) -> dict | None:
+    """Metadados de segurança da ferramenta (permission, sensitive, timeout), ou None se ela não existir."""
+    t = _BY_NAME.get(name)
+    return None if t is None else {"permission": t["permission"], "sensitive": t["sensitive"], "timeout": t["timeout"]}
+
+
+def validate_args(name: str, args) -> str | None:
+    """Confere os argumentos pelo schema da ferramenta. Devolve None se estiver tudo certo, ou o motivo (curto, sem dados internos)."""
+    tool = _BY_NAME.get(name)
+    if tool is None:
+        return f"ferramenta desconhecida: {str(name)[:40]}"
+    if not isinstance(args, dict):
+        return "os argumentos devem ser um objeto"
+    schema = tool["input_schema"]
+    props = schema.get("properties", {})
+    for k in schema.get("required", []):
+        if k not in args:
+            return f"falta o argumento '{k}'"
+    for k, v in args.items():
+        spec = props.get(k)
+        if spec is None:
+            return f"argumento inesperado '{str(k)[:40]}'"
+        kind = spec.get("type")
+        typ = _TYPES.get(kind)
+        if typ and (not isinstance(v, typ) or (isinstance(v, bool) and kind != "boolean")):
+            return f"o argumento '{k}' tem tipo inválido"
+        if isinstance(v, str):
+            if not v.strip():
+                return f"o argumento '{k}' está vazio"
+            if len(v) > tool.get("max_len", {}).get(k, MAX_ARG_CHARS):
+                return f"o argumento '{k}' é longo demais"
+    return None
+
+
 def execute(name: str, args: dict) -> str:
-    """Executa uma ferramenta; nunca levanta exceção (o modelo recebe o erro como texto)."""
+    """Valida e executa uma ferramenta; nunca levanta exceção e nunca devolve texto interno.
+    Só mensagens nossas (ToolError, validação) chegam ao modelo; qualquer outro erro vira uma frase genérica."""
     tool = _BY_NAME.get(name)
     if not tool:
-        return f"Ferramenta desconhecida: {name}."
+        return f"Ferramenta desconhecida: {str(name)[:40]}."
+    args = {} if args is None else args
+    err = validate_args(name, args)
+    if err:
+        return f"Erro ao executar {name}: argumentos inválidos ({err})."
     try:
-        return str(tool["fn"](**(args or {})))
-    except Exception as e:
+        return str(tool["fn"](**args))
+    except ToolError as e:
         return f"Erro ao executar {name}: {e}"
+    except requests.RequestException:
+        log.warning("tool=%s: serviço externo falhou", name)
+        return f"Erro ao executar {name}: o serviço externo não respondeu."
+    except Exception as e:
+        log.error("tool=%s: erro inesperado (%s)", name, type(e).__name__)   # só o tipo: a mensagem pode ter URL/chave
+        return f"Erro ao executar {name}: falha interna."
