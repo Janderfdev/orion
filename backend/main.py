@@ -1,4 +1,4 @@
-"""ORION AI — backend (V5.0 GENESIS).
+"""ORION AI — backend (V5.0).
 
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
