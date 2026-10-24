@@ -593,7 +593,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 
 <script type="module">
-/* Login real (Firebase): sem usuário logado, volta ao index.html.
+/* Login real (Firebase): sem usuário logado, volta ao index.html com a mesma transição da entrada.
    Expõe o token do usuário para o provedor do backend. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -607,12 +607,21 @@ const auth = getAuth(initializeApp({
   appId: "1:1087684319550:web:d5b20c93c2e3179de5f46f",
 }));
 
+let leaving = false;
+function leave() {
+  if (leaving) return;
+  leaving = true;
+  document.body.style.transition = 'opacity .45s ease';
+  document.body.style.opacity = '0';
+  setTimeout(() => { location.replace('../index.html'); }, 450);
+}
+
 let ready;
 window.ORION_AUTH_READY = new Promise(r => { ready = r; });
 onAuthStateChanged(auth, user => {
   window.ORION_USER = user;
   ready();
-  if (!user) location.replace('../index.html');
+  if (!user) leave();
 });
 window.ORION_GET_TOKEN = async () => {
   await window.ORION_AUTH_READY;
@@ -620,7 +629,7 @@ window.ORION_GET_TOKEN = async () => {
 };
 window.ORION_SIGNOUT = async () => {
   try { await signOut(auth); } catch (_) {}
-  location.replace('../index.html');
+  leave();
 };
 </script>
 <script defer src="js/app.js?v=4.5.5"></script>
