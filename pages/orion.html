@@ -447,21 +447,6 @@ body.chat-open .hint-text{ opacity:0; }
 .vs-desc{ padding:0 0 14px; font-size:11px; line-height:1.6; color:rgba(255,255,255,.38); border-bottom:1px solid rgba(255,255,255,.06); }
 .vs-desc.warn{ color:#fca5a5; border-bottom:0; padding-top:10px; }
 
-/* V5.0 — foto de perfil nas configurações */
-.avatar-block{ display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:0 0 16px; margin-bottom:4px; border-bottom:1px solid rgba(255,255,255,0.06); }
-.avatar-btn{
-  width:64px; height:64px; padding:0; flex:none; border-radius:50%; overflow:hidden; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; font:600 24px var(--font); color:#fff;
-  background:radial-gradient(circle at 34% 30%, #8b5cf6, #2e1065); border:1px solid rgba(167,139,250,.45);
-  box-shadow:0 0 22px rgba(91,33,182,.35); transition:box-shadow .3s ease, transform .3s ease;
-}
-.avatar-btn:hover{ box-shadow:0 0 30px rgba(139,92,246,.5); transform:translateY(-1px); }
-.avatar-btn:focus-visible{ outline:2px solid #a78bfa; outline-offset:3px; }
-.avatar-btn img{ width:100%; height:100%; object-fit:cover; display:block; }
-.avatar-actions{ display:flex; gap:8px; }
-.avatar-block .settings-note{ flex-basis:100%; padding:0; border-bottom:none; }
-.avatar-block .settings-note.warn[hidden]{ display:none; }
-
 /* movimento reduzido: pelo sistema operacional OU pela opção "Reduce motion" (body.calm) */
 @media (prefers-reduced-motion:reduce){
   .response-text .w{ animation:none; opacity:1; filter:none; }
@@ -604,11 +589,11 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 <button class="gear" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria">
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 </button>
-<div class="version-tag" id="versionTag" data-i18n="version">VERSÃO V5.0 · GENESIS</div>
+<div class="version-tag" id="versionTag" data-i18n="version">VERSÃO V4.5.5</div>
 
 
 <script type="module">
-/* Login real (Firebase): sem usuário logado, volta ao index.html com a mesma transição da entrada.
+/* Login real (Firebase): sem usuário logado, volta ao index.html.
    Expõe o token do usuário para o provedor do backend. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -622,21 +607,12 @@ const auth = getAuth(initializeApp({
   appId: "1:1087684319550:web:d5b20c93c2e3179de5f46f",
 }));
 
-let leaving = false;
-function leave() {
-  if (leaving) return;
-  leaving = true;
-  document.body.style.transition = 'opacity .45s ease';
-  document.body.style.opacity = '0';
-  setTimeout(() => { location.replace('../index.html'); }, 450);
-}
-
 let ready;
 window.ORION_AUTH_READY = new Promise(r => { ready = r; });
 onAuthStateChanged(auth, user => {
   window.ORION_USER = user;
   ready();
-  if (!user) leave();
+  if (!user) location.replace('../index.html');
 });
 window.ORION_GET_TOKEN = async () => {
   await window.ORION_AUTH_READY;
@@ -644,9 +620,9 @@ window.ORION_GET_TOKEN = async () => {
 };
 window.ORION_SIGNOUT = async () => {
   try { await signOut(auth); } catch (_) {}
-  leave();
+  location.replace('../index.html');
 };
 </script>
-<script defer src="js/app.js?v=5.0.0"></script>
+<script defer src="js/app.js?v=4.5.5"></script>
 </body>
 </html>
