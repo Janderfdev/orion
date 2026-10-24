@@ -1,4 +1,4 @@
-"""ORION AI — backend (V4.5.5).
+"""ORION AI — backend (V5.0 GENESIS).
 
 Rodar local:  uvicorn main:app --reload
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
@@ -10,7 +10,7 @@ Variáveis:
   ORION_MAX_DAILY_USERS  (300) máximo de contas DIFERENTES que usam a ORION por dia (freio contra criação em massa
                          de contas). 0 = sem limite. Não vale quando ORION_ALLOWED_EMAILS está preenchida.
   ORION_REQUIRE_VERIFIED "1" exige e-mail verificado no token (padrão: desligado; o login atual não envia verificação)
-  ORION_AGENT            "1" liga o Agent Engine (padrão: desligado)
+  ORION_AGENT            "1" liga o Agent Engine (padrão: desligado). O /ask passa a devolver "agent" quando ele respondeu.
   ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
@@ -55,6 +55,9 @@ PRUNE_AT = 2000                                                       # tamanho 
 
 # Frase fixa da prévia de voz (o site não envia texto: ninguém usa a prévia para falar o que quiser)
 PREVIEW_TEXT = {"en": "Hi, I'm ORION. This is how I sound.", "pt": "Olá, eu sou o ORION. É assim que eu falo."}
+
+if not ALLOWED:
+    log.warning("ORION_ALLOWED_EMAILS vazio: qualquer conta Firebase pode usar a ORION (e gastar créditos). Defina a lista no Render.")
 
 app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
@@ -213,7 +216,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
         if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
             raise HTTPException(503, "Modelo indisponível para esta chave.")
         raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": result["reply"], "model": model_id, "sources": await _with_images(result["sources"], img_task), "understood": result["understood"],
+    return {"reply": result["reply"], "model": model_id, "sources": await _with_images(result["sources"], img_task), "understood": result["understood"], "agent": result.get("agent"),
             "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}}
 
 
