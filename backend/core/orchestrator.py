@@ -10,6 +10,8 @@ V5.0: com ORION_AGENT=1, perguntas de várias etapas passam antes pelo Agent Eng
 Se o Agent não assumir a tarefa, o fluxo abaixo roda exatamente como antes.
 V5.0 (S7): perguntas do MESMO usuário rodam uma de cada vez (senão duas perguntas simultâneas leem o mesmo
 histórico e uma apaga a outra), e as gravações levam número de versão (ver memory/store.py).
+V5.0 (fase C): o resultado traz "agent": {state, steps, degraded} quando o Agent respondeu (senão None),
+para o site refletir o que realmente aconteceu.
 """
 import asyncio, re, weakref
 
@@ -89,10 +91,13 @@ class Orchestrator:
             sources = tools.collect_sources()          # fontes/imagens que as ferramentas usarem nesta pergunta
             history = await asyncio.to_thread(self.memory.load, uid, token)
             reply = None
+            agent_info = None
             if agent_enabled() and agent_should_use(text):
                 out = await self.agent.run(text, provider, SYSTEM_PROMPT, history)
                 if out:                                # None = não era tarefa de agente: segue o fluxo normal
                     reply = out["reply"]
+                    agent_info = {"state": out["state"], "degraded": bool(out.get("degraded")),
+                                  "steps": [{"tool": t, "status": s} for t, s in out["steps"]]}
             if reply is None:
                 reply = await provider.generate(
                     SYSTEM_PROMPT, self._messages(text, history), tools.specs(), tools.execute
@@ -100,7 +105,7 @@ class Orchestrator:
             reply = reply.strip() or FALLBACK
             history = (history + [{"user": text[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
             self._persist_later(uid, token, history)
-            return {"reply": reply, "sources": sources, "understood": not is_fallback(reply)}
+            return {"reply": reply, "sources": sources, "understood": not is_fallback(reply), "agent": agent_info}
 
     async def clear(self, uid: str, token: str) -> None:
         async with self._lock(uid):
