@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V5.0 — GENESIS — Interaction Layer  (pages/js/app.js)
+   ORION AI V5.0 — Interaction Layer  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
