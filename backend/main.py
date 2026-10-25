@@ -1,6 +1,7 @@
 """ORION AI — backend (V5.0).
 
 Rodar local:  uvicorn main:app --reload
+Anexos (V5.0): POST /ask aceita "image" {mime, data(base64)} e "file" {name, text}; inválidos → 422 "anexo:<código>" sem gastar cota.
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
 Variáveis:
   GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
@@ -34,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from auth.firebase import verify
-from core import images
+from core import attachments, images
 from core.orchestrator import Orchestrator
 from core.quota import Quota
 from memory.store import Memory
@@ -135,10 +136,26 @@ class PreviewIn(VoiceOpts):
     lang: Literal["en", "pt"] = "en"
 
 
+class ImageIn(BaseModel):
+    mime: Literal["image/jpeg", "image/png", "image/webp"]
+    data: str = Field(min_length=100, max_length=attachments.MAX_IMAGE_B64)   # base64; o servidor confere de novo os bytes
+
+
+class FileIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    text: str = Field(min_length=1, max_length=attachments.MAX_FILE_CHARS)
+
+
 class AskIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     model: str | None = Field(default=None, max_length=80)  # id vindo de GET /models
     lang: Literal["pt", "en"] = "pt"                          # idioma da conversa (busca das imagens)
+    image: ImageIn | None = None                              # V5.0: UMA imagem anexada (jpeg/png/webp)
+    file: FileIn | None = None                                # V5.0: UM arquivo de texto anexado
+
+
+async def _no_images():
+    return None
 
 
 async def _with_images(sources, task):
@@ -201,12 +218,18 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
     model_id, provider = registry.get(body.model)
     if not provider:
         raise HTTPException(400, "Modelo indisponível.")
+    try:                                               # anexo inválido NÃO gasta cota
+        image = attachments.check_image(body.image.mime, body.image.data) if body.image else None
+        file = attachments.clean_file(body.file.name, body.file.text) if body.file else None
+    except attachments.AttachmentError as e:
+        raise HTTPException(422, f"anexo:{e}")
     q = await asyncio.to_thread(quota.consume, uid)
     if not q["ok"]:                                    # 402: o site mostra "faça upgrade para continuar"
         raise HTTPException(402, "Limite diário de perguntas atingido.")
-    img_task = asyncio.create_task(asyncio.to_thread(images.find, body.text, body.lang))   # busca as fotos enquanto o modelo responde
+    # busca as fotos da Wikipédia enquanto o modelo responde (com anexo do usuário, não: as fotos não combinariam)
+    img_task = asyncio.create_task(_no_images() if (image or file) else asyncio.to_thread(images.find, body.text, body.lang))
     try:
-        result = await orchestrator.ask(body.text, uid, token, provider)
+        result = await orchestrator.ask(body.text, uid, token, provider, image=image, file=file)
     except Exception as e:
         await asyncio.to_thread(quota.refund, uid)     # a pergunta não deu resposta: devolve a cota
         log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
