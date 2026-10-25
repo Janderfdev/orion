@@ -53,7 +53,7 @@ const I18N = (() => {
       'code.codeDesc': 'A programming assistant: it reads your project, proposes changes and only applies what you approve.',
       'code.apiDesc': 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.',
       'code.planned': 'Planned: {v}', 'code.note': 'Not available yet. Versions and dates may change.', 'code.close': 'Close',
-      'set.theme': 'Theme', 'theme.preto': 'Black', 'theme.nebulosa': 'Nebula', 'theme.nevoa': 'Mist', 'theme.auto': 'Auto (day / night)',
+      'set.theme': 'Theme', 'theme.preto': 'Black', 'theme.nebulosa': 'Nebula',
       'attach.aria': 'Attach an image or file', 'attach.default': 'Describe this attachment.', 'attach.remove': 'Remove attachment',
       'attach.errType': 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'attach.errSize': 'That file is too large.',
       'attach.errRead': 'I couldn’t read that file.', 'err.attachment_invalid': 'I couldn’t use that attachment.',
@@ -112,7 +112,7 @@ const I18N = (() => {
       'code.codeDesc': 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.',
       'code.apiDesc': 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.',
       'code.planned': 'Previsto: {v}', 'code.note': 'Ainda não está disponível. Versões e datas podem mudar.', 'code.close': 'Fechar',
-      'set.theme': 'Tema', 'theme.preto': 'Preto', 'theme.nebulosa': 'Nebulosa', 'theme.nevoa': 'Névoa', 'theme.auto': 'Automático (dia e noite)',
+      'set.theme': 'Tema', 'theme.preto': 'Preto', 'theme.nebulosa': 'Nebulosa',
       'attach.aria': 'Anexar imagem ou arquivo', 'attach.default': 'Descreva este anexo.', 'attach.remove': 'Remover anexo',
       'attach.errType': 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'attach.errSize': 'Esse arquivo é grande demais.',
       'attach.errRead': 'Não consegui ler esse arquivo.', 'err.attachment_invalid': 'Não consegui usar esse anexo.',
@@ -797,7 +797,7 @@ const API = (() => {
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
-  prefs.theme = ['preto', 'nebulosa', 'nevoa', 'auto'].includes(prefs.theme) ? prefs.theme : 'preto';   // padrão: preto 100%
+  prefs.theme = prefs.theme === 'nebulosa' ? 'nebulosa' : 'preto';   // padrão: preto 100% (valores antigos viram preto)
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
   savePrefs();
 
@@ -828,29 +828,16 @@ const API = (() => {
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
 
-  /* ── temas (V5.0): preto (padrão), nebulosa, névoa e automático (névoa de dia, nebulosa à noite) ──
-     A Orb é a mesma em todos; muda o céu ao redor. A escolha fica salva neste navegador. */
-  const THEMES = ['preto', 'nebulosa', 'nevoa', 'auto'];
-  const THEME_COLOR = { preto: '#000000', nebulosa: '#07061a', nevoa: '#cfc7ec' };
-  const effectiveTheme = () => {
-    if (prefs.theme !== 'auto') return prefs.theme;
-    const h = new Date().getHours();
-    return h >= 6 && h < 18 ? 'nevoa' : 'nebulosa';
-  };
-  let themeNow = null;
+  /* ── temas (V5.0): PRETO (padrão) e NEBULOSA (o mesmo preto, com estrelas e nuvens de cor ao fundo) ──
+     A Orb e as cores da interface são idênticas nos dois. A escolha fica salva neste navegador. */
+  const THEMES = ['preto', 'nebulosa'];
   function applyTheme(animate) {
-    const next = effectiveTheme(), root = document.documentElement;
-    const set = () => {
-      root.dataset.theme = next; themeNow = next;
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.content = THEME_COLOR[next];
-    };
-    if (!animate || calm() || root.dataset.theme === next) { set(); return; }
-    root.classList.add('theme-swap');   // a página some por um instante, troca e volta (sem salto de cor)
-    setTimeout(() => { set(); root.classList.remove('theme-swap'); }, 230);
+    const next = prefs.theme, root = document.documentElement;
+    if (!animate || calm() || root.dataset.theme === next) { root.dataset.theme = next; return; }
+    root.classList.add('theme-swap');   // a página some por um instante, troca e volta
+    setTimeout(() => { root.dataset.theme = next; root.classList.remove('theme-swap'); }, 230);
   }
   applyTheme(false);
-  setInterval(() => { if (prefs.theme === 'auto' && effectiveTheme() !== themeNow) applyTheme(true); }, 60000);
 
 
   /* ── idioma da conversa: reconhecimento de fala (e voz de reserva) ── */
@@ -1467,25 +1454,25 @@ const API = (() => {
               <div class="side-info">
                 <span class="settings-email" id="setEmail">—</span>
                 <span class="plan-chip" id="setPlan" title="${t('set.plan')}">—</span>
+                <div class="mini-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
+                <div class="mini-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
                 <p class="settings-note side-note">${t('set.photoNote')}</p>
-                <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
               </div>
             </div>
             <div class="settings-main">
               <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
               <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
               <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
-              <div class="settings-row"><span>${t('set.theme')}</span><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa', 'nevoa', 'auto'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
+              <div class="settings-row"><span>${t('set.theme')}</span><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
               <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
-              <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
-              <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
             </div>
           </div>
           <div class="settings-actions">
             <button id="signOutBtn" class="settings-out" type="button">${t('set.signout')}</button>
             <button id="upgradeBtn" class="settings-upgrade" type="button">${t('set.upgrade')}</button>
           </div>
-          <p class="settings-hint">ORION AI V5.0</p>
+          <p class="settings-hint" id="settingsHint">ORION AI V5.0</p>
+          <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
         </div>`;
       document.body.appendChild(panel);
 
@@ -1524,10 +1511,10 @@ const API = (() => {
         setTimeout(() => { btn.textContent = t('set.clear'); }, 1600);
       });
       panel.querySelector('#signOutBtn').addEventListener('click', () => { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); });
-      const upNote = panel.querySelector('#upgradeNote'); let upTimer = null;
-      panel.querySelector('#upgradeBtn').addEventListener('click', () => {   // planos PLUS/PRO chegam na V5.2.0: por enquanto, só um aviso
-        upNote.textContent = t('set.upgradeSoon'); upNote.hidden = false;
-        clearTimeout(upTimer); upTimer = setTimeout(() => { upNote.hidden = true; }, 4500);
+      const upNote = panel.querySelector('#upgradeNote'), upHint = panel.querySelector('#settingsHint'); let upTimer = null;
+      panel.querySelector('#upgradeBtn').addEventListener('click', () => {   // planos PLUS/PRO chegam na V5.2.0: por enquanto, só um aviso (no lugar da versão)
+        upNote.textContent = t('set.upgradeSoon'); upNote.hidden = false; upHint.hidden = true;
+        clearTimeout(upTimer); upTimer = setTimeout(() => { upNote.hidden = true; upHint.hidden = false; }, 4500);
       });
     }
 
