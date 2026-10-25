@@ -7,7 +7,7 @@
 **“The future begins with curiosity..”**
 
 [![Python](https://img.shields.io/badge/Python-3.15-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-4.5.5-4B287D?style=for-the-badge)](#-version-history)
+[![Version](https://img.shields.io/badge/Version-5.0.0-4B287D?style=for-the-badge)](#-version-history)
 [![Status](https://img.shields.io/badge/Status-In%20Development-808080?style=for-the-badge)](#-current-status)
 [![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](#-license)
 
@@ -199,29 +199,6 @@ The specific implementation and availability of each capability may evolve betwe
 **Security principle:** ORION should only execute actions for which it has explicit authorization.
 
 API keys and other secrets must remain protected on the backend and must never be exposed in public frontend code.
-
----
-
-# 🚀 ORION AI Platform — Coming in V5.0
-
-**V5.0 marks a major architectural milestone for ORION AI.**
-
-The project will begin its transition from a personal AI experience toward **ORION AI Platform** — an extensible foundation for intelligent applications and developer integrations.
-
-The goal is to make ORION's capabilities available through clearly defined interfaces, reusable tools and controlled execution.
-
-### Platform development direction
-
-- **Agent Engine:** coordinate multi-step tasks and execution flows.
-- **Tool Registry:** organize tools with defined parameters, validation and permissions.
-- **ORION API:** establish an interface for external applications to submit requests and receive structured responses.
-- **Execution Control:** validate operations and restrict unauthorized actions.
-- **Error Handling:** improve reliability, failure recovery and execution limits.
-- **Developer Documentation:** document supported interfaces, configuration and integration patterns.
-
-The initial implementation will focus on a small, testable set of capabilities before expanding the platform.
-
-The public availability of APIs and integrations will depend on testing, security and infrastructure readiness.
 
 ---
 
