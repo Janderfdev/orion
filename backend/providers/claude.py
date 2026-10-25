@@ -1,7 +1,18 @@
-"""ClaudeProvider — API da Anthropic com tool calling. A chave fica SÓ no servidor (ANTHROPIC_API_KEY)."""
+"""ClaudeProvider — API da Anthropic com tool calling. A chave fica SÓ no servidor (ANTHROPIC_API_KEY).
+V5.0: uma mensagem do usuário pode trazer "images": [{"mime", "data"(base64)}], enviadas como blocos de imagem."""
 import asyncio, os
 
 MAX_STEPS = 5  # limite de rodadas de ferramentas por pergunta
+
+
+def _content(m: dict):
+    """Texto simples, ou lista de blocos (imagens primeiro, depois o texto) quando a mensagem tem imagens."""
+    imgs = m.get("images") or []
+    if not imgs:
+        return m["content"]
+    blocks = [{"type": "image", "source": {"type": "base64", "media_type": i["mime"], "data": i["data"]}} for i in imgs]
+    blocks.append({"type": "text", "text": m["content"]})
+    return blocks
 
 
 class ClaudeProvider:
@@ -16,7 +27,7 @@ class ClaudeProvider:
         if self._client is None:
             from anthropic import AsyncAnthropic  # lê ANTHROPIC_API_KEY do ambiente
             self._client = AsyncAnthropic()
-        msgs = list(messages)
+        msgs = [{"role": m["role"], "content": _content(m)} for m in messages]
         text = ""
         for _ in range(MAX_STEPS):
             kwargs = dict(model=self.model, max_tokens=self.max_tokens, system=system, messages=msgs)
