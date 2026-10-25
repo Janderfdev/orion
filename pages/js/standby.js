@@ -6,7 +6,7 @@
 
    Como cada página usa este arquivo:
      index.html e pages/orion.html:  <script src="standby.js" data-mount></script>  (mostram a tela de standby por cima de tudo)
-     login.html:                      <script src="standby.js"></script>             (tem a própria tela de standby e só pergunta a fase)
+     login.html:                      <script src="standby.js"></script>             (mostram a tela de standby por cima de tudo)
 
    Teste local (só localhost / file://):  ?simular=2026-10-25T12:00:00-03:00
    Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=1  (e ?liberar=0 para voltar ao normal). */
@@ -16,7 +16,7 @@
   const START = Date.parse('2026-10-24T10:00:00-03:00');   // começa em 24/10/2026 às 10:00:00
   const END   = Date.parse('2026-10-26T10:00:00-03:00');   // termina em 26/10/2026 às 10:00:00
 
-  /* Se uma das datas estiver inválida, prende no standby. */
+  /* Se uma das datas estiver inválida, NÃO prende ninguém no standby. */
   const DATES_OK = Number.isFinite(START) && Number.isFinite(END) && START < END;
   if (!DATES_OK) console.error('[ORION] Datas do standby inválidas — standby desativado.', { START, END });
 
