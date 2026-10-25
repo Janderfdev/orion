@@ -12,6 +12,10 @@
            tema claro/escuro, botão "+" (imagem ou arquivo de texto), campo "agent" do /ask (Agent Engine) registrado no log.
    ═══════════════════════════════════════════════════════════════ */
 
+/* Durante o standby (standby.js) o app NÃO inicia: sem microfone, sem "Hey ORION", sem chamadas ao servidor. Quando a janela acaba,
+   o standby.js recarrega a página e tudo abre normalmente. */
+if (!(window.ORION_STANDBY && window.ORION_STANDBY.active())) {
+
 /* Endereço do backend (Render). Se um dia mudar, troque aqui (sem barra no final). */
 const ORION_CONFIG = { API_URL: 'https://orion-backend-9qk5.onrender.com' };
 
@@ -254,7 +258,7 @@ const ORB = (() => {
   const orbZone = $('orbZone');
 
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
-  let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0, light = false;
+  let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
   let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloV = 360 / 28, fastHalo = false;
 
   const BLOBS = [
@@ -324,48 +328,7 @@ const ORB = (() => {
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
-  /* V5.0 — tema claro: a Orb vira uma esfera de vidro colorida (tinta clara + manchas de cor + borda um pouco mais densa).
-     Sem luz somada: sobre fundo claro ela desapareceria. Os estados (roxo, azul, verde, vermelho) continuam valendo. */
-  function drawDiscLight(c, S, b, col) {
-    const R = S / 2;
-    c.clearRect(0, 0, S, S);
-    c.save();
-    c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
-    const bg = c.createRadialGradient(R * 0.75, R * 0.6, 0, R, R, R);
-    bg.addColorStop(0, rgba(lighten(col.c, 0.80), 0.97));
-    bg.addColorStop(1, rgba(lighten(col.a, 0.40), 0.97));
-    c.fillStyle = bg; c.fillRect(0, 0, S, S);
-    c.globalCompositeOperation = 'source-over';
-    BLOBS.forEach(bl => {
-      const x = R + Math.sin(flow * bl.fx + bl.px) * R * bl.ox;
-      const y = R + Math.cos(flow * bl.fy + bl.py) * R * bl.oy;
-      const rad = R * bl.r * amp * (1 + 0.10 * Math.sin(flow * bl.fx * 1.7 + bl.py)) * (1 + 0.35 * lvl);
-      const tone = bl.col === 'b' ? lighten(col.b, 0.5) : col[bl.col];
-      const g = c.createRadialGradient(x, y, 0, x, y, rad);
-      g.addColorStop(0, rgba(tone, Math.min(0.6, bl.al * 0.75 * b)));
-      g.addColorStop(1, rgba(tone, 0));
-      c.fillStyle = g; c.fillRect(0, 0, S, S);
-    });
-    PARTICLES.forEach(p => {
-      const ang = p.a + flow * p.spd * p.dir;
-      const tw = 0.35 + 0.45 * Math.sin(flow * 0.9 + p.phase);
-      c.fillStyle = rgba(col.a, 0.35 * tw);
-      c.beginPath(); c.arc(R + Math.cos(ang) * R * p.r, R + Math.sin(ang) * R * p.r, p.size, 0, Math.PI * 2); c.fill();
-    });
-    const core = c.createRadialGradient(R, R, 0, R, R, R * 0.6);   // brilho central: acende com o volume da fala
-    const cl = lighten(col.c, 0.35);
-    core.addColorStop(0, rgba(cl, Math.min(0.8, 0.7 * lvl)));
-    core.addColorStop(1, rgba(cl, 0));
-    c.fillStyle = core; c.fillRect(0, 0, S, S);
-    const edge = c.createRadialGradient(R, R, R * 0.62, R, R, R);   // borda mais densa = volume
-    edge.addColorStop(0, rgba(col.a, 0));
-    edge.addColorStop(1, rgba(col.a, 0.35));
-    c.fillStyle = edge; c.fillRect(0, 0, S, S);
-    c.restore();
-  }
-
   function drawDisc(c, S, b, col = colorNow) {
-    if (light) return drawDiscLight(c, S, b, col);
     const R = S / 2;
     c.clearRect(0, 0, S, S);
     c.save();
@@ -482,7 +445,6 @@ const ORB = (() => {
     init, setState,
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
-    setLight: on => { light = !!on; },
     setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
     setVoiceColor: (slot, snap) => { vsTarget = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); if (snap) vsColor = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); },
     pressEffect: () => { press = 1; },
@@ -864,7 +826,6 @@ const API = (() => {
   function applyTheme() {
     const light = prefs.theme === 'light';
     document.documentElement.dataset.theme = light ? 'light' : 'dark';
-    try { ORB.setLight(light); } catch (_) {}
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = light ? '#f6f4ff' : '#000000';
   }
@@ -1561,3 +1522,5 @@ const API = (() => {
     if (!document.hidden) { try { fetch(ORION_CONFIG.API_URL.replace(/\/$/, '') + '/health', { mode: 'no-cors' }).catch(() => {}); } catch (_) {} }
   }, 9 * 60 * 1000);
 })();
+
+}   // fim do guard do standby
