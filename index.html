@@ -108,7 +108,7 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
         <a class="btn" href="login.html" data-t="in">Entrar</a>
         <a class="btn ghost" href="login.html?criar=1" data-t="up">Criar conta</a>
       </div>
-      <p class="version" data-t="ver">Versão beta V4.5.5 · lançamento oficial previsto para 2027</p>
+      <p class="version" data-t="ver">Versão beta V5.0.0 · lançamento oficial previsto para 2027</p>
     </div>
     <div class="sky" aria-hidden="true">
       <svg viewBox="0 0 412 495" focusable="false">
@@ -221,6 +221,86 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:26px 0 40px;text-align
     </div>
   </section>
 </main>
+
+<script>
+/* ORION AI — entrada: STANDBY → LOGIN → pages/orion.html (estado sempre derivado do relógio) */
+
+/* Janela do standby, sempre no horário de Brasília (UTC-3). Formato: AAAA-MM-DDTHH:MM:SS-03:00
+   Só a tela de login respeita esta janela (é visual, usa o relógio do navegador). Para lançar no dia 31/10, por exemplo:
+   STANDBY_START '2026-10-24T22:00:00-03:00' e STANDBY_END '2026-10-26T10:00:00-03:00'. */
+const STANDBY_START = Date.parse('2026-10-24T22:00:00-03:00');   // 24/10/2026 às 22:00:00
+const STANDBY_END   = Date.parse('2026-10-26T10:00:00-03:00');   // 26/10/2026 às 10:00:00
+
+/* Se uma das datas estiver inválida, NÃO prende ninguém no standby: libera o login. */
+const DATES_OK = Number.isFinite(STANDBY_START) && Number.isFinite(STANDBY_END) && STANDBY_START < STANDBY_END;
+if (!DATES_OK) console.error('[ORION] Datas do standby inválidas — standby desativado.', { STANDBY_START, STANDBY_END });
+
+/* Teste local: login.html?simular=2026-10-24T22:00:00-03:00 (só localhost / file://) */
+const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
+const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
+const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
+const nowMs = () => Date.now() + clockOffset;
+
+function phase(t) {
+  if (!DATES_OK) return 'released';
+  if (t < STANDBY_START) return 'before';
+  if (t < STANDBY_END)   return 'standby';
+  return 'released';
+}
+window.__orionPhase = () => phase(nowMs());
+
+const $ = id => document.getElementById(id);
+const views = { standby: $('standby'), login: $('login') };
+let current = null, flowStarted = false, flowTimer = null;
+
+function show(name) {
+  Object.entries(views).forEach(([k, el]) => el.classList.toggle('on', k === name));
+  current = name;
+}
+function startLogin() {
+  if (flowStarted) return;
+  flowStarted = true;
+  document.body.classList.remove('is-standby');
+  if (window.__orionUser && window.__orionEnter) { window.__orionEnter(); return; }   // já logado: entra direto
+  $('cosmos').classList.add('on');
+  show('login');
+  flowTimer = setTimeout(() => $('email').focus(), 1300);
+}
+function enterStandby() {
+  clearTimeout(flowTimer);
+  flowStarted = false;
+  $('cosmos').classList.remove('on');
+  document.body.classList.add('is-standby');
+  show('standby');
+}
+function endStandby() {
+  if (flowStarted) return;
+  views.standby.classList.remove('on');
+  setTimeout(startLogin, 1400);
+}
+function tick() {
+  const p = phase(nowMs());
+  if (p === 'released' && current === 'standby') endStandby();
+  else if (p === 'standby' && current !== 'standby') enterStandby();
+}
+setInterval(tick, 500);
+document.addEventListener('visibilitychange', tick);
+addEventListener('focus', tick);
+addEventListener('pageshow', tick);
+
+(function boot() {
+  if (phase(nowMs()) === 'standby') requestAnimationFrame(enterStandby);
+  else requestAnimationFrame(startLogin);
+})();
+
+setTimeout(() => {
+  if (!window.__orionReady) {
+    const e = $('err'); e.classList.remove('ok');
+    e.textContent = 'Não foi possível carregar o login. Verifique sua conexão.';
+    e.classList.add('show');
+  }
+}, 8000);
+</script>
 
 <footer data-t="foot">ORION AI · beta V4.5.5 · O futuro começa com a curiosidade.</footer>
 
