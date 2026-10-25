@@ -98,16 +98,16 @@ body.is-standby{background:#030406;}
 /* ORION AI — entrada: STANDBY → LOGIN → pages/orion.html (estado sempre derivado do relógio) */
 
 /* Janela do standby, sempre no horário de Brasília (UTC-3). Formato: AAAA-MM-DDTHH:MM:SS-03:00
-   Só a tela de login respeita esta janela (é visual, usa o relógio do navegador). Para lançar no dia 31/10, por exemplo:
-   STANDBY_START '2026-10-30T22:00:00-03:00' e STANDBY_END '2026-10-31T10:00:00-03:00'. */
-const STANDBY_START = Date.parse('2026-10-31T22:00:00-03:00');   // 31/10/2026 às 22:00:00
-const STANDBY_END   = Date.parse('2026-11-01T10:00:00-03:00');   // 01/11/2026 às 10:00:00
+   Só a tela de login respeita esta janela (é visual, usa o relógio do navegador). Para lançar no dia 26/10, por exemplo:
+   STANDBY_START '2026-10-24T10:00:00-03:00' e STANDBY_END '2026-10-31T10:00:00-03:00'. */
+const STANDBY_START = Date.parse('2026-10-31T10:00:00-03:00');   // 24/10/2026 às 10:00:00
+const STANDBY_END   = Date.parse('2026-11-01T10:00:00-03:00');   // 26/10/2026 às 10:00:00
 
 /* Se uma das datas estiver inválida, NÃO prende ninguém no standby: libera o login. */
 const DATES_OK = Number.isFinite(STANDBY_START) && Number.isFinite(STANDBY_END) && STANDBY_START < STANDBY_END;
 if (!DATES_OK) console.error('[ORION] Datas do standby inválidas — standby desativado.', { STANDBY_START, STANDBY_END });
 
-/* Teste local: login.html?simular=2026-10-20T00:00:00-03:00 (só localhost / file://) */
+/* Teste local: login.html?simular=2026-10-24T10:00:00-03:00 (só localhost / file://) */
 const DEV = /^(localhost|127\.0\.0\.1|)$/.test(location.hostname) || location.protocol === 'file:';
 const simParam = DEV ? new URLSearchParams(location.search).get('simular') : null;
 const clockOffset = simParam && !isNaN(Date.parse(simParam)) ? Date.parse(simParam) - Date.now() : 0;
