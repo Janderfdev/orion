@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V4.5.5 — Interaction Layer  (pages/js/app.js)
+   ORION AI V5.0 — Interaction Layer  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
@@ -8,6 +8,8 @@
    V4.5.0: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
            4 vozes + Pace/Expressivity, "Hey ORION".
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
+   V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), linha de plano/uso nas configurações,
+           Orb com volume de esfera, campo "agent" do /ask (Agent Engine) registrado no log.
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Se um dia mudar, troque aqui (sem barra no final). */
@@ -20,7 +22,7 @@ const I18N = (() => {
   const D = {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
-      'online': 'ORION ONLINE', 'version': 'VERSION V4.5.5',
+      'online': 'ORION ONLINE', 'version': 'VERSION V5.0 · GENESIS',
       'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'Didn’t catch that',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
@@ -38,7 +40,13 @@ const I18N = (() => {
       'wiki.read': 'Read on Wikipedia ↗', 'wiki.search': 'Search Wikipedia ↗', 'wiki.title': 'Search “{q}” on Wikipedia',
       'set.title': 'Settings', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open',
       'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.wake': 'Hey ORION', 'set.history': 'History', 'set.clear': 'Clear',
-      'set.cleared': 'Cleared', 'set.failed': 'Failed', 'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
+      'set.cleared': 'Cleared', 'set.failed': 'Failed',
+      'set.photo': 'Profile photo', 'set.photoPick': 'Choose', 'set.photoDel': 'Remove',
+      'set.photoNote': 'Your photo stays on this device only.', 'set.photoType': 'Use a JPG, PNG or WebP image.',
+      'set.photoBig': 'That image is too large (max 8 MB).', 'set.photoSave': 'Couldn’t save the photo.', 'set.plan': 'Plan',
+      'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'You’ll be able to upgrade soon.',
+      'set.theme': 'Theme', 'theme.dark': 'Dark', 'theme.light': 'Light',
+      'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
       'on': 'On', 'off': 'Off', 'set.nomodel': 'No model', 'set.unavail': 'Unavailable', 'toast.model': 'Model: {m}',
       'core.none': 'Backend not configured', 'core.connecting': 'Connecting…', 'core.ok': 'Connected', 'core.nomodel': 'No model key on the server',
       'core.forbidden': 'E-mail without access', 'core.timeout': 'Server took too long', 'core.unreach': 'Server not responding',
@@ -66,7 +74,7 @@ const I18N = (() => {
     },
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
-      'online': 'ORION ONLINE', 'version': 'VERSÃO V4.5.5',
+      'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0 · GENESIS',
       'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
@@ -84,7 +92,13 @@ const I18N = (() => {
       'wiki.read': 'Ler na Wikipédia ↗', 'wiki.search': 'Pesquisar na Wikipédia ↗', 'wiki.title': 'Pesquisar “{q}” na Wikipédia',
       'set.title': 'Configurações', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir',
       'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.wake': 'Hey ORION', 'set.history': 'Histórico', 'set.clear': 'Limpar',
-      'set.cleared': 'Limpo', 'set.failed': 'Falhou', 'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
+      'set.cleared': 'Limpo', 'set.failed': 'Falhou',
+      'set.photo': 'Foto de perfil', 'set.photoPick': 'Escolher', 'set.photoDel': 'Remover',
+      'set.photoNote': 'Sua foto fica só neste aparelho.', 'set.photoType': 'Use uma imagem JPG, PNG ou WebP.',
+      'set.photoBig': 'Essa imagem é grande demais (máx. 8 MB).', 'set.photoSave': 'Não consegui salvar a foto.', 'set.plan': 'Plano',
+      'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'Em breve você poderá fazer upgrade.',
+      'set.theme': 'Tema', 'theme.dark': 'Escuro', 'theme.light': 'Claro',
+      'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
       'on': 'Ativado', 'off': 'Desativado', 'set.nomodel': 'Sem modelo', 'set.unavail': 'Indisponível', 'toast.model': 'Modelo: {m}',
       'core.none': 'Backend não configurado', 'core.connecting': 'Conectando…', 'core.ok': 'Conectado', 'core.nomodel': 'Sem chave de modelo no servidor',
       'core.forbidden': 'E-mail sem acesso', 'core.timeout': 'Servidor demorou a responder', 'core.unreach': 'Sem resposta do servidor',
@@ -234,7 +248,7 @@ const ORB = (() => {
   const orbZone = $('orbZone');
 
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
-  let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
+  let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0, light = false;
   let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloV = 360 / 28, fastHalo = false;
 
   const BLOBS = [
@@ -304,7 +318,52 @@ const ORB = (() => {
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
+  /* V5.0 — tema claro: a Orb vira uma esfera de vidro colorida (tinta clara + manchas de cor + borda mais densa + brilho especular).
+     Sem luz somada: sobre fundo claro ela desapareceria. Os estados (roxo, azul, verde, vermelho) continuam valendo. */
+  function drawDiscLight(c, S, b, col) {
+    const R = S / 2;
+    c.clearRect(0, 0, S, S);
+    c.save();
+    c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
+    const bg = c.createRadialGradient(R * 0.75, R * 0.6, 0, R, R, R);
+    bg.addColorStop(0, rgba(lighten(col.c, 0.80), 0.97));
+    bg.addColorStop(1, rgba(lighten(col.a, 0.40), 0.97));
+    c.fillStyle = bg; c.fillRect(0, 0, S, S);
+    c.globalCompositeOperation = 'source-over';
+    BLOBS.forEach(bl => {
+      const x = R + Math.sin(flow * bl.fx + bl.px) * R * bl.ox;
+      const y = R + Math.cos(flow * bl.fy + bl.py) * R * bl.oy;
+      const rad = R * bl.r * amp * (1 + 0.10 * Math.sin(flow * bl.fx * 1.7 + bl.py)) * (1 + 0.35 * lvl);
+      const tone = bl.col === 'b' ? lighten(col.b, 0.5) : col[bl.col];
+      const g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, rgba(tone, Math.min(0.6, bl.al * 0.75 * b)));
+      g.addColorStop(1, rgba(tone, 0));
+      c.fillStyle = g; c.fillRect(0, 0, S, S);
+    });
+    PARTICLES.forEach(p => {
+      const ang = p.a + flow * p.spd * p.dir;
+      const tw = 0.35 + 0.45 * Math.sin(flow * 0.9 + p.phase);
+      c.fillStyle = rgba(col.a, 0.35 * tw);
+      c.beginPath(); c.arc(R + Math.cos(ang) * R * p.r, R + Math.sin(ang) * R * p.r, p.size, 0, Math.PI * 2); c.fill();
+    });
+    const core = c.createRadialGradient(R, R, 0, R, R, R * 0.6);   // brilho central: acende com o volume da fala
+    const cl = lighten(col.c, 0.35);
+    core.addColorStop(0, rgba(cl, Math.min(0.8, 0.7 * lvl)));
+    core.addColorStop(1, rgba(cl, 0));
+    c.fillStyle = core; c.fillRect(0, 0, S, S);
+    const edge = c.createRadialGradient(R, R, R * 0.62, R, R, R);   // borda mais densa = volume
+    edge.addColorStop(0, rgba(col.a, 0));
+    edge.addColorStop(1, rgba(col.a, 0.55));
+    c.fillStyle = edge; c.fillRect(0, 0, S, S);
+    const spec = c.createRadialGradient(R * 0.62, R * 0.45, 0, R * 0.62, R * 0.45, R * 0.55);   // brilho especular
+    spec.addColorStop(0, 'rgba(255,255,255,0.75)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = spec; c.fillRect(0, 0, S, S);
+    c.restore();
+  }
+
   function drawDisc(c, S, b, col = colorNow) {
+    if (light) return drawDiscLight(c, S, b, col);
     const R = S / 2;
     c.clearRect(0, 0, S, S);
     c.save();
@@ -344,6 +403,19 @@ const ORB = (() => {
     vig.addColorStop(1, 'rgba(0,0,4,0.80)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
+    // V5.0: volume de esfera — luz suave no alto-esquerdo e anel de borda na cor do estado atual (só desenho, sem dependência extra)
+    c.save();
+    c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
+    const lit = c.createRadialGradient(R * 0.62, R * 0.52, 0, R * 0.62, R * 0.52, R * 0.95);
+    lit.addColorStop(0, rgba(lighten(col.c, 0.6), 0.22 * b));
+    lit.addColorStop(0.55, rgba(lighten(col.c, 0.3), 0.06 * b));
+    lit.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = lit; c.fillRect(0, 0, S, S);
+    const rim = c.createRadialGradient(R, R, R * 0.80, R, R, R);
+    rim.addColorStop(0, rgba(col.c, 0));
+    rim.addColorStop(1, rgba(col.c, 0.30 * b));
+    c.fillStyle = rim; c.fillRect(0, 0, S, S);
+    c.restore();
     c.restore();
   }
 
@@ -421,6 +493,7 @@ const ORB = (() => {
     init, setState,
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
+    setLight: on => { light = !!on; },
     setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
     setVoiceColor: (slot, snap) => { vsTarget = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); if (snap) vsColor = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); },
     pressEffect: () => { press = 1; },
@@ -599,6 +672,42 @@ const WAKE = (() => {
   return { init: c => { cb = c; }, start, stop, setLang, isAvailable: !!SR, isRunning: () => state === 'running' };
 })();
 
+/* ═══ avatar.js — foto de perfil ESCOLHIDA pelo usuário (V5.0) ═══
+   Fica só neste navegador (localStorage, uma chave por conta). Nada é enviado ao servidor.
+   A imagem é recortada em quadrado, reduzida e regravada como JPEG pelo canvas: isso remove metadados (EXIF/GPS)
+   e impede SVG/HTML disfarçado de imagem. O que volta para a tela é sempre um data:image/jpeg gerado por nós. */
+const AVATAR = (() => {
+  const key = () => 'orion_avatar_' + ((window.ORION_USER && window.ORION_USER.uid) || 'anon');
+  const get = () => {
+    try { const v = localStorage.getItem(key()); return /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v || '') ? v : null; }
+    catch (_) { return null; }
+  };
+  const clear = () => { try { localStorage.removeItem(key()); } catch (_) {} };
+  const bad = code => { const e = new Error(code); e.code = code; return e; };
+  function set(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return reject(bad('type'));
+      if (file.size > 8 * 1024 * 1024) return reject(bad('size'));
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        try {
+          const S = 160, side = Math.min(img.naturalWidth, img.naturalHeight);
+          if (!side) throw new Error('empty');
+          const c = document.createElement('canvas'); c.width = c.height = S;
+          c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
+          const data = c.toDataURL('image/jpeg', 0.85);
+          localStorage.setItem(key(), data);
+          resolve(data);
+        } catch (_) { reject(bad('save')); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(bad('type')); };
+      img.src = url;
+    });
+  }
+  return { get, set, clear };
+})();
+
 /* ═══ api — comunicação com o backend (ORION Core) ═══
    O frontend NÃO tem lógica de modelo: só envia a pergunta e mostra a resposta.
    Autenticação: o token do Firebase vem de window.ORION_GET_TOKEN (definido em orion.html).
@@ -646,9 +755,9 @@ const API = (() => {
   };
 })();
 
-/* ═══ interação — V4.5.5 ═══
+/* ═══ interação — V5.0 ═══
    Fluxo: botão de chat (ou voz) → a própria Orb cresce e vira o painel → API → ORION Core → resposta DENTRO do painel.
-   Estados da Orb: standby (roxo) · listening (verde) · processing (azul) · speaking (roxo + áudio) · error (vermelho). */
+   Estados da Orb: standby (roxo) · listening (azul) · processing (roxo) · speaking (verde + áudio) · error (vermelho). */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -673,6 +782,7 @@ const API = (() => {
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
+  prefs.theme = prefs.theme === 'light' ? 'light' : 'dark';   // V5.0: escuro (100% preto) é o padrão
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
   savePrefs();
 
@@ -690,6 +800,7 @@ const API = (() => {
   let wakeFault = null, wakeBlockUntil = 0;
   // ttsOn: null = ainda não sei (servidor acordando) · true = ElevenLabs ligado · false = servidor sem voz
   let models = [], voices = [], online = false, loading = false, coreErr = null, ttsOn = null;
+  let quota = null;   // {used, limit, plan} do último /ask
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
@@ -700,6 +811,18 @@ const API = (() => {
   function applyCalm() { document.body.classList.toggle('calm', calm()); ORB.setCalm(calm()); }
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
+
+  /* ── tema claro/escuro (V5.0): o escuro continua o padrão; a escolha fica salva neste navegador ── */
+  const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  function applyTheme() {
+    const light = prefs.theme === 'light';
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    try { ORB.setLight(light); } catch (_) {}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = light ? '#f6f4ff' : '#000000';
+  }
+  applyTheme();
 
   /* ── idioma da conversa: reconhecimento de fala (e voz de reserva) ── */
   const speechLang = () => (prefs.ui === 'pt' ? 'pt' : 'en');
@@ -914,8 +1037,8 @@ const API = (() => {
     }
   }
 
-  /* ── ciclo principal: pergunta → Processing (azul) → resposta ──
-     Escrita no chat → a Orb vira o painel.  Por voz → a Orb responde sozinha (roxo pulsando com o áudio). */
+  /* ── ciclo principal: pergunta → Processing (roxo) → resposta ──
+     Escrita no chat → a Orb vira o painel.  Por voz → a Orb responde sozinha (verde pulsando com o áudio). */
   async function submit(text, source) {
     text = (text || '').trim();
     if (!text || processing) return;
@@ -932,6 +1055,13 @@ const API = (() => {
       processing = false; lock(false);
       askInput.value = '';
       const understood = !(data.understood === false || isFallback(reply));
+      if (data.quota && Number.isFinite(data.quota.used) && Number.isFinite(data.quota.limit)) {   // plano e uso do dia (vem do servidor)
+        quota = { used: data.quota.used, limit: data.quota.limit, plan: String(data.quota.plan || 'free').slice(0, 8) };
+        settings.sync();
+      }
+      if (data.agent && Array.isArray(data.agent.steps)) {   // V5.0: o servidor informa quando o Agent Engine respondeu
+        LOGGER.info('agent_used', { state: String(data.agent.state), steps: data.agent.steps.length, degraded: !!data.agent.degraded });
+      }
       if (source === 'voice') respondByVoice(reply, understood, data.sources, text);
       else respondInPanel(reply, understood, data.sources, text);
     } catch (err) {
@@ -941,7 +1071,7 @@ const API = (() => {
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  // Voz: a Orb continua azul até o áudio realmente começar; aí fica roxa e pulsa com o volume
+  // Voz: a Orb continua roxa (processando) até o áudio realmente começar; aí fica verde e pulsa com o volume
   function respondByVoice(reply, understood, sources, query) {
     sfx(understood ? 'answer' : 'error');
     if (!canSpeak()) { setState('standby'); respondInPanel(reply, understood, sources || [], query || ''); return; }
@@ -1197,7 +1327,17 @@ const API = (() => {
       const user = window.ORION_USER;
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || t('set.none');
       panel.querySelector('#setCore').textContent = coreLabel();
+      // V5.0: foto de perfil (escolhida pelo usuário, só neste navegador) e plano/uso do dia
+      const avBtn = panel.querySelector('#avatarBtn'), av = AVATAR.get();
+      avBtn.textContent = '';
+      if (av) { const im = document.createElement('img'); im.src = av; im.alt = ''; avBtn.appendChild(im); }
+      else avBtn.textContent = (((user && (user.displayName || user.email)) || '?').trim().charAt(0) || '?').toUpperCase();
+      panel.querySelector('#avatarDel').hidden = !av;
+      panel.querySelector('#setPlan').textContent = quota ? quota.plan.toUpperCase() + ' · ' + quota.used + '/' + quota.limit : '—';
       panel.querySelector('#toggleSound').textContent = prefs.sound ? t('on') : t('off');
+      const tb = panel.querySelector('#themeBtn'), isL = prefs.theme === 'light', tl = t(isL ? 'theme.light' : 'theme.dark');
+      tb.innerHTML = (isL ? SUN : MOON) + '<span>' + tl + '</span>';   // só SVG fixo + texto do dicionário
+      tb.setAttribute('aria-label', t('set.theme') + ': ' + tl);
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
@@ -1215,21 +1355,48 @@ const API = (() => {
       panel.innerHTML = `
         <div class="settings-card">
           <p class="settings-title">${t('set.title')}</p>
+          <div class="avatar-block">
+            <button id="avatarBtn" class="avatar-btn" type="button" aria-label="${t('set.photo')}" title="${t('set.photo')}"></button>
+            <div class="avatar-actions">
+              <button id="avatarPick" class="settings-toggle" type="button">${t('set.photoPick')}</button>
+              <button id="avatarDel" class="settings-toggle" type="button">${t('set.photoDel')}</button>
+            </div>
+            <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <p class="settings-note warn" id="avatarMsg" role="status" hidden></p>
+            <p class="settings-note">${t('set.photoNote')}</p>
+          </div>
           <div class="settings-row"><span>${t('set.account')}</span><span class="settings-email" id="setEmail">—</span></div>
           <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
           <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
           <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
+          <div class="settings-row"><span>${t('set.theme')}</span><button id="themeBtn" class="settings-toggle theme-btn" type="button"></button></div>
           <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
           <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
           <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
-          <button id="signOutBtn" class="settings-out">${t('set.signout')}</button>
-          <p class="settings-hint">ORION AI V4.5.5</p>
+          <div class="settings-row"><span>${t('set.plan')}</span><span class="settings-email" id="setPlan">—</span></div>
+          <div class="settings-actions">
+            <button id="signOutBtn" class="settings-out" type="button">${t('set.signout')}</button>
+            <button id="upgradeBtn" class="settings-upgrade" type="button">${t('set.upgrade')}</button>
+          </div>
+          <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
+          <p class="settings-hint">ORION AI V5.0 GENESIS</p>
         </div>`;
       document.body.appendChild(panel);
 
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
+      const aMsg = panel.querySelector('#avatarMsg'), aFile = panel.querySelector('#avatarFile');
+      const aErr = c => { aMsg.textContent = t(c === 'size' ? 'set.photoBig' : c === 'save' ? 'set.photoSave' : 'set.photoType'); aMsg.hidden = false; };
+      panel.querySelector('#avatarBtn').addEventListener('click', () => aFile.click());
+      panel.querySelector('#avatarPick').addEventListener('click', () => aFile.click());
+      aFile.addEventListener('change', async () => {
+        const f = aFile.files && aFile.files[0]; aFile.value = ''; aMsg.hidden = true;
+        if (!f) return;
+        try { await AVATAR.set(f); sync(); } catch (err) { aErr(err && err.code); }
+      });
+      panel.querySelector('#avatarDel').addEventListener('click', () => { AVATAR.clear(); aMsg.hidden = true; sync(); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
+      panel.querySelector('#themeBtn').addEventListener('click', () => { prefs.theme = prefs.theme === 'light' ? 'dark' : 'light'; savePrefs(); applyTheme(); sync(); });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
         prefs.ui = e.target.value === 'en' ? 'en' : 'pt'; savePrefs();
         I18N.set(prefs.ui); I18N.apply(); applyLang(); vs.sync();
@@ -1248,6 +1415,11 @@ const API = (() => {
         setTimeout(() => { btn.textContent = t('set.clear'); }, 1600);
       });
       panel.querySelector('#signOutBtn').addEventListener('click', () => { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); });
+      const upNote = panel.querySelector('#upgradeNote'); let upTimer = null;
+      panel.querySelector('#upgradeBtn').addEventListener('click', () => {   // planos PLUS/PRO chegam na V5.2.0: por enquanto, só um aviso
+        upNote.textContent = t('set.upgradeSoon'); upNote.hidden = false;
+        clearTimeout(upTimer); upTimer = setTimeout(() => { upNote.hidden = true; }, 4500);
+      });
     }
 
     function setOpen(on) {
