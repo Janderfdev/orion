@@ -1,4 +1,4 @@
-/* ORION AI — STANDBY único para todas as páginas (orion/index.html, orion/login.html e orion/pages/orion.html).
+/* ORION AI — STANDBY único para todas as páginas (index.html, login.html e pages/orion.html).
 
    As datas ficam SÓ aqui. Horário de Brasília (UTC-3). Formato: AAAA-MM-DDTHH:MM:SS-03:00
    ATENÇÃO: o standby é VISUAL e usa o relógio do navegador. Ele não é uma trava de segurança: quem sabe mexer no
@@ -8,13 +8,13 @@
      index.html e pages/orion.html:  <script src="standby.js" data-mount></script>  (mostram a tela de standby por cima de tudo)
      login.html:                      <script src="standby.js"></script>             (mostram a tela de standby por cima de tudo)
 
-   Teste local (só localhost / file://):  ?simular=2026-10-25T10:00:00-03:00
+   Teste local (só localhost / file://):  ?simular=2026-10-24T10:00:00-03:00
    Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=1  (e ?liberar=0 para voltar ao normal). */
 (function () {
   'use strict';
 
-  const START = Date.parse('2026-10-25T10:00:00:-03:00');   // começa em 25/10/2026 às 10:00:00
-  const END   = Date.parse('2026-10-27T10:00:00-03:00');   // termina em 27/10/2026 às 10:00:00
+  const START = Date.parse('2026-10-24T10:00:00-03:00');   // começa em 24/10/2026 às 10:00:00
+  const END   = Date.parse('2026-10-26T10:00:00-03:00');   // termina em 26/10/2026 às 10:00:00
 
   /* Se uma das datas estiver inválida, prende no standby. */
   const DATES_OK = Number.isFinite(START) && Number.isFinite(END) && START < END;
