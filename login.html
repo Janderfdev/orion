@@ -52,9 +52,10 @@ body.is-standby{background:#030406;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}55%{transform:translateX(6px);}80%{transform:translateX(-3px);}}
 
 /* V5.0 — transição ao entrar: escurece e mostra só os círculos (os mesmos da tela de entrada do orion.html) */
-#enterOverlay{position:fixed;inset:0;z-index:300;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:all;transition:opacity .45s ease;}
+#enterOverlay{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:all;transition:opacity .45s ease;}
 #enterOverlay.on{opacity:1;}
-.boot-ring-wrap{position:relative;width:76px;height:76px;}
+.boot-word{width:min(190px,56vw);height:auto;margin-bottom:24px;filter:drop-shadow(0 0 14px rgba(120,100,255,.28));}
+.boot-ring-wrap{position:relative;width:76px;height:76px;margin-bottom:46px;}
 .boot-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(167,139,250,.18);border-top-color:rgba(167,139,250,.75);animation:bootspin 1.1s linear infinite;}
 .boot-ring:nth-child(2){inset:14px;border-top-color:rgba(196,181,253,.45);animation-duration:1.6s;animation-direction:reverse;}
 @keyframes bootspin{to{transform:rotate(360deg);}}
@@ -181,13 +182,13 @@ window.__orionReady = true;
 const $ = id => document.getElementById(id);
 let mode = 'in', busy = false, entering = false;
 
-/* V5.0: ao entrar, a tela escurece e mostra só os círculos (os mesmos da entrada do orion.html), depois abre o app */
+/* V5.0: ao entrar, a tela escurece e mostra o nome e os círculos (os mesmos da entrada do orion.html), depois abre o app */
 function enter() {
   if (entering) return;
   entering = true;
   const o = document.createElement('div');
   o.id = 'enterOverlay';
-  o.innerHTML = '<div class="boot-ring-wrap"><div class="boot-ring"></div><div class="boot-ring"></div></div>';
+  o.innerHTML = '<img class="boot-word" src="assets/orion_ai_wordmark.png" alt="ORION AI"><div class="boot-ring-wrap"><div class="boot-ring"></div><div class="boot-ring"></div></div>';
   document.body.appendChild(o);
   requestAnimationFrame(() => o.classList.add('on'));
   setTimeout(() => { location.href = 'pages/orion.html'; }, 900);
