@@ -1,4 +1,4 @@
-/* ORION AI — STANDBY único para todas as páginas (index.html, login.html e pages/orion.html).
+/* ORION AI — STANDBY único para todas as páginas (orion/index.html, orion/login.html e orion/pages/orion.html).
 
    As datas ficam SÓ aqui. Horário de Brasília (UTC-3). Formato: AAAA-MM-DDTHH:MM:SS-03:00
    ATENÇÃO: o standby é VISUAL e usa o relógio do navegador. Ele não é uma trava de segurança: quem sabe mexer no
