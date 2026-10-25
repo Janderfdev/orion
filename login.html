@@ -100,7 +100,7 @@ body.is-standby{background:#030406;}
 /* ORION AI — entrada: STANDBY → LOGIN → pages/orion.html (estado sempre derivado do relógio) */
 
 /* A janela do standby (datas, relógio de teste e liberação do dono) fica em standby.js, igual para index, login e orion.
-   Se o arquivo não carregar, o login NÃO fica preso no standby. */
+   Se o arquivo não carregar, o login fica preso no standby. */
 const S = window.ORION_STANDBY || { phase: () => 'released', nowMs: () => Date.now() };
 const { phase, nowMs } = S;
 window.__orionPhase = () => phase(nowMs());
