@@ -39,7 +39,7 @@ html,body{
 }
 
 
-/* ═══════ V5.0 — temas (escuro = padrão, 100% preto · claro) ═══════ */
+/* ═══════ V5.0.0 — temas (escuro = padrão, 100% preto · claro) ═══════ */
 :root{
   color-scheme:dark;
   --bg:#000; --fg:#fff; --w:255,255,255;
@@ -54,7 +54,7 @@ html,body{
   --scrim:rgba(240,237,255,.72); --card:rgba(255,255,255,.94); --card-solid:#ffffff; --panel-bg:rgba(255,255,255,.95); --ask-bg:rgba(255,255,255,.72);
   --chip:#ece9fb; --bar:#ebe8fa; --track-a:#b9b2e0; --track-b:#dcd8f2;
   --accent:#6d28d9; --accent-soft:#6d28d9; --accent-text:#3b1a8a; --err:#b91c1c; --danger:#dc2626;
-  --orb-mid:rgba(238,234,255,.90); --orb-end:rgba(214,206,250,.95); --orb-inset:rgba(60,40,140,.18);
+  --orb-mid:rgba(2,2,8,.88); --orb-end:rgba(0,0,0,.95); --orb-inset:rgba(0,0,0,.7);
 }
 :root[data-theme="light"] .orb-canvas{ mix-blend-mode:normal; }   /* no claro a Orb é uma esfera de vidro, não luz somada */
 :root[data-theme="light"] .header-logo{ filter:invert(1) hue-rotate(180deg) drop-shadow(0 0 10px rgba(109,40,217,.18)); }
@@ -533,7 +533,7 @@ body.chat-open .hint-text{ opacity:0; }
 .vs-desc{ padding:0 0 14px; font-size:11px; line-height:1.6; color:rgba(var(--w),.38); border-bottom:1px solid rgba(var(--w),.06); }
 .vs-desc.warn{ color:var(--err); border-bottom:0; padding-top:10px; }
 
-/* V5.0 — foto de perfil nas configurações */
+/* V5.0.0 — foto de perfil nas configurações */
 .avatar-block{ display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:0 0 16px; margin-bottom:4px; border-bottom:1px solid rgba(var(--w),0.06); }
 .avatar-btn{
   width:64px; height:64px; padding:0; flex:none; border-radius:50%; overflow:hidden; cursor:pointer;
@@ -641,7 +641,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 </div>
 
-<!-- V4.5.0 — Voice & Speech -->
+<!-- V5.0.0 — Voice & Speech -->
 <section class="vscreen" id="voiceScreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vsTitle">
   <header class="vs-top">
     <button class="vs-back" id="vsBack" aria-label="Voltar às configurações" title="Voltar" data-i18n-aria="vs.back">
