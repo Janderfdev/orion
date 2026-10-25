@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ORION AI</title>
 <meta name="theme-color" content="#000000">
-<script>try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}'),m=s.theme;if(m==='auto')m=(new Date().getHours()>=6&&new Date().getHours()<18)?'nevoa':'nebulosa';document.documentElement.dataset.theme=(m==='nebulosa'||m==='nevoa')?m:'preto'}catch(e){document.documentElement.dataset.theme='preto'}</script>
+<script>try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.documentElement.dataset.theme=s.theme==='nebulosa'?'nebulosa':'preto'}catch(e){document.documentElement.dataset.theme='preto'}</script>
 <link rel="icon" href="../favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,21 +51,14 @@ html,body{
 }
 
 
-/* ═══════ V5.0 — temas: preto (padrão) · nebulosa · névoa · automático (névoa de dia, nebulosa à noite) ═══════
-   A Orb é a MESMA em todos: um disco escuro com luz colorida. O que muda é o céu ao redor. */
+/* ═══════ V5.0 — temas: PRETO (padrão) e NEBULOSA (o MESMO preto, com estrelas e nuvens de cor ao fundo) ═══════
+   A Orb e as cores da interface são idênticas nos dois; só muda o céu atrás. */
 .stars{ position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity .6s ease; }
 .stars::before, .stars::after{ content:""; position:absolute; inset:-6%; }
-:root[data-theme="nebulosa"] .stars, :root[data-theme="nevoa"] .stars{ opacity:1; }
 body{ transition:opacity .3s ease; }
 html.theme-swap body{ opacity:0; transition-duration:.2s; }
-
-/* ── NEBULOSA: índigo profundo, nuvens de cor à deriva e estrelas que cintilam ── */
-:root[data-theme="nebulosa"]{
-  --bg:#07061a; --bg-grad:radial-gradient(120% 85% at 50% -10%, #231a66 0%, #120d3a 42%, #07061a 100%), radial-gradient(70% 55% at 90% 105%, rgba(91,33,182,.40), transparent 65%);
-  --scrim:rgba(5,4,22,.74); --card:rgba(18,13,54,.90); --card-solid:#130e3a; --panel-bg:rgba(15,11,48,.95); --ask-bg:rgba(18,13,58,.66);
-  --chip:#1d1752; --bar:#161142; --track-a:#41388f; --track-b:#1a1442;
-}
 :root[data-theme="nebulosa"] .stars{
+  opacity:1;
   background-image:
     radial-gradient(circle 1.1px at 33.1% 16.5%, rgba(255,255,255,0.48), rgba(255,255,255,0)),
     radial-gradient(circle 1.1px at 37.1% 7.6%, rgba(191,219,254,0.47), rgba(191,219,254,0)),
@@ -104,9 +97,9 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 }
 :root[data-theme="nebulosa"] .stars::before{
   background:
-    radial-gradient(48% 40% at 14% 20%, rgba(124,58,237,.26), transparent 70%),
-    radial-gradient(44% 40% at 86% 74%, rgba(59,130,246,.20), transparent 70%),
-    radial-gradient(36% 30% at 62% 8%, rgba(167,139,250,.14), transparent 70%);
+    radial-gradient(48% 40% at 14% 20%, rgba(124,58,237,.16), transparent 70%),
+    radial-gradient(44% 40% at 86% 74%, rgba(59,130,246,.12), transparent 70%),
+    radial-gradient(36% 30% at 62% 8%, rgba(167,139,250,.08), transparent 70%);
   animation:nebDrift 70s ease-in-out infinite alternate;
 }
 :root[data-theme="nebulosa"] .stars::after{
@@ -129,50 +122,18 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
     radial-gradient(circle 1.2px at 81.4% 86.3%, rgba(255,255,255,0.75), rgba(255,255,255,0));
   animation:twinkle 6s ease-in-out infinite alternate;
 }
-
-/* ── NÉVOA: lavanda suave (nada de branco puro), névoa luminosa à deriva, Orb como uma pérola escura ── */
-:root[data-theme="nevoa"]{
-  --bg:#cfc7ec; --bg-grad:linear-gradient(180deg, #e4def7 0%, #cfc7ec 48%, #b5abdc 100%);
-  --fg:#1b1540; --w:27,21,64;
-  --scrim:rgba(40,30,95,.34); --card:rgba(240,236,253,.92); --card-solid:#ece8fb; --panel-bg:rgba(238,234,252,.95); --ask-bg:rgba(240,236,253,.74);
-  --chip:#ddd7f3; --bar:#d8d2f0; --track-a:#8d82c8; --track-b:#c6bee6;
-  --accent:#5b21b6; --accent-soft:#5b21b6; --accent-text:#2e1065; --err:#b91c1c; --danger:#c81e1e;
-}
-:root[data-theme="nevoa"] .stars::before{
-  background:
-    radial-gradient(46% 40% at 18% 24%, rgba(255,255,255,.55), transparent 70%),
-    radial-gradient(42% 36% at 82% 72%, rgba(167,139,250,.38), transparent 70%),
-    radial-gradient(36% 30% at 60% 12%, rgba(147,197,253,.34), transparent 70%);
-  animation:nebDrift 60s ease-in-out infinite alternate;
-}
-:root[data-theme="nevoa"] .stars::after{ display:none; }
-:root[data-theme="nevoa"] .header-logo{ filter:brightness(.3) saturate(2) drop-shadow(0 0 10px rgba(91,33,182,.18)); }
-:root[data-theme="nevoa"] .orb{ box-shadow:0 14px 44px rgba(76,29,149,.32), 0 0 100px color-mix(in srgb, var(--core-a) 28%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12); }
-:root[data-theme="nevoa"] .orb-zone:hover .orb{ box-shadow:0 18px 54px rgba(76,29,149,.42), 0 0 120px color-mix(in srgb, var(--core-a) 36%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14); }
-/* textos secundários mais firmes no claro (os de 30–50% de opacidade ficariam fracos sobre lavanda) */
-:root[data-theme="nevoa"] .hint-text{ color:rgba(var(--w),.75); }
-:root[data-theme="nevoa"] .version-tag, :root[data-theme="nevoa"] .settings-hint, :root[data-theme="nevoa"] .code-note, :root[data-theme="nevoa"] .code-ver, :root[data-theme="nevoa"] .vs-note{ color:rgba(var(--w),.56); }
-:root[data-theme="nevoa"] .status-text{ color:rgba(var(--w),.82); }
-:root[data-theme="nevoa"] .settings-title{ color:rgba(var(--w),.76); }
-:root[data-theme="nevoa"] .settings-email{ color:rgba(var(--w),.74); }
-:root[data-theme="nevoa"] .settings-note, :root[data-theme="nevoa"] .code-card p{ color:rgba(var(--w),.70); }
-:root[data-theme="nevoa"] .vs-ends, :root[data-theme="nevoa"] .vs-slider-head output, :root[data-theme="nevoa"] .vs-msg{ color:rgba(var(--w),.58); }
-:root[data-theme="nevoa"] .ask-input::placeholder{ color:rgba(var(--w),.52); }
-
 @keyframes nebDrift{ from{ transform:translate3d(-2%,-1%,0) scale(1); } to{ transform:translate3d(2%,1.5%,0) scale(1.07); } }
 @keyframes twinkle{ from{ opacity:.25; } to{ opacity:1; } }
 @media (prefers-reduced-motion:reduce){ .stars::before, .stars::after{ animation:none !important; } body{ transition:none; } }
 
-/* seletor de tema (Configurações): bolinhas com a cor de cada tema */
+/* seletor de tema (Configurações): bolinhas com a cara de cada tema */
 .theme-swatches{ display:flex; gap:9px; }
 .sw{ width:24px; height:24px; padding:0; border-radius:50%; border:1px solid rgba(var(--w),.32); cursor:pointer; transition:transform .2s ease, box-shadow .25s ease; }
 .sw:hover{ transform:translateY(-1px); }
 .sw[aria-checked="true"]{ box-shadow:0 0 0 2px var(--card-solid), 0 0 0 3.5px var(--accent); }
 .sw:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
 .sw-preto{ background:#000; }
-.sw-nebulosa{ background:radial-gradient(circle at 30% 25%, #4a3cc0, #0d0a2e 75%); }
-.sw-nevoa{ background:radial-gradient(circle at 30% 25%, #efeafc, #b5abdc 80%); }
-.sw-auto{ background:linear-gradient(135deg, #cfc7ec 50%, #1a1450 50%); }
+.sw-nebulosa{ background:radial-gradient(circle at 30% 28%, #5b3fd6, #05030f 72%); }
 
 /* ═══════ BOOT ═══════ */
 #boot{
@@ -182,7 +143,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 }
 #boot.out{ opacity:0; pointer-events:none; }
 .boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(120,100,255,.28)); }
-.boot-ring-wrap{ position:relative; width:76px; height:76px; }
+.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; }
 .boot-ring{
   position:absolute; inset:0; border-radius:50%;
   border:1px solid rgba(167,139,250,0.18);
@@ -302,7 +263,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 }
 
 .version-tag{
-  position:fixed; left:18px; bottom:16px; z-index:40;
+  position:fixed; left:18px; bottom:26px; z-index:40;
   font-family:var(--font-mono); font-size:9px; font-weight:500;
   letter-spacing:0.22em; text-transform:uppercase;
   color:rgba(var(--w),0.30); user-select:none; pointer-events:none;
@@ -324,14 +285,16 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
   box-shadow:0 0 60px rgba(91,33,182,0.18);
 }
 .settings-card .settings-title{ margin-bottom:14px; }
-.settings-grid{ flex:1; min-height:0; display:grid; grid-template-columns:176px 1fr; gap:22px; }
-.settings-side{ display:flex; flex-direction:column; gap:12px; min-height:0; min-width:0; }
-.settings-main{ min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(167,139,250,.35) transparent; }
+.settings-grid{ flex:1 0 auto; display:grid; grid-template-columns:176px 1fr; gap:22px; }
+.settings-side{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+.settings-main{ min-width:0; }
 .settings-main .settings-row{ padding:8px 0; }
 .settings-side .avatar-block{ padding:0; margin:0; border-bottom:none; }
 .settings-side .avatar-actions{ flex-direction:column; gap:6px; }
-.side-info{ display:flex; flex-direction:column; gap:8px; padding-top:12px; border-top:1px solid rgba(var(--w),0.06); min-width:0; }
+.side-info{ display:flex; flex-direction:column; gap:6px; padding-top:10px; border-top:1px solid rgba(var(--w),0.06); min-width:0; }
 .side-info .settings-email{ max-width:100%; }
+.mini-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:28px; font-size:12px; font-weight:500; color:rgba(var(--w),.8); }
+.mini-row .settings-email{ max-width:104px; }
 .plan-chip{ align-self:flex-start; font:500 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; padding:4px 10px; border-radius:14px;
   color:var(--accent); background:rgba(167,139,250,.10); border:1px solid rgba(167,139,250,.3); }
 .settings-note.side-note{ padding:0; border-bottom:none; font-size:10px; }
@@ -361,7 +324,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 .settings-note.warn{ color:var(--err); }
 .settings-note[hidden]{ display:none; }
 .settings-hint{
-  margin-top:20px; text-align:center; font-size:9px; font-weight:500;
+  margin-top:12px; text-align:center; font-size:9px; font-weight:500;
   letter-spacing:0.2em; color:rgba(var(--w),0.22);
 }
 
@@ -397,7 +360,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 /* transição ao sair da conta: escurece e mostra só os círculos (igual à entrada) */
 #leaveOverlay{
   position:fixed; inset:0; z-index:300; background:#000;
-  display:flex; align-items:center; justify-content:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
   opacity:0; pointer-events:all; transition:opacity .45s ease;
 }
 #leaveOverlay.on{ opacity:1; }
@@ -700,6 +663,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 <!-- BOOT -->
 <div id="boot">
+  <img class="boot-word" src="../assets/orion_ai_wordmark.png" alt="ORION AI">
   <div class="boot-ring-wrap">
     <div class="boot-ring"></div>
     <div class="boot-ring"></div>
@@ -822,7 +786,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg>
 </button>
 <button class="gear code-btn" id="codeBtn" aria-label="ORION CODE e ORION API" title="ORION CODE e ORION API" data-i18n-aria="code.aria">
-  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5L3 12l5.5 5.5M15.5 6.5L21 12l-5.5 5.5M13.5 4.5l-3 15"/></svg>
 </button>
 <button class="gear" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria">
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -851,7 +815,7 @@ function leave() {
   leaving = true;
   const o = document.createElement('div');   // mesmos círculos da tela de entrada
   o.id = 'leaveOverlay';
-  o.innerHTML = '<div class="boot-ring-wrap"><div class="boot-ring"></div><div class="boot-ring"></div></div>';
+  o.innerHTML = '<img class="boot-word" src="../assets/orion_ai_wordmark.png" alt="ORION AI"><div class="boot-ring-wrap"><div class="boot-ring"></div><div class="boot-ring"></div></div>';
   document.body.appendChild(o);
   requestAnimationFrame(() => o.classList.add('on'));
   setTimeout(() => { location.replace('../index.html'); }, 1000);
