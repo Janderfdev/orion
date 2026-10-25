@@ -2,6 +2,7 @@
 
 A chave fica SÓ no servidor: GEMINI_API_KEY (ou GOOGLE_API_KEY).
 Usa a API REST direto (biblioteca `requests`, que já está no projeto).
+V5.0: uma mensagem do usuário pode trazer "images": [{"mime", "data"(base64)}], enviadas ao modelo como inlineData.
 """
 import asyncio, os, threading
 
@@ -33,6 +34,13 @@ def _declaration(tool: dict) -> dict:
     if tool["input_schema"].get("properties"):   # o Gemini recusa "parameters" vazio
         d["parameters"] = tool["input_schema"]
     return d
+
+
+def _parts(m: dict) -> list:
+    """Partes da mensagem: imagens (se houver) primeiro, depois o texto."""
+    parts = [{"inlineData": {"mimeType": i["mime"], "data": i["data"]}} for i in (m.get("images") or [])]
+    parts.append({"text": m["content"]})
+    return parts
 
 
 class GeminiProvider:
@@ -68,7 +76,7 @@ class GeminiProvider:
         return r.json()
 
     async def generate(self, system: str, messages: list[dict], tools: list[dict] | None = None, execute=None) -> str:
-        contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]}
+        contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": _parts(m)}
                     for m in messages]
         is_25 = self._is25
         # o raciocínio interno do modelo consome tokens de saída: damos mais espaço para a resposta não ser cortada
