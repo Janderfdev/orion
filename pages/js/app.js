@@ -9,7 +9,7 @@
            4 vozes + Pace/Expressivity, "Hey ORION".
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), linha de plano/uso nas configurações,
-           Orb com volume de esfera, campo "agent" do /ask (Agent Engine) registrado no log.
+           tema claro/escuro, botão "+" (imagem ou arquivo de texto), campo "agent" do /ask (Agent Engine) registrado no log.
    ═══════════════════════════════════════════════════════════════ */
 
 /* Endereço do backend (Render). Se um dia mudar, troque aqui (sem barra no final). */
@@ -22,7 +22,7 @@ const I18N = (() => {
   const D = {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
-      'online': 'ORION ONLINE', 'version': 'VERSION V5.0 · GENESIS',
+      'online': 'ORION ONLINE', 'version': 'VERSION V5.0',
       'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'Didn’t catch that',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
@@ -46,6 +46,9 @@ const I18N = (() => {
       'set.photoBig': 'That image is too large (max 8 MB).', 'set.photoSave': 'Couldn’t save the photo.', 'set.plan': 'Plan',
       'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'You’ll be able to upgrade soon.',
       'set.theme': 'Theme', 'theme.dark': 'Dark', 'theme.light': 'Light',
+      'attach.aria': 'Attach an image or file', 'attach.default': 'Describe this attachment.', 'attach.remove': 'Remove attachment',
+      'attach.errType': 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'attach.errSize': 'That file is too large.',
+      'attach.errRead': 'I couldn’t read that file.', 'err.attachment_invalid': 'I couldn’t use that attachment.',
       'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
       'on': 'On', 'off': 'Off', 'set.nomodel': 'No model', 'set.unavail': 'Unavailable', 'toast.model': 'Model: {m}',
       'core.none': 'Backend not configured', 'core.connecting': 'Connecting…', 'core.ok': 'Connected', 'core.nomodel': 'No model key on the server',
@@ -74,7 +77,7 @@ const I18N = (() => {
     },
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
-      'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0 · GENESIS',
+      'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0',
       'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
@@ -98,6 +101,9 @@ const I18N = (() => {
       'set.photoBig': 'Essa imagem é grande demais (máx. 8 MB).', 'set.photoSave': 'Não consegui salvar a foto.', 'set.plan': 'Plano',
       'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'Em breve você poderá fazer upgrade.',
       'set.theme': 'Tema', 'theme.dark': 'Escuro', 'theme.light': 'Claro',
+      'attach.aria': 'Anexar imagem ou arquivo', 'attach.default': 'Descreva este anexo.', 'attach.remove': 'Remover anexo',
+      'attach.errType': 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'attach.errSize': 'Esse arquivo é grande demais.',
+      'attach.errRead': 'Não consegui ler esse arquivo.', 'err.attachment_invalid': 'Não consegui usar esse anexo.',
       'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
       'on': 'Ativado', 'off': 'Desativado', 'set.nomodel': 'Sem modelo', 'set.unavail': 'Indisponível', 'toast.model': 'Modelo: {m}',
       'core.none': 'Backend não configurado', 'core.connecting': 'Conectando…', 'core.ok': 'Conectado', 'core.nomodel': 'Sem chave de modelo no servidor',
@@ -183,7 +189,7 @@ const LOGGER = (() => {
 const ERROR_HANDLER = (() => {
   const CODES = ['mic_unavailable', 'stt_unavailable', 'model_unavailable', 'timeout', 'api_error', 'invalid_response', 'tool_unavailable',
     'offline', 'tts_unavailable', 'unexpected_input', 'forbidden', 'rate_limited', 'quota_exceeded', 'core_unavailable', 'voice_disabled',
-    'voice_unavailable', 'unknown'];
+    'voice_unavailable', 'attachment_invalid', 'unknown'];
   function classify(err) {
     if (!navigator.onLine) return 'offline';
     if (!err) return 'unknown';
@@ -318,7 +324,7 @@ const ORB = (() => {
   }
 
   /* o disco da Orb (blobs de luz + partículas + brilho central) dentro de um quadrado [0,S]² */
-  /* V5.0 — tema claro: a Orb vira uma esfera de vidro colorida (tinta clara + manchas de cor + borda mais densa + brilho especular).
+  /* V5.0 — tema claro: a Orb vira uma esfera de vidro colorida (tinta clara + manchas de cor + borda um pouco mais densa).
      Sem luz somada: sobre fundo claro ela desapareceria. Os estados (roxo, azul, verde, vermelho) continuam valendo. */
   function drawDiscLight(c, S, b, col) {
     const R = S / 2;
@@ -353,12 +359,8 @@ const ORB = (() => {
     c.fillStyle = core; c.fillRect(0, 0, S, S);
     const edge = c.createRadialGradient(R, R, R * 0.62, R, R, R);   // borda mais densa = volume
     edge.addColorStop(0, rgba(col.a, 0));
-    edge.addColorStop(1, rgba(col.a, 0.55));
+    edge.addColorStop(1, rgba(col.a, 0.35));
     c.fillStyle = edge; c.fillRect(0, 0, S, S);
-    const spec = c.createRadialGradient(R * 0.62, R * 0.45, 0, R * 0.62, R * 0.45, R * 0.55);   // brilho especular
-    spec.addColorStop(0, 'rgba(255,255,255,0.75)');
-    spec.addColorStop(1, 'rgba(255,255,255,0)');
-    c.fillStyle = spec; c.fillRect(0, 0, S, S);
     c.restore();
   }
 
@@ -403,19 +405,6 @@ const ORB = (() => {
     vig.addColorStop(1, 'rgba(0,0,4,0.80)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
-    // V5.0: volume de esfera — luz suave no alto-esquerdo e anel de borda na cor do estado atual (só desenho, sem dependência extra)
-    c.save();
-    c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
-    const lit = c.createRadialGradient(R * 0.62, R * 0.52, 0, R * 0.62, R * 0.52, R * 0.95);
-    lit.addColorStop(0, rgba(lighten(col.c, 0.6), 0.22 * b));
-    lit.addColorStop(0.55, rgba(lighten(col.c, 0.3), 0.06 * b));
-    lit.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = lit; c.fillRect(0, 0, S, S);
-    const rim = c.createRadialGradient(R, R, R * 0.80, R, R, R);
-    rim.addColorStop(0, rgba(col.c, 0));
-    rim.addColorStop(1, rgba(col.c, 0.30 * b));
-    c.fillStyle = rim; c.fillRect(0, 0, S, S);
-    c.restore();
     c.restore();
   }
 
@@ -708,6 +697,61 @@ const AVATAR = (() => {
   return { get, set, clear };
 })();
 
+/* ═══ attach.js — anexos da pergunta (V5.0): UMA imagem OU UM arquivo de texto ═══
+   O navegador prepara o anexo (a imagem é reduzida e regravada como JPEG, o que remove EXIF); o servidor valida tudo de novo.
+   Nada é guardado: o anexo vai ao modelo junto com a pergunta e só. */
+const ATTACH = (() => {
+  const TEXT_EXT = ['.txt', '.md', '.csv', '.json', '.log', '.xml', '.yml', '.yaml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.go', '.rs', '.php', '.sql', '.sh'];
+  const MAX_IMG_ORIGINAL = 12 * 1024 * 1024, MAX_FILE_BYTES = 200 * 1024, MAX_FILE_CHARS = 30000, MAX_B64 = 1300000;
+  const bad = code => { const e = new Error(code); e.code = code; return e; };
+  const extOf = n => { const s = String(n || ''), i = s.lastIndexOf('.'); return i < 0 ? '' : s.slice(i).toLowerCase(); };
+  const isImage = f => /^image\/(jpeg|png|webp)$/.test(f.type);
+  function image(file) {
+    return new Promise((resolve, reject) => {
+      if (file.size > MAX_IMG_ORIGINAL) return reject(bad('size'));
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        try {
+          const w0 = img.naturalWidth, h0 = img.naturalHeight;
+          if (!w0 || !h0) throw bad('read');
+          let data = '', dataUrl = '';
+          for (const [maxSide, q] of [[1024, 0.85], [800, 0.75], [640, 0.65]]) {   // tenta menor até caber no limite do servidor
+            const k = Math.min(1, maxSide / Math.max(w0, h0));
+            const c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            dataUrl = c.toDataURL('image/jpeg', q);
+            data = dataUrl.split(',')[1] || '';
+            if (data.length <= MAX_B64) break;
+          }
+          if (!data || data.length > MAX_B64) throw bad('size');
+          resolve({ kind: 'image', name: file.name, preview: dataUrl, payload: { image: { mime: 'image/jpeg', data } } });
+        } catch (e) { reject(e.code ? e : bad('read')); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(bad('read')); };
+      img.src = url;
+    });
+  }
+  function textFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!TEXT_EXT.includes(extOf(file.name))) return reject(bad('type'));
+      if (file.size > MAX_FILE_BYTES) return reject(bad('size'));
+      const r = new FileReader();
+      r.onerror = () => reject(bad('read'));
+      r.onload = () => {
+        const text = String(r.result || '');
+        if (text.indexOf('\u0000') !== -1) return reject(bad('type'));   // binário disfarçado
+        if (!text.trim()) return reject(bad('read'));
+        if (text.length > MAX_FILE_CHARS) return reject(bad('size'));
+        resolve({ kind: 'file', name: file.name.slice(0, 80), preview: null, payload: { file: { name: file.name.slice(0, 120), text } } });
+      };
+      r.readAsText(file);
+    });
+  }
+  return { prepare: file => (!file ? Promise.reject(bad('type')) : isImage(file) ? image(file) : textFile(file)) };
+})();
+
 /* ═══ api — comunicação com o backend (ORION Core) ═══
    O frontend NÃO tem lógica de modelo: só envia a pergunta e mostra a resposta.
    Autenticação: o token do Firebase vem de window.ORION_GET_TOKEN (definido em orion.html).
@@ -739,6 +783,7 @@ const API = (() => {
     if (res.status === 403) throw failT('No access.', 'forbidden');
     if (res.status === 429) throw failT('Rate limited.', 'rate_limited');
     if (res.status === 402) throw failT('Daily limit.', 'quota_exceeded');   // cota do plano esgotada
+    if (res.status === 422 && path === '/ask') throw failT('Attachment invalid.', 'attachment_invalid');   // anexo recusado pelo servidor (não gasta cota)
     if (res.status === 400 && path.startsWith('/speak')) throw failT('Voice unavailable.', 'voice_unavailable');   // slot sem ID no servidor
     if (res.status === 503 || res.status === 400) throw failT('Model unavailable.', 'model_unavailable');
     if (!res.ok) throw failT('Failure ' + res.status, 'api_error');
@@ -747,7 +792,7 @@ const API = (() => {
   return {
     configured: () => !!base(),
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
-    ask: (text, model, lang) => call('/ask', { method: 'POST', body: { text, model, lang } }),   // lang: idioma da conversa (busca das imagens)
+    ask: (text, model, lang, att) => call('/ask', { method: 'POST', body: Object.assign({ text, model, lang }, att || {}) }),   // lang: idioma da conversa · att: {image} ou {file}
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
     speak: (text, o) => call('/speak', { method: 'POST', body: { text, voice: o.voice, pace: o.pace, expressivity: o.expressivity }, timeoutMs: 20000, blob: true }),
     preview: o => call('/speak/preview', { method: 'POST', body: { voice: o.voice, pace: o.pace, expressivity: o.expressivity, lang: o.lang }, timeoutMs: 20000, blob: true }),
@@ -794,6 +839,7 @@ const API = (() => {
   const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
+  const attachBtn = $('attachBtn'), attachFile = $('attachFile'), attachChip = $('attachChip'), attachThumb = $('attachThumb'), attachName = $('attachName'), attachDel = $('attachDel');
 
   let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null, flashTimer = null;
@@ -856,7 +902,28 @@ const API = (() => {
     else statusText.classList.remove('show');
     return stateGen;
   }
-  function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; }
+  function lock(on) { askInput.disabled = on; askSend.disabled = on; micBtn.disabled = on; attachBtn.disabled = on; attachDel.disabled = on; }
+
+  /* ── anexo (botão "+"): uma imagem ou um arquivo de texto por pergunta; só vai com perguntas escritas ── */
+  const FILE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+  let pending = null;
+  function paintAttach() {
+    attachChip.hidden = !pending;
+    attachThumb.textContent = ''; attachName.textContent = '';
+    if (!pending) return;
+    if (pending.kind === 'image' && pending.preview) { const im = document.createElement('img'); im.src = pending.preview; im.alt = ''; attachThumb.appendChild(im); }
+    else attachThumb.innerHTML = FILE_ICON;   // SVG fixo, sem dados do usuário
+    attachName.textContent = pending.name || '';
+  }
+  const clearAttach = () => { pending = null; paintAttach(); };
+  attachBtn.addEventListener('click', () => attachFile.click());
+  attachDel.addEventListener('click', () => { clearAttach(); if (chatOpen && finePointer()) askInput.focus(); });
+  attachFile.addEventListener('change', async () => {
+    const f = attachFile.files && attachFile.files[0]; attachFile.value = '';
+    if (!f) return;
+    try { pending = await ATTACH.prepare(f); paintAttach(); }
+    catch (err) { flash(t(err && err.code === 'size' ? 'attach.errSize' : err && err.code === 'type' ? 'attach.errType' : 'attach.errRead'), 3600); }
+  });
 
   /* ── fala: ElevenLabs (via backend) com a voz/pace/expressividade escolhidos; senão — ou se falhar — a voz do navegador ──
      Um único <audio> (AUDIO.el), "destravado" no primeiro toque: sem isso o Safari/iOS e alguns Chromes bloqueiam o play().
@@ -1041,19 +1108,22 @@ const API = (() => {
      Escrita no chat → a Orb vira o painel.  Por voz → a Orb responde sozinha (verde pulsando com o áudio). */
   async function submit(text, source) {
     text = (text || '').trim();
+    const att = source === 'text' ? pending : null;   // só perguntas escritas levam anexo
+    if (!text && att) text = t('attach.default');
     if (!text || processing) return;
     processing = true; lock(true);
     stopSpeech(false);
     closePanel(); clearAnswer();
     askInput.value = text;
     setState('processing');
-    LOGGER.info('ask_started', { source, model: prefs.model });   // nunca registra o texto
+    LOGGER.info('ask_started', { source, model: prefs.model, attach: att ? att.kind : null });   // nunca registra o texto
     try {
-      const data = await API.ask(text, prefs.model, speechLang());
+      const data = await API.ask(text, prefs.model, speechLang(), att && att.payload);
       const reply = data && typeof data.reply === 'string' ? data.reply.trim() : '';
       if (!reply) { const e = new Error('Empty response.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
       askInput.value = '';
+      if (att) clearAttach();
       const understood = !(data.understood === false || isFallback(reply));
       if (data.quota && Number.isFinite(data.quota.used) && Number.isFinite(data.quota.limit)) {   // plano e uso do dia (vem do servidor)
         quota = { used: data.quota.used, limit: data.quota.limit, plan: String(data.quota.plan || 'free').slice(0, 8) };
@@ -1104,7 +1174,7 @@ const API = (() => {
     document.body.classList.toggle('chat-open', open);
     askForm.classList.toggle('open', open);
     askForm.setAttribute('aria-hidden', String(!open));
-    askInput.tabIndex = micBtn.tabIndex = askSend.tabIndex = open ? 0 : -1;
+    askInput.tabIndex = micBtn.tabIndex = askSend.tabIndex = attachBtn.tabIndex = attachDel.tabIndex = open ? 0 : -1;
     chatBtn.classList.toggle('on', open);
     chatBtn.setAttribute('aria-pressed', String(open));
     if (open) {
@@ -1355,31 +1425,39 @@ const API = (() => {
       panel.innerHTML = `
         <div class="settings-card">
           <p class="settings-title">${t('set.title')}</p>
-          <div class="avatar-block">
-            <button id="avatarBtn" class="avatar-btn" type="button" aria-label="${t('set.photo')}" title="${t('set.photo')}"></button>
-            <div class="avatar-actions">
-              <button id="avatarPick" class="settings-toggle" type="button">${t('set.photoPick')}</button>
-              <button id="avatarDel" class="settings-toggle" type="button">${t('set.photoDel')}</button>
+          <div class="settings-grid">
+            <div class="settings-side">
+              <div class="avatar-block">
+                <button id="avatarBtn" class="avatar-btn" type="button" aria-label="${t('set.photo')}" title="${t('set.photo')}"></button>
+                <div class="avatar-actions">
+                  <button id="avatarPick" class="settings-toggle" type="button">${t('set.photoPick')}</button>
+                  <button id="avatarDel" class="settings-toggle" type="button">${t('set.photoDel')}</button>
+                </div>
+                <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                <p class="settings-note warn" id="avatarMsg" role="status" hidden></p>
+              </div>
+              <div class="side-info">
+                <span class="settings-email" id="setEmail">—</span>
+                <span class="plan-chip" id="setPlan" title="${t('set.plan')}">—</span>
+                <p class="settings-note side-note">${t('set.photoNote')}</p>
+                <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
+              </div>
             </div>
-            <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-            <p class="settings-note warn" id="avatarMsg" role="status" hidden></p>
-            <p class="settings-note">${t('set.photoNote')}</p>
+            <div class="settings-main">
+              <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
+              <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
+              <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
+              <div class="settings-row"><span>${t('set.theme')}</span><button id="themeBtn" class="settings-toggle theme-btn" type="button"></button></div>
+              <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
+              <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
+              <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
+            </div>
           </div>
-          <div class="settings-row"><span>${t('set.account')}</span><span class="settings-email" id="setEmail">—</span></div>
-          <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
-          <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
-          <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
-          <div class="settings-row"><span>${t('set.theme')}</span><button id="themeBtn" class="settings-toggle theme-btn" type="button"></button></div>
-          <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
-          <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
-          <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
-          <div class="settings-row"><span>${t('set.plan')}</span><span class="settings-email" id="setPlan">—</span></div>
           <div class="settings-actions">
             <button id="signOutBtn" class="settings-out" type="button">${t('set.signout')}</button>
             <button id="upgradeBtn" class="settings-upgrade" type="button">${t('set.upgrade')}</button>
           </div>
-          <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
-          <p class="settings-hint">ORION AI V5.0 GENESIS</p>
+          <p class="settings-hint">ORION AI V5.0</p>
         </div>`;
       document.body.appendChild(panel);
 
