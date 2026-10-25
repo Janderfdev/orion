@@ -49,7 +49,11 @@ const I18N = (() => {
       'set.photoNote': 'Your photo stays on this device only.', 'set.photoType': 'Use a JPG, PNG or WebP image.',
       'set.photoBig': 'That image is too large (max 8 MB).', 'set.photoSave': 'Couldn’t save the photo.', 'set.plan': 'Plan',
       'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'You’ll be able to upgrade soon.',
-      'set.theme': 'Theme', 'theme.dark': 'Dark', 'theme.light': 'Light',
+      'code.aria': 'ORION CODE and ORION API', 'code.title': 'ORION CODE · ORION API', 'code.soon': 'Coming soon',
+      'code.codeDesc': 'A programming assistant: it reads your project, proposes changes and only applies what you approve.',
+      'code.apiDesc': 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.',
+      'code.planned': 'Planned: {v}', 'code.note': 'Not available yet. Versions and dates may change.', 'code.close': 'Close',
+      'set.theme': 'Theme', 'theme.preto': 'Black', 'theme.nebulosa': 'Nebula', 'theme.nevoa': 'Mist', 'theme.auto': 'Auto (day / night)',
       'attach.aria': 'Attach an image or file', 'attach.default': 'Describe this attachment.', 'attach.remove': 'Remove attachment',
       'attach.errType': 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'attach.errSize': 'That file is too large.',
       'attach.errRead': 'I couldn’t read that file.', 'err.attachment_invalid': 'I couldn’t use that attachment.',
@@ -104,7 +108,11 @@ const I18N = (() => {
       'set.photoNote': 'Sua foto fica só neste aparelho.', 'set.photoType': 'Use uma imagem JPG, PNG ou WebP.',
       'set.photoBig': 'Essa imagem é grande demais (máx. 8 MB).', 'set.photoSave': 'Não consegui salvar a foto.', 'set.plan': 'Plano',
       'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'Em breve você poderá fazer upgrade.',
-      'set.theme': 'Tema', 'theme.dark': 'Escuro', 'theme.light': 'Claro',
+      'code.aria': 'ORION CODE e ORION API', 'code.title': 'ORION CODE · ORION API', 'code.soon': 'Em breve',
+      'code.codeDesc': 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.',
+      'code.apiDesc': 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.',
+      'code.planned': 'Previsto: {v}', 'code.note': 'Ainda não está disponível. Versões e datas podem mudar.', 'code.close': 'Fechar',
+      'set.theme': 'Tema', 'theme.preto': 'Preto', 'theme.nebulosa': 'Nebulosa', 'theme.nevoa': 'Névoa', 'theme.auto': 'Automático (dia e noite)',
       'attach.aria': 'Anexar imagem ou arquivo', 'attach.default': 'Descreva este anexo.', 'attach.remove': 'Remover anexo',
       'attach.errType': 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'attach.errSize': 'Esse arquivo é grande demais.',
       'attach.errRead': 'Não consegui ler esse arquivo.', 'err.attachment_invalid': 'Não consegui usar esse anexo.',
@@ -789,7 +797,7 @@ const API = (() => {
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
-  prefs.theme = prefs.theme === 'light' ? 'light' : 'dark';   // V5.0: escuro (100% preto) é o padrão
+  prefs.theme = ['preto', 'nebulosa', 'nevoa', 'auto'].includes(prefs.theme) ? prefs.theme : 'preto';   // padrão: preto 100%
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
   savePrefs();
 
@@ -820,16 +828,30 @@ const API = (() => {
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
 
-  /* ── tema claro/escuro (V5.0): o escuro continua o padrão; a escolha fica salva neste navegador ── */
-  const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
-  const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
-  function applyTheme() {
-    const light = prefs.theme === 'light';
-    document.documentElement.dataset.theme = light ? 'light' : 'dark';
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = light ? '#f6f4ff' : '#000000';
+  /* ── temas (V5.0): preto (padrão), nebulosa, névoa e automático (névoa de dia, nebulosa à noite) ──
+     A Orb é a mesma em todos; muda o céu ao redor. A escolha fica salva neste navegador. */
+  const THEMES = ['preto', 'nebulosa', 'nevoa', 'auto'];
+  const THEME_COLOR = { preto: '#000000', nebulosa: '#07061a', nevoa: '#cfc7ec' };
+  const effectiveTheme = () => {
+    if (prefs.theme !== 'auto') return prefs.theme;
+    const h = new Date().getHours();
+    return h >= 6 && h < 18 ? 'nevoa' : 'nebulosa';
+  };
+  let themeNow = null;
+  function applyTheme(animate) {
+    const next = effectiveTheme(), root = document.documentElement;
+    const set = () => {
+      root.dataset.theme = next; themeNow = next;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.content = THEME_COLOR[next];
+    };
+    if (!animate || calm() || root.dataset.theme === next) { set(); return; }
+    root.classList.add('theme-swap');   // a página some por um instante, troca e volta (sem salto de cor)
+    setTimeout(() => { set(); root.classList.remove('theme-swap'); }, 230);
   }
-  applyTheme();
+  applyTheme(false);
+  setInterval(() => { if (prefs.theme === 'auto' && effectiveTheme() !== themeNow) applyTheme(true); }, 60000);
+
 
   /* ── idioma da conversa: reconhecimento de fala (e voz de reserva) ── */
   const speechLang = () => (prefs.ui === 'pt' ? 'pt' : 'en');
@@ -1148,7 +1170,7 @@ const API = (() => {
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
 
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #askForm, #chatBtn, #gearBtn, #settingsPanel, #voiceScreen')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #askForm, #chatBtn, #codeBtn, #gearBtn, #settingsPanel, #codePanel, #voiceScreen')) closePanel();
   });
   orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
   orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && hasAnswer) scheduleHold(5000); });
@@ -1193,8 +1215,7 @@ const API = (() => {
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     if (vs.isOpen()) return;
-    const sp = $('settingsPanel');
-    const settingsOpen = !!(sp && sp.classList.contains('open'));
+    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open');
     if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
@@ -1342,6 +1363,54 @@ const API = (() => {
     return { show, hide, sync, isOpen: () => open };
   })();
 
+  /* ── botão </> : aviso sobre ORION CODE e ORION API (ainda não existem); mesmo tamanho do painel de configurações ── */
+  const codeInfo = (() => {
+    let panel = null, open = false;
+    function build() {
+      panel = document.createElement('div');
+      panel.id = 'codePanel';
+      panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-labelledby', 'codeTitle');
+      panel.innerHTML = `
+        <div class="settings-card">
+          <p class="settings-title" id="codeTitle">${t('code.title')}</p>
+          <div class="code-grid">
+            <div class="code-card">
+              <span class="code-badge">${t('code.soon')}</span>
+              <h3>ORION CODE</h3>
+              <p>${t('code.codeDesc')}</p>
+              <span class="code-ver">${t('code.planned', { v: 'V5.5.0' })}</span>
+            </div>
+            <div class="code-card">
+              <span class="code-badge">${t('code.soon')}</span>
+              <h3>ORION API</h3>
+              <p>${t('code.apiDesc')}</p>
+              <span class="code-ver">${t('code.planned', { v: 'V5.2.0' })}</span>
+            </div>
+          </div>
+          <p class="code-note">${t('code.note')}</p>
+          <div class="settings-actions"><button id="codeClose" class="settings-upgrade" type="button">${t('code.close')}</button></div>
+        </div>`;
+      document.body.appendChild(panel);
+      panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
+      panel.querySelector('#codeClose').addEventListener('click', () => setOpen(false));
+    }
+    function setOpen(on) {
+      if (on) {
+        settings.close();                                   // só um painel por vez
+        if (panel) panel.remove();
+        build();                                            // reconstrói a cada abertura: já vem no idioma atual
+        open = true;
+        requestAnimationFrame(() => { if (panel && open) { panel.classList.add('open'); panel.querySelector('#codeClose').focus(); } });
+      } else if (panel && open) {
+        open = false; panel.classList.remove('open');
+        $('codeBtn').focus();
+      }
+    }
+    $('codeBtn').addEventListener('click', () => { if (!vs.isOpen()) setOpen(true); });
+    document.addEventListener('keydown', e => { if (open && e.key === 'Escape') { e.preventDefault(); setOpen(false); } });
+    return { setOpen, isOpen: () => open };
+  })();
+
   /* ── settings: painel (⚙ no canto inferior direito ou Ctrl+,) ── */
   const settings = (() => {
     let panel = null, open = false;
@@ -1366,9 +1435,7 @@ const API = (() => {
       panel.querySelector('#avatarDel').hidden = !av;
       panel.querySelector('#setPlan').textContent = quota ? quota.plan.toUpperCase() + ' · ' + quota.used + '/' + quota.limit : '—';
       panel.querySelector('#toggleSound').textContent = prefs.sound ? t('on') : t('off');
-      const tb = panel.querySelector('#themeBtn'), isL = prefs.theme === 'light', tl = t(isL ? 'theme.light' : 'theme.dark');
-      tb.innerHTML = (isL ? SUN : MOON) + '<span>' + tl + '</span>';   // só SVG fixo + texto do dicionário
-      tb.setAttribute('aria-label', t('set.theme') + ': ' + tl);
+      panel.querySelectorAll('#themeSwatches .sw').forEach(b => b.setAttribute('aria-checked', String(b.dataset.k === prefs.theme)));
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
       if (!models.length) {
@@ -1408,7 +1475,7 @@ const API = (() => {
               <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
               <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
               <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
-              <div class="settings-row"><span>${t('set.theme')}</span><button id="themeBtn" class="settings-toggle theme-btn" type="button"></button></div>
+              <div class="settings-row"><span>${t('set.theme')}</span><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa', 'nevoa', 'auto'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
               <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
               <div class="settings-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
               <div class="settings-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
@@ -1435,7 +1502,10 @@ const API = (() => {
       panel.querySelector('#avatarDel').addEventListener('click', () => { AVATAR.clear(); aMsg.hidden = true; sync(); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
-      panel.querySelector('#themeBtn').addEventListener('click', () => { prefs.theme = prefs.theme === 'light' ? 'dark' : 'light'; savePrefs(); applyTheme(); sync(); });
+      panel.querySelector('#themeSwatches').addEventListener('click', e => {
+        const b = e.target.closest('.sw'); if (!b) return;
+        prefs.theme = THEMES.includes(b.dataset.k) ? b.dataset.k : 'preto'; savePrefs(); applyTheme(true); sync();
+      });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
         prefs.ui = e.target.value === 'en' ? 'en' : 'pt'; savePrefs();
         I18N.set(prefs.ui); I18N.apply(); applyLang(); vs.sync();
@@ -1472,7 +1542,7 @@ const API = (() => {
       if (e.ctrlKey && e.key === ',') { e.preventDefault(); if (vs.isOpen()) return; setOpen(!open); }
       else if (e.key === 'Escape' && open) setOpen(false);
     });
-    return { sync, setOpen };
+    return { sync, setOpen, close: () => { if (open) setOpen(false); } };
   })();
 
   /* ── "Hey ORION": ativação por voz (reconhecimento contínuo do navegador; só com a página aberta e visível) ── */
