@@ -202,38 +202,6 @@ API keys and other secrets must remain protected on the backend and must never b
 
 ---
 
-# 🗺️ Roadmap
-
-ORION AI follows a staged development strategy. The roadmap represents the intended direction of the project, not a claim that every planned feature is already implemented.
-
-| Version | Focus |
-|---|---|
-| **V4.2.0** | Existing interaction experience and core integration baseline |
-| **V4.2.5** | Bug fixes, stability and reliability improvements |
-| **V4.5.0** | Feature update, including the planned ElevenLabs voice integration |
-| **V4.5.2** | Bug fixes and stability improvements following V4.5.0 |
-| **V5.0** | **ORION AI Platform** — Agent Engine, Tool Registry and API foundation |
-| **V5.x** | Platform infrastructure, security, documentation and integration improvements |
-| **V6.0** | Long-term memory and user-controlled context |
-| **V7.0** | Vision capabilities and multimodal input |
-| **V8.0** | Expanded voice interaction |
-| **V9.0** | Advanced Orb visuals and 3D experience |
-| **V10.0** | Integration and refinement of the broader ORION AI experience |
-
-Future releases may be adjusted as development, testing and technical requirements evolve.
-
-### Versioning philosophy
-
-ORION AI distinguishes between feature releases and maintenance releases.
-
-- **Major releases** introduce a new stage of the architecture or product direction.
-- **Feature releases** introduce capabilities or meaningful improvements.
-- **Patch releases** focus on bug fixes and stability rather than new features.
-
-For example, V4.2.5 is intended for corrections, while the new ElevenLabs voice is planned for V4.5.0.
-
----
-
 # 📍 Current Status
 
 **ORION AI is in active development.**
