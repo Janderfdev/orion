@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ORION AI</title>
 <meta name="theme-color" content="#000000">
-<script>try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.documentElement.dataset.theme=s.theme==='light'?'light':'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<script>try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}'),m=s.theme;if(m==='auto')m=(new Date().getHours()>=6&&new Date().getHours()<18)?'nevoa':'nebulosa';document.documentElement.dataset.theme=(m==='nebulosa'||m==='nevoa')?m:'preto'}catch(e){document.documentElement.dataset.theme='preto'}</script>
 <link rel="icon" href="../favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +31,7 @@ html,body{
   -webkit-font-smoothing:antialiased;
 }
 
-.void{ position:fixed; inset:0; background:var(--bg); z-index:0; }
+.void{ position:fixed; inset:0; background:var(--bg-grad, var(--bg)); z-index:0; }
 .orb-bleed{
   position:fixed; inset:0; z-index:1; pointer-events:none;
   background: radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--core-a) 10%, transparent) 0%, transparent 42%);
@@ -40,7 +40,7 @@ html,body{
 }
 
 
-/* ═══════ V5.0 — temas (escuro = padrão, 100% preto · claro) ═══════ */
+/* ═══════ V5.0 — variáveis de cor (só existe o modo escuro, 100% preto) ═══════ */
 :root{
   color-scheme:dark;
   --bg:#000; --fg:#fff; --w:255,255,255;
@@ -49,20 +49,130 @@ html,body{
   --accent:#a78bfa; --accent-soft:#c4b5fd; --accent-text:#e9e2ff; --err:#fca5a5; --danger:#f87171;
   --orb-mid:rgba(2,2,8,.88); --orb-end:rgba(0,0,0,.95); --orb-inset:rgba(0,0,0,.7);
 }
-:root[data-theme="light"]{
-  color-scheme:light;
-  --bg:#f6f4ff; --fg:#17142e; --w:23,20,46;
-  --scrim:rgba(240,237,255,.72); --card:rgba(255,255,255,.94); --card-solid:#ffffff; --panel-bg:rgba(255,255,255,.95); --ask-bg:rgba(255,255,255,.72);
-  --chip:#ece9fb; --bar:#ebe8fa; --track-a:#b9b2e0; --track-b:#dcd8f2;
-  --accent:#6d28d9; --accent-soft:#6d28d9; --accent-text:#3b1a8a; --err:#b91c1c; --danger:#dc2626;
+
+
+/* ═══════ V5.0 — temas: preto (padrão) · nebulosa · névoa · automático (névoa de dia, nebulosa à noite) ═══════
+   A Orb é a MESMA em todos: um disco escuro com luz colorida. O que muda é o céu ao redor. */
+.stars{ position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0; transition:opacity .6s ease; }
+.stars::before, .stars::after{ content:""; position:absolute; inset:-6%; }
+:root[data-theme="nebulosa"] .stars, :root[data-theme="nevoa"] .stars{ opacity:1; }
+body{ transition:opacity .3s ease; }
+html.theme-swap body{ opacity:0; transition-duration:.2s; }
+
+/* ── NEBULOSA: índigo profundo, nuvens de cor à deriva e estrelas que cintilam ── */
+:root[data-theme="nebulosa"]{
+  --bg:#07061a; --bg-grad:radial-gradient(120% 85% at 50% -10%, #231a66 0%, #120d3a 42%, #07061a 100%), radial-gradient(70% 55% at 90% 105%, rgba(91,33,182,.40), transparent 65%);
+  --scrim:rgba(5,4,22,.74); --card:rgba(18,13,54,.90); --card-solid:#130e3a; --panel-bg:rgba(15,11,48,.95); --ask-bg:rgba(18,13,58,.66);
+  --chip:#1d1752; --bar:#161142; --track-a:#41388f; --track-b:#1a1442;
 }
-/* tema claro: a Orb é a MESMA (disco escuro com luz colorida, igual ao escuro); só a sombra muda, para ela flutuar sobre o fundo claro */
-:root[data-theme="light"] .orb{ box-shadow:0 14px 44px rgba(76,29,149,.30), 0 0 100px color-mix(in srgb, var(--core-a) 28%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12); }
-:root[data-theme="light"] .orb-zone:hover .orb{ box-shadow:0 18px 54px rgba(76,29,149,.40), 0 0 120px color-mix(in srgb, var(--core-a) 36%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14); }
-:root[data-theme="light"] .header-logo{ filter:invert(1) hue-rotate(180deg) drop-shadow(0 0 10px rgba(109,40,217,.18)); }
-:root[data-theme="light"] .settings-select, :root[data-theme="light"] .settings-toggle{ color:var(--accent); }
-.theme-btn{ display:inline-flex; align-items:center; gap:7px; }
-.theme-btn svg{ width:14px; height:14px; flex:none; }
+:root[data-theme="nebulosa"] .stars{
+  background-image:
+    radial-gradient(circle 1.1px at 33.1% 16.5%, rgba(255,255,255,0.48), rgba(255,255,255,0)),
+    radial-gradient(circle 1.1px at 37.1% 7.6%, rgba(191,219,254,0.47), rgba(191,219,254,0)),
+    radial-gradient(circle 1.1px at 42.1% 25.1%, rgba(255,255,255,0.48), rgba(255,255,255,0)),
+    radial-gradient(circle 1.1px at 93.0% 62.5%, rgba(191,219,254,0.48), rgba(191,219,254,0)),
+    radial-gradient(circle 1.1px at 6.8% 23.2%, rgba(191,219,254,0.51), rgba(191,219,254,0)),
+    radial-gradient(circle 1.0px at 15.8% 13.3%, rgba(255,255,255,0.82), rgba(255,255,255,0)),
+    radial-gradient(circle 0.9px at 11.9% 56.8%, rgba(255,255,255,0.49), rgba(255,255,255,0)),
+    radial-gradient(circle 1.0px at 56.2% 61.4%, rgba(221,214,254,0.69), rgba(221,214,254,0)),
+    radial-gradient(circle 1.0px at 46.7% 90.7%, rgba(255,255,255,0.56), rgba(255,255,255,0)),
+    radial-gradient(circle 1.1px at 69.1% 25.4%, rgba(221,214,254,0.69), rgba(221,214,254,0)),
+    radial-gradient(circle 1.3px at 72.0% 29.6%, rgba(191,219,254,0.5), rgba(191,219,254,0)),
+    radial-gradient(circle 1.3px at 17.8% 34.8%, rgba(255,255,255,0.64), rgba(255,255,255,0)),
+    radial-gradient(circle 1.2px at 75.4% 57.0%, rgba(221,214,254,0.59), rgba(221,214,254,0)),
+    radial-gradient(circle 1.0px at 59.1% 57.7%, rgba(221,214,254,0.83), rgba(221,214,254,0)),
+    radial-gradient(circle 0.8px at 47.5% 65.8%, rgba(191,219,254,0.77), rgba(191,219,254,0)),
+    radial-gradient(circle 1.1px at 29.3% 39.0%, rgba(191,219,254,0.46), rgba(191,219,254,0)),
+    radial-gradient(circle 1.0px at 36.1% 60.6%, rgba(221,214,254,0.55), rgba(221,214,254,0)),
+    radial-gradient(circle 1.0px at 14.4% 25.8%, rgba(255,255,255,0.84), rgba(255,255,255,0)),
+    radial-gradient(circle 0.9px at 18.0% 40.6%, rgba(191,219,254,0.51), rgba(191,219,254,0)),
+    radial-gradient(circle 1.0px at 84.9% 28.7%, rgba(191,219,254,0.61), rgba(191,219,254,0)),
+    radial-gradient(circle 0.9px at 93.9% 16.5%, rgba(255,255,255,0.55), rgba(255,255,255,0)),
+    radial-gradient(circle 0.9px at 3.2% 81.8%, rgba(255,255,255,0.58), rgba(255,255,255,0)),
+    radial-gradient(circle 1.1px at 42.2% 37.4%, rgba(255,255,255,0.88), rgba(255,255,255,0)),
+    radial-gradient(circle 1.3px at 45.8% 85.6%, rgba(191,219,254,0.76), rgba(191,219,254,0)),
+    radial-gradient(circle 1.0px at 40.2% 39.8%, rgba(255,255,255,0.63), rgba(255,255,255,0)),
+    radial-gradient(circle 0.9px at 8.5% 22.0%, rgba(255,255,255,0.6), rgba(255,255,255,0)),
+    radial-gradient(circle 1.1px at 11.8% 56.4%, rgba(255,255,255,0.88), rgba(255,255,255,0)),
+    radial-gradient(circle 1.0px at 8.8% 22.0%, rgba(221,214,254,0.74), rgba(221,214,254,0)),
+    radial-gradient(circle 0.9px at 59.8% 47.5%, rgba(191,219,254,0.67), rgba(191,219,254,0)),
+    radial-gradient(circle 0.9px at 48.1% 31.9%, rgba(221,214,254,0.79), rgba(221,214,254,0)),
+    radial-gradient(circle 1.1px at 47.9% 68.4%, rgba(221,214,254,0.54), rgba(221,214,254,0)),
+    radial-gradient(circle 0.8px at 16.1% 54.1%, rgba(255,255,255,0.69), rgba(255,255,255,0)),
+    radial-gradient(circle 1.0px at 68.8% 27.1%, rgba(255,255,255,0.53), rgba(255,255,255,0)),
+    radial-gradient(circle 1.0px at 53.1% 76.8%, rgba(255,255,255,0.55), rgba(255,255,255,0));
+}
+:root[data-theme="nebulosa"] .stars::before{
+  background:
+    radial-gradient(48% 40% at 14% 20%, rgba(124,58,237,.26), transparent 70%),
+    radial-gradient(44% 40% at 86% 74%, rgba(59,130,246,.20), transparent 70%),
+    radial-gradient(36% 30% at 62% 8%, rgba(167,139,250,.14), transparent 70%);
+  animation:nebDrift 70s ease-in-out infinite alternate;
+}
+:root[data-theme="nebulosa"] .stars::after{
+  background-image:
+    radial-gradient(circle 1.6px at 79.4% 80.6%, rgba(191,219,254,0.77), rgba(191,219,254,0)),
+    radial-gradient(circle 1.1px at 36.1% 4.8%, rgba(221,214,254,0.78), rgba(221,214,254,0)),
+    radial-gradient(circle 1.3px at 20.6% 60.1%, rgba(221,214,254,0.94), rgba(221,214,254,0)),
+    radial-gradient(circle 1.3px at 93.7% 37.0%, rgba(255,255,255,0.77), rgba(255,255,255,0)),
+    radial-gradient(circle 1.8px at 34.4% 48.3%, rgba(255,255,255,0.88), rgba(255,255,255,0)),
+    radial-gradient(circle 1.7px at 48.0% 64.7%, rgba(255,255,255,0.73), rgba(255,255,255,0)),
+    radial-gradient(circle 1.6px at 89.3% 77.1%, rgba(255,255,255,0.84), rgba(255,255,255,0)),
+    radial-gradient(circle 1.2px at 43.7% 63.0%, rgba(191,219,254,0.98), rgba(191,219,254,0)),
+    radial-gradient(circle 1.2px at 46.5% 73.4%, rgba(255,255,255,0.75), rgba(255,255,255,0)),
+    radial-gradient(circle 1.4px at 4.6% 58.7%, rgba(191,219,254,0.9), rgba(191,219,254,0)),
+    radial-gradient(circle 1.5px at 65.1% 35.6%, rgba(255,255,255,0.74), rgba(255,255,255,0)),
+    radial-gradient(circle 1.2px at 78.7% 71.7%, rgba(255,255,255,0.92), rgba(255,255,255,0)),
+    radial-gradient(circle 1.7px at 43.6% 85.7%, rgba(221,214,254,0.76), rgba(221,214,254,0)),
+    radial-gradient(circle 1.6px at 22.4% 50.1%, rgba(191,219,254,0.8), rgba(191,219,254,0)),
+    radial-gradient(circle 1.6px at 82.1% 7.8%, rgba(191,219,254,0.97), rgba(191,219,254,0)),
+    radial-gradient(circle 1.2px at 81.4% 86.3%, rgba(255,255,255,0.75), rgba(255,255,255,0));
+  animation:twinkle 6s ease-in-out infinite alternate;
+}
+
+/* ── NÉVOA: lavanda suave (nada de branco puro), névoa luminosa à deriva, Orb como uma pérola escura ── */
+:root[data-theme="nevoa"]{
+  --bg:#cfc7ec; --bg-grad:linear-gradient(180deg, #e4def7 0%, #cfc7ec 48%, #b5abdc 100%);
+  --fg:#1b1540; --w:27,21,64;
+  --scrim:rgba(40,30,95,.34); --card:rgba(240,236,253,.92); --card-solid:#ece8fb; --panel-bg:rgba(238,234,252,.95); --ask-bg:rgba(240,236,253,.74);
+  --chip:#ddd7f3; --bar:#d8d2f0; --track-a:#8d82c8; --track-b:#c6bee6;
+  --accent:#5b21b6; --accent-soft:#5b21b6; --accent-text:#2e1065; --err:#b91c1c; --danger:#c81e1e;
+}
+:root[data-theme="nevoa"] .stars::before{
+  background:
+    radial-gradient(46% 40% at 18% 24%, rgba(255,255,255,.55), transparent 70%),
+    radial-gradient(42% 36% at 82% 72%, rgba(167,139,250,.38), transparent 70%),
+    radial-gradient(36% 30% at 60% 12%, rgba(147,197,253,.34), transparent 70%);
+  animation:nebDrift 60s ease-in-out infinite alternate;
+}
+:root[data-theme="nevoa"] .stars::after{ display:none; }
+:root[data-theme="nevoa"] .header-logo{ filter:brightness(.3) saturate(2) drop-shadow(0 0 10px rgba(91,33,182,.18)); }
+:root[data-theme="nevoa"] .orb{ box-shadow:0 14px 44px rgba(76,29,149,.32), 0 0 100px color-mix(in srgb, var(--core-a) 28%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12); }
+:root[data-theme="nevoa"] .orb-zone:hover .orb{ box-shadow:0 18px 54px rgba(76,29,149,.42), 0 0 120px color-mix(in srgb, var(--core-a) 36%, transparent), inset 0 0 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14); }
+/* textos secundários mais firmes no claro (os de 30–50% de opacidade ficariam fracos sobre lavanda) */
+:root[data-theme="nevoa"] .hint-text{ color:rgba(var(--w),.75); }
+:root[data-theme="nevoa"] .version-tag, :root[data-theme="nevoa"] .settings-hint, :root[data-theme="nevoa"] .code-note, :root[data-theme="nevoa"] .code-ver, :root[data-theme="nevoa"] .vs-note{ color:rgba(var(--w),.56); }
+:root[data-theme="nevoa"] .status-text{ color:rgba(var(--w),.82); }
+:root[data-theme="nevoa"] .settings-title{ color:rgba(var(--w),.76); }
+:root[data-theme="nevoa"] .settings-email{ color:rgba(var(--w),.74); }
+:root[data-theme="nevoa"] .settings-note, :root[data-theme="nevoa"] .code-card p{ color:rgba(var(--w),.70); }
+:root[data-theme="nevoa"] .vs-ends, :root[data-theme="nevoa"] .vs-slider-head output, :root[data-theme="nevoa"] .vs-msg{ color:rgba(var(--w),.58); }
+:root[data-theme="nevoa"] .ask-input::placeholder{ color:rgba(var(--w),.52); }
+
+@keyframes nebDrift{ from{ transform:translate3d(-2%,-1%,0) scale(1); } to{ transform:translate3d(2%,1.5%,0) scale(1.07); } }
+@keyframes twinkle{ from{ opacity:.25; } to{ opacity:1; } }
+@media (prefers-reduced-motion:reduce){ .stars::before, .stars::after{ animation:none !important; } body{ transition:none; } }
+
+/* seletor de tema (Configurações): bolinhas com a cor de cada tema */
+.theme-swatches{ display:flex; gap:9px; }
+.sw{ width:24px; height:24px; padding:0; border-radius:50%; border:1px solid rgba(var(--w),.32); cursor:pointer; transition:transform .2s ease, box-shadow .25s ease; }
+.sw:hover{ transform:translateY(-1px); }
+.sw[aria-checked="true"]{ box-shadow:0 0 0 2px var(--card-solid), 0 0 0 3.5px var(--accent); }
+.sw:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.sw-preto{ background:#000; }
+.sw-nebulosa{ background:radial-gradient(circle at 30% 25%, #4a3cc0, #0d0a2e 75%); }
+.sw-nevoa{ background:radial-gradient(circle at 30% 25%, #efeafc, #b5abdc 80%); }
+.sw-auto{ background:linear-gradient(135deg, #cfc7ec 50%, #1a1450 50%); }
 
 /* ═══════ BOOT ═══════ */
 #boot{
@@ -199,13 +309,13 @@ html,body{
 }
 
 /* ═══════ SETTINGS (Ctrl + ,) ═══════ */
-#settingsPanel{
+#settingsPanel, #codePanel{
   position:fixed; inset:0; z-index:150;
   display:flex; align-items:center; justify-content:center;
   background:var(--scrim); backdrop-filter:blur(6px);
   opacity:0; pointer-events:none; transition:opacity 0.35s ease;
 }
-#settingsPanel.open{ opacity:1; pointer-events:auto; }
+#settingsPanel.open, #codePanel.open{ opacity:1; pointer-events:auto; }
 .settings-card{
   width:var(--panel-w); height:var(--panel-h); max-height:92dvh; overflow-y:auto; padding:22px 26px 16px;
   display:flex; flex-direction:column;
@@ -423,7 +533,8 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }
 
 body.chat-open .hint-text{ opacity:0; }
 
-.chat-btn{ right:60px; }
+.chat-btn{ right:116px; }   /* três botões: chat · </> · config, com 10 px entre eles */
+.code-btn{ right:66px; }
 .chat-btn.on{ color:var(--fg); border-color:rgba(167,139,250,.45); background:rgba(167,139,250,.14); }
 .settings-select{
   max-width:160px; font:500 11px var(--font-mono); color:var(--accent); background:rgba(167,139,250,.10);
@@ -440,7 +551,7 @@ body.chat-open .hint-text{ opacity:0; }
 
 /* ═══════ V4.5.0 — tela Voice & Speech ═══════ */
 .vscreen{
-  position:fixed; inset:0; z-index:160; background:var(--bg); color:var(--fg);
+  position:fixed; inset:0; z-index:160; background:var(--bg-grad, var(--bg)); color:var(--fg);
   opacity:0; visibility:hidden; pointer-events:none;
   transition:opacity .35s ease, visibility 0s linear .35s;
 }
@@ -535,6 +646,18 @@ body.chat-open .hint-text{ opacity:0; }
 .vs-desc{ padding:0 0 14px; font-size:11px; line-height:1.6; color:rgba(var(--w),.38); border-bottom:1px solid rgba(var(--w),.06); }
 .vs-desc.warn{ color:var(--err); border-bottom:0; padding-top:10px; }
 
+/* V5.0 — aviso do botão </> (ORION CODE e ORION API): usa o mesmo card das configurações (mesmo tamanho) */
+.code-grid{ flex:1; min-height:0; display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:4px; }
+.code-card{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; min-height:0; padding:18px; border-radius:20px;
+  border:1px solid rgba(167,139,250,.22); background:rgba(var(--w),.03); }
+.code-card h3{ font:600 15px var(--font); letter-spacing:.04em; color:var(--fg); }
+.code-card p{ font-size:12.5px; line-height:1.65; color:rgba(var(--w),.62); }
+.code-badge{ font:600 10px var(--font-mono); letter-spacing:.16em; text-transform:uppercase; padding:3px 10px; border-radius:12px;
+  color:#fcd34d; border:1px solid rgba(252,211,77,.4); background:rgba(245,158,11,.08); }
+.code-ver{ margin-top:auto; font:500 11px var(--font-mono); letter-spacing:.1em; color:rgba(var(--w),.5); }
+.code-note{ margin-top:12px; font-size:11px; text-align:center; color:rgba(var(--w),.42); }
+@media (max-width:600px){ .code-grid{ grid-template-columns:1fr; } }
+
 /* V5.0 — foto de perfil nas configurações */
 .avatar-block{ display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:0 0 16px; margin-bottom:4px; border-bottom:1px solid rgba(var(--w),0.06); }
 .avatar-btn{
@@ -573,6 +696,7 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 <div class="void"></div>
 <div class="orb-bleed" id="bleed"></div>
+<div class="stars" aria-hidden="true"></div>
 
 <!-- BOOT -->
 <div id="boot">
@@ -696,6 +820,9 @@ body.calm .vs-dot, body.calm .vscreen{ transition:none; }
 
 <button class="gear chat-btn" id="chatBtn" aria-label="Perguntar ao ORION" aria-pressed="false" title="Perguntar ao ORION ( / )" data-i18n-aria="chat.aria">
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg>
+</button>
+<button class="gear code-btn" id="codeBtn" aria-label="ORION CODE e ORION API" title="ORION CODE e ORION API" data-i18n-aria="code.aria">
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>
 </button>
 <button class="gear" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria">
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
