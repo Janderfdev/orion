@@ -6,7 +6,7 @@
 
    Como cada página usa este arquivo:
      index.html e pages/orion.html:  <script src="standby.js" data-mount></script>  (mostram a tela de standby por cima de tudo)
-     login.html:                      <script src="standby.js"></script>             (tem a própria tela de standby e só pergunta a fase)
+     login.html:                      <script src="standby.js"></script>             (mostram a tela de standby por cima de tudo)
 
    Teste local (só localhost / file://):  ?simular=2026-10-25T10:00:00-03:00
    Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=1  (e ?liberar=0 para voltar ao normal). */
