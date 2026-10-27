@@ -10,6 +10,8 @@
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), linha de plano/uso nas configurações,
            tema claro/escuro, botão "+" (imagem ou arquivo de texto), campo "agent" do /ask (Agent Engine) registrado no log.
+   V5.0.1: identidade preto + azul escuro (sem roxo); segundo arco orbital na Orb; 4 estados visuais ligados aos eventos reais:
+           idle (preto/azul escuro) · listening (azul escuro) · responding (verde: gerando OU falando) · not understood (vermelho).
    ═══════════════════════════════════════════════════════════════ */
 
 /* Durante o standby (standby.js) o app NÃO inicia: sem microfone, sem "Hey ORION", sem chamadas ao servidor. Quando a janela acaba,
@@ -27,7 +29,7 @@ const I18N = (() => {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
       'online': 'ORION ONLINE', 'version': 'VERSION V5.0',
-      'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'Didn’t catch that',
+      'status.listening': 'Listening…', 'status.processing': 'Responding…', 'status.responding': 'Responding…', 'status.unheard': 'I didn’t understand. Please try again.',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
       'ask.ph': 'Ask or give ORION a command', 'ask.aria': 'Question for ORION',
@@ -36,7 +38,7 @@ const I18N = (() => {
       'err.model_unavailable': 'I couldn’t reach the model.', 'err.timeout': 'The response took too long.',
       'err.api_error': 'Couldn’t reach the service.', 'err.invalid_response': 'I received an invalid response.',
       'err.tool_unavailable': 'That tool isn’t available yet.', 'err.offline': 'No internet connection.',
-      'err.tts_unavailable': 'I can’t speak the answer right now.', 'err.unexpected_input': 'I didn’t understand that.',
+      'err.tts_unavailable': 'I can’t speak the answer right now.', 'err.unexpected_input': 'I didn’t understand. Please try again.',
       'err.forbidden': 'This account doesn’t have access to ORION.', 'err.rate_limited': 'Too many requests. Please wait a moment.',
       'err.quota_exceeded': 'You’ve reached your question limit. Upgrade to keep using the AI soon.',
       'err.core_unavailable': 'I couldn’t reach the ORION core.', 'err.voice_disabled': 'Voice is turned off in settings.',
@@ -86,7 +88,7 @@ const I18N = (() => {
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
       'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0',
-      'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi',
+      'status.listening': 'Ouvindo…', 'status.processing': 'Respondendo…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi. Tente de novo.',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
       'ask.ph': 'Pergunte ou dê um comando ao ORION', 'ask.aria': 'Pergunta ao ORION',
@@ -95,7 +97,7 @@ const I18N = (() => {
       'err.model_unavailable': 'Não consegui acessar o modelo.', 'err.timeout': 'A resposta demorou demais.',
       'err.api_error': 'Falha ao comunicar com o serviço.', 'err.invalid_response': 'Recebi uma resposta inválida.',
       'err.tool_unavailable': 'Essa ferramenta ainda não está disponível.', 'err.offline': 'Sem conexão com a internet.',
-      'err.tts_unavailable': 'Não consigo falar a resposta agora.', 'err.unexpected_input': 'Não entendi o que foi dito.',
+      'err.tts_unavailable': 'Não consigo falar a resposta agora.', 'err.unexpected_input': 'Não entendi. Tente de novo.',
       'err.forbidden': 'Esta conta não tem acesso ao ORION.', 'err.rate_limited': 'Muitas solicitações. Aguarde um instante.',
       'err.quota_exceeded': 'Você atingiu o limite de perguntas. Faça upgrade para continuar usando a IA em breve.',
       'err.core_unavailable': 'Não consegui falar com o núcleo do ORION.', 'err.voice_disabled': 'Voz desativada nas configurações.',
@@ -160,16 +162,23 @@ const I18N = (() => {
 })();
 const t = I18N.t;
 
-/* ═══ visual-state.js — máquina de estados visuais da Orb ═══
-   STANDBY (roxo) → LISTENING (azul) → PROCESSING (roxo) → SPEAKING (verde + pulsação do áudio) → STANDBY ; (qualquer) → ERROR (vermelho) */
+/* ═══ visual-state.js — máquina de estados visuais da Orb (V5.0.1) ═══
+   Os 4 estados visíveis:
+     IDLE        (standby)  → preto / azul escuro
+     LISTENING              → azul escuro (#102B5C) + realce azul discreto
+     RESPONDING             → verde (#22C55E): "processing" (gerando a resposta) E "speaking" (falando) compartilham a mesma cor;
+                              "speaking" ainda pulsa com o áudio real
+     NOT UNDERSTOOD (error) → vermelho (#EF4444)
+   "processing" continua existindo internamente (a pergunta está em andamento no servidor), mas a aparência é a de "responding". */
 const VISUAL_STATE = (() => {
-  const PURPLE = { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' };
+  const IDLE  = { a: '#0B1630', b: '#05080F', c: '#1B3A6B' };
+  const GREEN = { a: '#15803D', b: '#052E16', c: '#22C55E' };
   const CFG = {
-    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: PURPLE },                                         // roxo
-    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#1e40af', b: '#172554', c: '#3b82f6' } },   // azul
-    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: PURPLE },                                         // roxo, mais atividade
-    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#22c55e' } },   // verde (pulsa com o áudio)
-    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#991b1b', b: '#450a0a', c: '#ef4444' } },   // vermelho
+    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: IDLE },
+    listening:  { amp: 1.14, rot: 1.40, bright: 0.95, cls: 'st-listening', color: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' } },
+    processing: { amp: 1.10, rot: 1.60, bright: 0.90, cls: 'st-thinking',  color: GREEN },
+    speaking:   { amp: 1.20, rot: 1.60, bright: 1.00, cls: 'st-speaking',  color: GREEN },   // pulsa com o áudio
+    error:      { amp: 0.90, rot: 0.60, bright: 0.85, cls: 'st-error',     color: { a: '#B91C1C', b: '#450A0A', c: '#EF4444' } },
   };
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
@@ -255,19 +264,21 @@ const AUDIO = (() => {
   return { el, ensure, level, setSim: v => { sim = !!v; } };
 })();
 
-/* ═══ orb.js — motor visual: blobs de luz na Orb + anéis ondulados e partículas ao redor ═══
-   Cor interpolada quadro a quadro; brilho e anéis reagem ao nível real do áudio durante a fala. */
+/* ═══ orb.js — motor visual: blobs de luz na Orb + dois arcos orbitais + anéis ondulados e partículas ═══
+   Cor interpolada quadro a quadro; brilho e anéis reagem ao nível real do áudio durante a fala.
+   Arco principal (#halo): o original. Segundo arco (#halo2): mais fino, raio menor, inclinado e girando devagar no sentido oposto. */
 const ORB = (() => {
   const $ = id => document.getElementById(id);
   const canvas = $('orbCanvas'), ctx = canvas.getContext('2d');
-  const orbEl = $('orb'), haloEl = $('halo');
+  const orbEl = $('orb'), haloEl = $('halo'), halo2El = $('halo2');
   const root = document.documentElement;
   let vs = null;   // elementos da Orb da tela Voice & Speech (réplica da Orb principal)
   const orbZone = $('orbZone');
 
+  const TILT2 = -24, SQUASH2 = 0.8;   // inclinação (graus) e achatamento do segundo arco
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
   let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
-  let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloV = 360 / 28, fastHalo = false;
+  let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloAng2 = 40, haloV = 360 / 28, fastHalo = false;
 
   const BLOBS = [
     { fx: 0.31, fy: 0.43, px: 0.0, py: 1.3, ox: 0.34, oy: 0.30, r: 0.62, col: 'a', al: 0.55 },
@@ -288,11 +299,13 @@ const ORB = (() => {
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
   const lighten = (o, k) => ({ r: o.r + (255 - o.r) * k, g: o.g + (255 - o.g) * k, b: o.b + (255 - o.b) * k });
 
-  const VOICE_PALETTE = {   // cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto)
-    1: { a: '#5b21b6', b: '#2e1065', c: '#8b5cf6' },   // roxo
-    2: { a: '#1e40af', b: '#172554', c: '#3b82f6' },   // azul
-    3: { a: '#166534', b: '#052e16', c: '#22c55e' },   // verde
-    4: { a: '#991b1b', b: '#450a0a', c: '#ef4444' },   // vermelho
+  /* cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto).
+     Só tons de azul e cinza: verde e vermelho ficam reservados aos estados "respondendo" e "não entendi". */
+  const VOICE_PALETTE = {
+    1: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' },
+    2: { a: '#1D4380', b: '#0B1630', c: '#5E8FE0' },
+    3: { a: '#2A3A55', b: '#0B1630', c: '#7C8FB0' },
+    4: { a: '#3A3F4A', b: '#14171D', c: '#929BAA' },
   };
   let vsColor = triple(VOICE_PALETTE[1]), vsTarget = triple(VOICE_PALETTE[1]);
   let rings = [], vsRings = [], lastSpawn = 0, prevTarget = 0, clock = 0;
@@ -314,17 +327,19 @@ const ORB = (() => {
     return els.map(el => ({ el, age: -1, str: 1 }));
   }
   const STATE_CLASSES = ['st-listening', 'st-thinking', 'st-speaking', 'st-error'];
-  // aplica o estado atual às duas Orbs (principal e a da tela Voice & Speech): classe, halo rápido e anéis de energia
+  // aplica o estado atual às duas Orbs (principal e a da tela Voice & Speech): classe, arcos rápidos e anéis de energia
   function decorate() {
     const cur = VISUAL_STATE.get(), cls = VISUAL_STATE.config(cur).cls;
     fastHalo = ['listening', 'speaking', 'processing'].includes(cur);
-    breathPeriod = ({ listening: 3.4, processing: 2.2, speaking: 2.6 })[cur] || 6;   // standby: respira devagar, como sempre
-    [[orbEl, haloEl, orbZone], vs && [vs.orb, vs.halo, vs.zone]].forEach(set => {
+    breathPeriod = ({ listening: 3.4, processing: 2.4, speaking: 2.6 })[cur] || 6;   // idle: respira devagar, como sempre
+    orbZone.dataset.state = cur; orbEl.dataset.state = cur;
+    [[orbEl, haloEl, orbZone, halo2El], vs && [vs.orb, vs.halo, vs.zone, vs.halo2]].forEach(set => {
       if (!set) return;
-      const [o, h, z] = set;
+      const [o, h, z, h2] = set;
       o.classList.remove(...STATE_CLASSES);
       if (cls) o.classList.add(cls);
       h.classList.toggle('fast', fastHalo);
+      if (h2) h2.classList.toggle('fast', fastHalo);
       z.classList.toggle('speaking', cur === 'speaking');   // anéis de energia só enquanto o ORION fala
     });
   }
@@ -343,7 +358,7 @@ const ORB = (() => {
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
     const bg = c.createRadialGradient(R * 0.8, R * 0.6, 0, R, R, R);
     bg.addColorStop(0, rgba(col.b, 0.55 * b));
-    bg.addColorStop(1, 'rgba(0,0,3,0.96)');
+    bg.addColorStop(1, 'rgba(5,8,15,0.96)');   // base da Orb: #05080F
     c.fillStyle = bg; c.fillRect(0, 0, S, S);
 
     c.globalCompositeOperation = 'lighter';
@@ -365,15 +380,15 @@ const ORB = (() => {
     });
     // brilho central: apagado em repouso, acende com o volume da fala
     const core = c.createRadialGradient(R, R, 0, R, R, R * 0.62);
-    const cl = lighten(col.c, 0.55);
-    core.addColorStop(0, rgba(cl, 0.85 * lvl * b));   // só brilha com o volume da fala
+    const cl = lighten(col.c, 0.45);
+    core.addColorStop(0, rgba(cl, 0.70 * lvl * b));   // só brilha com o volume da fala
     core.addColorStop(1, rgba(cl, 0));
     c.fillStyle = core; c.fillRect(0, 0, S, S);
 
     c.globalCompositeOperation = 'source-over';
     const vig = c.createRadialGradient(R, R, R * 0.30, R, R, R);
-    vig.addColorStop(0, 'rgba(0,0,4,0)');
-    vig.addColorStop(1, 'rgba(0,0,4,0.80)');
+    vig.addColorStop(0, 'rgba(5,8,15,0)');
+    vig.addColorStop(1, 'rgba(5,8,15,0.82)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
     c.restore();
@@ -388,7 +403,7 @@ const ORB = (() => {
     amp += (targetAmp - amp) * k(2.2);
     rotSpeed += (targetRot - rotSpeed) * k(2.2);
     bright += (targetBright - bright) * k(2.6);
-    const kc = k(2.8);
+    const kc = k(5.5);   // transição de cor ≈ 300–400 ms
     colorNow.a = lerpRgb(colorNow.a, colorTarget.a, kc);
     colorNow.b = lerpRgb(colorNow.b, colorTarget.b, kc);
     colorNow.c = lerpRgb(colorNow.c, colorTarget.c, kc);
@@ -428,14 +443,19 @@ const ORB = (() => {
       r.el.style.opacity = (0.55 * r.str * Math.pow(1 - q, 1.6)).toFixed(3);
       r.el.style.transform = 'translate(-50%,-50%) translateY(' + orbY.toFixed(1) + 'px) scale(' + (orbS + 0.6 * e).toFixed(3) + ')';
     }));
-    const haloT = calm ? 0 : (fastHalo ? 360 / 14 : (hovered ? 360 / 20 : 360 / 28));   // halo: 28 s em repouso, 14 s em atividade
+    const haloT = calm ? 0 : (fastHalo ? 360 / 14 : (hovered ? 360 / 20 : 360 / 28));   // arcos: 28 s em repouso, 14 s em atividade
     haloV += (haloT - haloV) * k(2);
     haloAng = (haloAng + dt * haloV) % 360;
+    haloAng2 = (haloAng2 - dt * haloV * 0.55) % 360;   // o segundo arco gira mais devagar e no sentido oposto
     const rot = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + haloAng.toFixed(2) + 'deg)';   // o arco sobe e desce junto com a Orb
+    // segundo arco: gira no próprio plano, depois é achatado e inclinado (a ordem da transformação importa)
+    const rot2 = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + TILT2 + 'deg) scaleY(' + SQUASH2 + ') rotate(' + haloAng2.toFixed(2) + 'deg)';
     haloEl.style.transform = rot;
+    halo2El.style.transform = rot2;
 
     if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
       vs.halo.style.transform = rot;
+      if (vs.halo2) vs.halo2.style.transform = rot2;
       vsColor.a = lerpRgb(vsColor.a, vsTarget.a, kc); vsColor.b = lerpRgb(vsColor.b, vsTarget.b, kc); vsColor.c = lerpRgb(vsColor.c, vsTarget.c, kc);
       vs.zone.style.setProperty('--vs-a', rgbToHex(vsColor.a));
       vs.zone.style.setProperty('--vs-b', rgbToHex(vsColor.b));
@@ -453,7 +473,7 @@ const ORB = (() => {
     init, setState,
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
-    setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
+    setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, halo2: els.halo2, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
     setVoiceColor: (slot, snap) => { vsTarget = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); if (snap) vsColor = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); },
     pressEffect: () => { press = 1; },
   };
@@ -525,8 +545,14 @@ const VOICE = (() => {
     rec = new SR();
     rec.lang = want; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
     rec.onstart = () => { isRec = true; onSt('listening'); };
-    // 'aborted' acontece quando o usuário para a escuta: não é erro
-    rec.onerror = e => { isRec = false; onSt(e.error === 'no-speech' || e.error === 'aborted' ? 'standby' : 'error', e.error); };
+    // 'aborted' acontece quando o usuário para a escuta: não é erro.
+    // 'no-speech' = o reconhecedor não captou fala: vira o estado "não entendi" (vermelho + convite para tentar de novo).
+    rec.onerror = e => {
+      isRec = false;
+      if (e.error === 'aborted') onSt('standby', e.error);
+      else if (e.error === 'no-speech') onSt('unheard', e.error);
+      else onSt('error', e.error);
+    };
     rec.onend = () => { if (isRec) { isRec = false; onSt('standby'); } };
     rec.onresult = e => {
       let fin = ''; for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript;
@@ -770,9 +796,10 @@ const API = (() => {
   };
 })();
 
-/* ═══ interação — V5.0 ═══
+/* ═══ interação — V5.0.1 ═══
    Fluxo: botão de chat (ou voz) → a própria Orb cresce e vira o painel → API → ORION Core → resposta DENTRO do painel.
-   Estados da Orb: standby (roxo) · listening (azul) · processing (roxo) · speaking (verde + áudio) · error (vermelho). */
+   Estados da Orb (todos disparados por eventos reais: reconhecimento de fala, resposta da API, início/fim do áudio, erros):
+   idle (preto/azul escuro) · listening (azul escuro) · processing/speaking (verde; speaking pulsa com o áudio) · error (vermelho). */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -805,7 +832,7 @@ const API = (() => {
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init failed:', err); }
 
   const bootEl = $('boot'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
-  const statusText = $('statusText'), hintEl = $('hintText');
+  const statusText = $('statusText'), statusBox = $('statusBox'), hintEl = $('hintText');
   const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
@@ -821,14 +848,14 @@ const API = (() => {
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
 
-  /* ── movimento reduzido: sistema operacional OU opção "Reduce motion" ── */
+  /* ── movimento reduzido: sistema operacional (prefers-reduced-motion) ── */
   const mq = matchMedia('(prefers-reduced-motion: reduce)');
-  const calm = () => mq.matches;   // só o sistema operacional (prefers-reduced-motion)
+  const calm = () => mq.matches;
   function applyCalm() { document.body.classList.toggle('calm', calm()); ORB.setCalm(calm()); }
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
 
-  /* ── temas (V5.0): PRETO (padrão) e NEBULOSA (o mesmo preto, com estrelas e nuvens de cor ao fundo) ──
+  /* ── temas (V5.0): PRETO (padrão) e NEBULOSA (o mesmo preto, com estrelas e nuvens azul-escuras ao fundo) ──
      A Orb e as cores da interface são idênticas nos dois. A escolha fica salva neste navegador. */
   const THEMES = ['preto', 'nebulosa'];
   function applyTheme(animate) {
@@ -865,6 +892,8 @@ const API = (() => {
     curState = name;
     stateGen++;
     try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState failed:', err); }
+    statusBox.dataset.state = name;                          // reforço de cor do texto de estado
+    micBtn.classList.toggle('live', name === 'listening');   // o microfone do campo de pergunta acende só quando está realmente ouvindo
     const STATUS = { listening: t('status.listening'), processing: t('status.processing') };
     const m = msg !== undefined ? msg : (STATUS[name] || '');
     clearTimeout(flashTimer);
@@ -971,7 +1000,7 @@ const API = (() => {
     panelOpen = false;
     stopSpeech(false);
     orbEl.classList.remove('panel'); orbZone.classList.remove('panel-open'); document.body.classList.remove('panel-on');
-    if (curState === 'speaking' || curState === 'error') setState('standby');
+    if (curState === 'speaking' || curState === 'processing' || curState === 'error') setState('standby');
   }
   // o painel não fecha sozinho enquanto o ORION ainda está falando
   const scheduleHold = ms => { clearTimeout(holdTimer); holdTimer = setTimeout(() => (speaking ? scheduleHold(1500) : closePanel()), ms); };
@@ -1074,7 +1103,7 @@ const API = (() => {
     }
   }
 
-  /* ── ciclo principal: pergunta → Processing (roxo) → resposta ──
+  /* ── ciclo principal: pergunta → Responding (verde, enquanto o servidor gera) → resposta ──
      Escrita no chat → a Orb vira o painel.  Por voz → a Orb responde sozinha (verde pulsando com o áudio). */
   async function submit(text, source) {
     text = (text || '').trim();
@@ -1111,30 +1140,34 @@ const API = (() => {
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  // Voz: a Orb continua roxa (processando) até o áudio realmente começar; aí fica verde e pulsa com o volume
+  // Voz: a Orb fica verde (responding) desde que a pergunta é enviada; quando o áudio começa de verdade, passa a pulsar com o volume
   function respondByVoice(reply, understood, sources, query) {
     sfx(understood ? 'answer' : 'error');
     if (!canSpeak()) { setState('standby'); respondInPanel(reply, understood, sources || [], query || ''); return; }
     const short = reply.length <= 46;
     const toRest = () => { if (curState === 'speaking' || curState === 'processing') setState('standby'); };
     if (!understood) {
-      const gen = setState('error', short ? reply : t('status.unheard'));
+      const gen = setState('error', t('status.unheard'));
       startSpeech(reply, () => { if (stateGen === gen) setState('standby'); });
       return;
     }
     startSpeech(reply, toRest, { onStart: () => setState('speaking', short ? reply : t('status.responding')) });
   }
 
-  // Chat (pergunta escrita): a Orb vira o painel; a resposta também é falada
+  // Chat (pergunta escrita): a Orb vira o painel; a resposta também é falada.
+  // Se vai falar, a Orb continua verde (responding) até o áudio começar — sem piscar de volta ao idle no meio do caminho.
   function respondInPanel(reply, understood, sources, query) {
-    setState(understood ? 'standby' : 'error', '');
+    const willSpeak = understood && canSpeak();
+    if (!understood) setState('error', t('status.unheard'));
+    else if (willSpeak) setState('processing');
+    else setState('standby', '');
     openPanel();
     showAnswer(reply, { sources, query, error: !understood });
     sfx(understood ? 'answer' : 'error');
     scheduleHold(Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400)));
-    if (understood && canSpeak()) {
-      startSpeech(reply, () => { if (curState === 'speaking') setState('standby'); if (panelOpen && hasAnswer) scheduleHold(5000); },
-        { onStart: () => setState('speaking', '') });
+    if (willSpeak) {
+      startSpeech(reply, () => { if (curState === 'speaking' || curState === 'processing') setState('standby'); if (panelOpen && hasAnswer) scheduleHold(5000); },
+        { onStart: () => setState('speaking', t('status.responding')) });
     }
   }
 
@@ -1170,6 +1203,7 @@ const API = (() => {
       onResult: text => submit(text, 'voice'),
       onStateChange: (s, sttCode) => {
         if (s === 'listening') { setState('listening'); sfx('listen'); }
+        else if (s === 'unheard') fail({ code: 'unexpected_input', message: sttCode }, 'voice');   // nenhuma fala captada → "não entendi"
         else if (s === 'error') fail({ code: ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(sttCode) ? 'mic_unavailable' : 'stt_unavailable', message: sttCode }, 'voice');
         else if (curState === 'listening') setState('standby');
       },
@@ -1256,7 +1290,7 @@ const API = (() => {
       });
       pace.value = prefs.pace; expr.value = prefs.expr; paintSliders();
       expr.disabled = !eleven;
-      // botão do Hey ORION: verde (cor "respondendo" da Orb) quando ativo, vermelho (cor "não entendi") quando desativado
+      // botão do Hey ORION: azul ativo quando ligado, cinza quando desligado (verde e vermelho são reservados aos estados da Orb)
       const wakeOn = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault;
       wakeBtn.setAttribute('aria-checked', String(wakeOn));
       wakeBtn.disabled = !VOICE.isAvailable;
@@ -1312,7 +1346,7 @@ const API = (() => {
 
     function show() {
       open = true; el.classList.add('open'); el.setAttribute('aria-hidden', 'false');
-      ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), disc: $('vsDisc') });
+      ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), halo2: $('vsHalo2'), disc: $('vsDisc') });
       ORB.setVoiceColor(prefs.slot, true);
       transient = false; sync();
       if (ttsOn === null && !loading) loadModels();
