@@ -4,12 +4,13 @@
 
 ### **A digital presence inspired by the Orion Constellation.**
 
-**“The future begins with curiosity..”**
+**“The future begins with curiosity.”**
 
 [![Python](https://img.shields.io/badge/Python-3.15-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-4.5.5-4B287D?style=for-the-badge)](#-version-history)
-[![Status](https://img.shields.io/badge/Status-In%20Development-808080?style=for-the-badge)](#-current-status)
-[![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](#-license)
+[![Version](https://img.shields.io/badge/Version-5.0-4B287D?style=for-the-badge)](#-version-history)
+[![Status](https://img.shields.io/badge/Status-Beta-FF9800?style=for-the-badge)](#-current-status)
+[![Launch](https://img.shields.io/badge/Public%20Launch-May%202027-1B5E20?style=for-the-badge)](#-public-launch--2027)
+[![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -21,7 +22,7 @@
 
 ORION is being built as a **digital presence** — an AI system with its own identity, visual language, context, tools, voice and interaction model.
 
-Inspired by the **Orion Constellation**, the project brings together Artificial Intelligence, software engineering, model integration, intelligent orchestration and interface design into one long-term engineering project.
+Inspired by the **Orion Constellation**, the project brings together artificial intelligence, software engineering, model integration, intelligent orchestration and interface design into one long-term engineering project.
 
 The goal is not simply to connect an interface to an AI model.
 
@@ -35,6 +36,8 @@ ORION AI is evolving toward two complementary goals:
 
 - A personal AI experience with its own identity and interface.
 - An extensible AI platform that allows developers to integrate intelligent capabilities into their own applications and systems.
+
+ORION AI is currently in **Beta**, with development focused on evolving its architecture, validating core functionality and preparing the foundation for a broader public release in 2027.
 
 ---
 
@@ -88,6 +91,42 @@ These capabilities will be developed progressively, with attention to architectu
 
 **Each version should have a purpose. Each feature should solve a problem.**
 
+The vision is ambitious, but the priority is to build a system that works reliably rather than one that simply promises more features.
+
+---
+
+# 🚀 Public Launch — 2027
+
+**ORION AI is targeting a public launch in May 2027.**
+
+The objective is to move from a developing Beta project toward a more stable, documented and accessible AI experience.
+
+The public release is intended to introduce ORION AI to a broader community, allowing more people to explore the project, test its capabilities and provide feedback that can guide future development.
+
+The planned release may include a combination of:
+
+- A refined conversational interface.
+- A more consistent ORION Core architecture.
+- AI model provider integration.
+- An initial agent and tool execution system.
+- ORION API capabilities, where ready.
+- Memory and personalization features, where ready.
+- Vision capabilities for supported documents and images, where ready.
+- Voice interaction and improved system feedback.
+- Security, testing and documentation improvements.
+
+The final feature set will depend on implementation progress, testing results and security readiness. Not every planned capability is guaranteed to be included in the first public release.
+
+## Release philosophy
+
+The target date is a development goal, not a reason to compromise quality.
+
+Before public release, the project aims to validate core functionality, address known critical issues, protect credentials and user data, document limitations, and establish a practical process for handling errors and updates.
+
+If a feature is not sufficiently reliable or secure, it may be delayed or excluded from the initial release.
+
+**The objective is not merely to launch ORION AI. It is to launch a version people can use with confidence.**
+
 ---
 
 # 🧠 ORION Core Architecture
@@ -122,17 +161,17 @@ The model provides intelligence. ORION Core coordinates the surrounding system, 
                        │    Model Provider    │
                        └──────────┬───────────┘
                                   │
-                  ┌───────────────┼───────────────┐
-                  │               │               │
-                  ▼               ▼               ▼
-             ┌────────┐      ┌────────┐      ┌────────┐
-             │ OpenAI │      │ Gemini │      │ Claude │
-             └────────┘      └────────┘      └────────┘
+                 ┌────────────────┼────────────────┐
+                 │                │                │
+                 ▼                ▼                ▼
+            ┌────────┐       ┌────────┐       ┌────────┐
+            │ OpenAI │       │ Gemini │       │ Claude │
+            └────────┘       └────────┘       └────────┘
                                   │
                                   ▼
                        ┌──────────────────────┐
-                       │ Voice / Actions      │
-                       │ STT + TTS            │
+                       │  Voice / Interaction │
+                       │     STT + TTS        │
                        └──────────┬───────────┘
                                   │
                                   ▼
@@ -147,9 +186,9 @@ The model provides intelligence. ORION Core coordinates the surrounding system, 
                        └──────────────────────┘
 ```
 
-*This diagram represents the architectural vision; individual components and integrations may be at different stages of development.*
+*This diagram represents the intended architecture. Providers and individual components may be at different stages of implementation.*
 
-### Core principles
+## Core principles
 
 - **Model independence:** keep provider-specific implementations separate from the core architecture.
 - **Orchestration:** coordinate requests, context and available capabilities.
@@ -190,9 +229,10 @@ ORION AI is being developed with a focus on maintainable software architecture a
 | Model Providers | Integration with supported AI models |
 | Frontend | User interface and interaction |
 | ORION Core | Coordination of context, providers and tools |
-| APIs | Future integration with external applications |
+| APIs | Integration with external applications |
 | Voice | Speech recognition and speech synthesis |
 | Security | Authentication, permissions and credential protection |
+| Testing | Validation of behavior, reliability and regressions |
 
 The specific implementation and availability of each capability may evolve between releases.
 
@@ -204,13 +244,43 @@ API keys and other secrets must remain protected on the backend and must never b
 
 # 📍 Current Status
 
-**ORION AI is in active development.**
+**Current version: V5.0 — Beta**
 
-The project is preparing the V4.2.5 maintenance release, focused on bug fixes and reliability. The next feature milestone is V4.5.0, with the planned ElevenLabs voice integration.
+ORION AI is in active development, evolving from its foundational interface and model integration toward a more structured system for orchestration, tools and future platform capabilities.
 
-The larger architectural objective is V5.0 and the beginning of **ORION AI Platform**.
+Version 5.0 marks an important architectural milestone in the project's evolution toward **ORION AI Platform**.
 
-The roadmap is ambitious, but development will prioritize working functionality, clear architecture, testing and security over adding features simply to increase the version number.
+The current development priorities are:
+
+- Consolidating the core architecture.
+- Improving reliability and error handling.
+- Separating model-provider logic from application behavior.
+- Establishing the foundations for agent orchestration and tool integration.
+- Maintaining secure handling of credentials and requests.
+- Preparing the project for future API, memory, vision and voice capabilities.
+
+ORION AI remains a work in progress. Features described as planned, experimental or under development should not be assumed to be fully available in the current Beta.
+
+Feedback and testing are valuable, but the project may still contain bugs, incomplete functionality or breaking changes.
+
+---
+
+# 🗺️ Development Roadmap
+
+The roadmap represents the intended direction of development. Milestones and features may change as implementation and testing reveal new requirements.
+
+| Milestone | Focus |
+|---|---|
+| **V5.0** | ORION Core and agent architecture foundations |
+| **V5.2.0** | ORION API and platform foundations |
+| **V5.5.0** | ORION CODE and an initial developer preview |
+| **V6.0** | Memory System and personalization |
+| **V7.0** | Vision Layer for supported images and documents |
+| **V8.0** | Voice and integration of core capabilities |
+| **V9.0** | Stabilization, security review, testing and release preparation |
+| **V1.0 — Austin** | Target public release in May 2027 |
+
+The public release will prioritize the capabilities that are sufficiently tested and ready for use. The version sequence and schedule may be adjusted when necessary.
 
 ---
 
@@ -226,9 +296,12 @@ Development priorities include:
 - Limiting and monitoring tool execution.
 - Handling errors without exposing sensitive information.
 - Protecting user data and separating user contexts.
-- Documenting capabilities and limitations clearly.
+- Providing clear privacy controls as persistent memory is introduced.
+- Documenting capabilities and limitations accurately.
 
 These measures will evolve alongside the platform. Planned security capabilities should not be interpreted as guarantees that every control is already implemented.
+
+During Beta, users should avoid submitting sensitive information that is not necessary for testing.
 
 ---
 
@@ -238,7 +311,9 @@ ORION AI is an evolving engineering project.
 
 Feedback, ideas and technical discussions can help identify improvements, validate design decisions and guide future development.
 
-As the project matures, contribution guidelines and developer documentation may be expanded to support external integrations and collaboration.
+As the project matures, contribution guidelines, issue templates and developer documentation may be expanded to support external integrations and collaboration.
+
+Contributions should align with the project's principles of maintainability, security, clarity and purposeful engineering.
 
 ---
 
@@ -246,7 +321,7 @@ As the project matures, contribution guidelines and developer documentation may 
 
 ORION AI is distributed under the **MIT License**, subject to the terms of the project's `LICENSE` file.
 
-See the [`LICENSE`](LICENSE) file for details.
+See [`LICENSE`](LICENSE) for the applicable terms.
 
 ---
 
@@ -256,6 +331,8 @@ See the [`LICENSE`](LICENSE) file for details.
 
 **A digital presence. An evolving intelligence. A platform for what comes next.**
 
-*“The future begins with curiosity..”*
+*“The future begins with curiosity.”*
+
+**Beta development · Target public launch: May 2027**
 
 </div>
