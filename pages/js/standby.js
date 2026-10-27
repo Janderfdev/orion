@@ -9,7 +9,7 @@
      login.html:                      <script src="standby.js"></script>             (mostram a tela de standby por cima de tudo)
 
    Teste local (só localhost / file://):  ?simular=2026-10-25T10:00:00-03:00
-   Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=1  (e ?liberar=0 para voltar ao normal). */
+   Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=0  (e ?liberar=0 para voltar ao normal). */
 (function () {
   'use strict';
 
