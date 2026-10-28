@@ -1,1 +1,22 @@
 
+:root {
+  /* Identidade oficial: índigo cósmico */
+  --orion-primary: #5142A5;
+  --orion-purple: #302454;
+  --orion-blue: #202B59;
+
+  /* Interface */
+  --bg-primary: #080912;
+  --bg-secondary: #0D1020;
+  --bg-surface: #12162A;
+  --border-color: #292D49;
+
+  /* Texto */
+  --text-primary: #F4F2FF;
+  --text-secondary: #A9A6C9;
+
+  /* Interação */
+  --accent: #5142A5;
+  --accent-hover: #6555BC;
+  --focus-ring: #8174D6;
+}
