@@ -10,6 +10,7 @@
    V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
    V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), linha de plano/uso nas configurações,
            tema claro/escuro, botão "+" (imagem ou arquivo de texto), campo "agent" do /ask (Agent Engine) registrado no log.
+   V5.0.2: Orb como no original (roxo → azul escuro); resposta sempre escrita no painel; menus redesenhados.
    V5.0.1: identidade preto + azul escuro (sem roxo); segundo arco orbital na Orb; 4 estados visuais ligados aos eventos reais:
            idle (preto/azul escuro) · listening (azul escuro) · responding (verde: gerando OU falando) · not understood (vermelho).
    ═══════════════════════════════════════════════════════════════ */
@@ -29,7 +30,7 @@ const I18N = (() => {
     en: {
       'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
       'online': 'ORION ONLINE', 'version': 'VERSION V5.0',
-      'status.listening': 'Listening…', 'status.processing': 'Responding…', 'status.responding': 'Responding…', 'status.unheard': 'I didn’t understand. Please try again.',
+      'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'I didn’t understand. Please try again.',
       'hint.base': 'tap the orb to speak · or use the chat button',
       'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
       'ask.ph': 'Ask or give ORION a command', 'ask.aria': 'Question for ORION',
@@ -44,7 +45,7 @@ const I18N = (() => {
       'err.core_unavailable': 'I couldn’t reach the ORION core.', 'err.voice_disabled': 'Voice is turned off in settings.',
       'err.voice_unavailable': 'That voice isn’t available.', 'err.unknown': 'I couldn’t process that.',
       'wiki.read': 'Read on Wikipedia ↗', 'wiki.search': 'Search Wikipedia ↗', 'wiki.title': 'Search “{q}” on Wikipedia',
-      'set.title': 'Settings', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open',
+      'set.title': 'Settings', 'set.sub': 'Personalize your experience', 'set.modelD': 'Choose the AI model for your conversations.', 'set.voiceD': 'Set up ORION’s voice and speech.', 'set.soundD': 'Turn interface sounds on or off.', 'set.themeD': 'Choose the visual theme.', 'set.uiD': 'Set the interface language.', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open',
       'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.wake': 'Hey ORION', 'set.history': 'History', 'set.clear': 'Clear',
       'set.cleared': 'Cleared', 'set.failed': 'Failed',
       'set.photo': 'Profile photo', 'set.photoPick': 'Choose', 'set.photoDel': 'Remove',
@@ -88,7 +89,7 @@ const I18N = (() => {
     pt: {
       'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
       'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0',
-      'status.listening': 'Ouvindo…', 'status.processing': 'Respondendo…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi. Tente de novo.',
+      'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi. Tente de novo.',
       'hint.base': 'toque na orb para falar · ou use o botão de chat',
       'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
       'ask.ph': 'Pergunte ou dê um comando ao ORION', 'ask.aria': 'Pergunta ao ORION',
@@ -103,7 +104,7 @@ const I18N = (() => {
       'err.core_unavailable': 'Não consegui falar com o núcleo do ORION.', 'err.voice_disabled': 'Voz desativada nas configurações.',
       'err.voice_unavailable': 'Essa voz não está disponível.', 'err.unknown': 'Não consegui processar.',
       'wiki.read': 'Ler na Wikipédia ↗', 'wiki.search': 'Pesquisar na Wikipédia ↗', 'wiki.title': 'Pesquisar “{q}” na Wikipédia',
-      'set.title': 'Configurações', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir',
+      'set.title': 'Configurações', 'set.sub': 'Personalize sua experiência', 'set.modelD': 'Escolha o modelo de IA para suas conversas.', 'set.voiceD': 'Configure a voz e a fala do ORION.', 'set.soundD': 'Ative ou desative os sons da interface.', 'set.themeD': 'Escolha o tema visual da interface.', 'set.uiD': 'Defina o idioma da interface.', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir',
       'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.wake': 'Hey ORION', 'set.history': 'Histórico', 'set.clear': 'Limpar',
       'set.cleared': 'Limpo', 'set.failed': 'Falhou',
       'set.photo': 'Foto de perfil', 'set.photoPick': 'Escolher', 'set.photoDel': 'Remover',
@@ -162,23 +163,18 @@ const I18N = (() => {
 })();
 const t = I18N.t;
 
-/* ═══ visual-state.js — máquina de estados visuais da Orb (V5.0.1) ═══
-   Os 4 estados visíveis:
-     IDLE        (standby)  → preto / azul escuro
-     LISTENING              → azul escuro (#102B5C) + realce azul discreto
-     RESPONDING             → verde (#22C55E): "processing" (gerando a resposta) E "speaking" (falando) compartilham a mesma cor;
-                              "speaking" ainda pulsa com o áudio real
-     NOT UNDERSTOOD (error) → vermelho (#EF4444)
-   "processing" continua existindo internamente (a pergunta está em andamento no servidor), mas a aparência é a de "responding". */
+/* ═══ visual-state.js — máquina de estados visuais da Orb ═══
+   Mesma Orb de sempre; o roxo virou azul escuro.
+   STANDBY (azul escuro) → LISTENING (azul mais claro) → PROCESSING (azul escuro, mais atividade) → SPEAKING (verde + pulsação do áudio) → STANDBY
+   (qualquer) → ERROR (vermelho: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
 const VISUAL_STATE = (() => {
-  const IDLE  = { a: '#0B1630', b: '#05080F', c: '#1B3A6B' };
-  const GREEN = { a: '#15803D', b: '#052E16', c: '#22C55E' };
+  const BLUE = { a: '#1E3A8A', b: '#0F1F52', c: '#2A5BC4' };   // era o roxo #5b21b6 / #2e1065 / #8b5cf6
   const CFG = {
-    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: IDLE },
-    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' } },
-    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: GREEN },
-    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: GREEN },   // pulsa com o áudio
-    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#B91C1C', b: '#450A0A', c: '#EF4444' } },
+    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BLUE },
+    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#1E4BB8', b: '#10286A', c: '#4C8DF0' } },
+    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: BLUE },
+    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#22c55e' } },   // verde (pulsa com o áudio)
+    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#991b1b', b: '#450a0a', c: '#ef4444' } },   // vermelho
   };
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
@@ -299,13 +295,12 @@ const ORB = (() => {
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
   const lighten = (o, k) => ({ r: o.r + (255 - o.r) * k, g: o.g + (255 - o.g) * k, b: o.b + (255 - o.b) * k });
 
-  /* cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto).
-     Só tons de azul e cinza: verde e vermelho ficam reservados aos estados "respondendo" e "não entendi". */
+  /* cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto) */
   const VOICE_PALETTE = {
-    1: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' },
-    2: { a: '#1D4380', b: '#0B1630', c: '#5E8FE0' },
-    3: { a: '#2A3A55', b: '#0B1630', c: '#7C8FB0' },
-    4: { a: '#3A3F4A', b: '#14171D', c: '#929BAA' },
+    1: { a: '#1E3A8A', b: '#0F1F52', c: '#2A5BC4' },
+    2: { a: '#1E40AF', b: '#172554', c: '#5B9BFF' },
+    3: { a: '#166534', b: '#052e16', c: '#22c55e' },
+    4: { a: '#991b1b', b: '#450a0a', c: '#ef4444' },
   };
   let vsColor = triple(VOICE_PALETTE[1]), vsTarget = triple(VOICE_PALETTE[1]);
   let rings = [], vsRings = [], lastSpawn = 0, prevTarget = 0, clock = 0;
@@ -451,7 +446,7 @@ const ORB = (() => {
     // segundo arco: gira no próprio plano, depois é achatado e inclinado (a ordem da transformação importa)
     const rot2 = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + TILT2 + 'deg) scaleY(' + SQUASH2 + ') rotate(' + haloAng2.toFixed(2) + 'deg)';
     haloEl.style.transform = rot;
-    halo2El.style.transform = rot2;
+    if (halo2El) halo2El.style.transform = rot2;
 
     if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
       vs.halo.style.transform = rot;
@@ -892,8 +887,8 @@ const API = (() => {
     curState = name;
     stateGen++;
     try { ORB.setState(name); } catch (err) { console.error('[ORION] ORB.setState failed:', err); }
-    statusBox.dataset.state = name;                          // reforço de cor do texto de estado
-    micBtn.classList.toggle('live', name === 'listening');   // o microfone do campo de pergunta acende só quando está realmente ouvindo
+    if (statusBox) statusBox.dataset.state = name;                          // reforço de cor do texto de estado
+    if (micBtn) micBtn.classList.toggle('live', name === 'listening');   // o microfone do campo de pergunta acende só quando está realmente ouvindo
     const STATUS = { listening: t('status.listening'), processing: t('status.processing') };
     const m = msg !== undefined ? msg : (STATUS[name] || '');
     clearTimeout(flashTimer);
@@ -1131,43 +1126,30 @@ const API = (() => {
       if (data.agent && Array.isArray(data.agent.steps)) {   // V5.0: o servidor informa quando o Agent Engine respondeu
         LOGGER.info('agent_used', { state: String(data.agent.state), steps: data.agent.steps.length, degraded: !!data.agent.degraded });
       }
-      if (source === 'voice') respondByVoice(reply, understood, data.sources, text);
-      else respondInPanel(reply, understood, data.sources, text);
+      respondInPanel(reply, understood, data.sources, text, source === 'voice');
     } catch (err) {
       processing = false; lock(false);   // o texto fica no campo para tentar de novo
-      fail(err, 'ask', source !== 'voice');
+      fail(err, 'ask', true);   // o erro sempre aparece escrito no painel
     }
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  // Voz: a Orb fica verde (responding) desde que a pergunta é enviada; quando o áudio começa de verdade, passa a pulsar com o volume
-  function respondByVoice(reply, understood, sources, query) {
-    sfx(understood ? 'answer' : 'error');
-    if (!canSpeak()) { setState('standby'); respondInPanel(reply, understood, sources || [], query || ''); return; }
-    const short = reply.length <= 46;
-    const toRest = () => { if (curState === 'speaking' || curState === 'processing') setState('standby'); };
-    if (!understood) {
-      const gen = setState('error', t('status.unheard'));
-      startSpeech(reply, () => { if (stateGen === gen) setState('standby'); });
-      return;
-    }
-    startSpeech(reply, toRest, { onStart: () => setState('speaking', short ? reply : t('status.responding')) });
-  }
-
-  // Chat (pergunta escrita): a Orb vira o painel; a resposta também é falada.
-  // Se vai falar, a Orb continua verde (responding) até o áudio começar — sem piscar de volta ao idle no meio do caminho.
-  function respondInPanel(reply, understood, sources, query) {
-    const willSpeak = understood && canSpeak();
-    if (!understood) setState('error', t('status.unheard'));
-    else if (willSpeak) setState('processing');
-    else setState('standby', '');
+  // A resposta SEMPRE aparece escrita no painel (vindo do chat ou da voz) e também é falada.
+  // Enquanto o servidor gera: azul (processing). Quando a resposta chega: verde (speaking) até a fala terminar. "Não entendi": vermelho.
+  function respondInPanel(reply, understood, sources, query, byVoice) {
+    const willSpeak = canSpeak() && (understood || byVoice);
+    const gen = setState(understood ? 'speaking' : 'error', understood ? t('status.responding') : t('status.unheard'));
     openPanel();
     showAnswer(reply, { sources, query, error: !understood });
     sfx(understood ? 'answer' : 'error');
     scheduleHold(Math.min(90000, Math.max(9000, 7000 + reply.split(/\s+/).length * 400)));
     if (willSpeak) {
-      startSpeech(reply, () => { if (curState === 'speaking' || curState === 'processing') setState('standby'); if (panelOpen && hasAnswer) scheduleHold(5000); },
-        { onStart: () => setState('speaking', t('status.responding')) });
+      startSpeech(reply, () => {
+        if (understood ? (curState === 'speaking' || curState === 'processing') : stateGen === gen) setState('standby');
+        if (panelOpen && hasAnswer) scheduleHold(5000);
+      });
+    } else if (understood) {
+      setTimeout(() => { if (stateGen === gen && curState === 'speaking') setState('standby'); }, 2800);   // sem voz: o verde dura só um instante
     }
   }
 
@@ -1393,7 +1375,7 @@ const API = (() => {
       panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-labelledby', 'codeTitle');
       panel.innerHTML = `
         <div class="settings-card">
-          <p class="settings-title" id="codeTitle">${t('code.title')}</p>
+          <header class="set-head"><span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5L3 12l5.5 5.5M15.5 6.5L21 12l-5.5 5.5M13.5 4.5l-3 15"/></svg></span><div><h2 id="codeTitle">${t('code.title')}</h2></div></header>
           <div class="code-grid">
             <div class="code-card">
               <span class="code-badge">${t('code.soon')}</span>
@@ -1409,7 +1391,7 @@ const API = (() => {
             </div>
           </div>
           <p class="code-note">${t('code.note')}</p>
-          <div class="settings-actions"><button id="codeClose" class="settings-upgrade" type="button">${t('code.close')}</button></div>
+          <div class="code-foot"><button id="codeClose" class="pill-btn primary block" type="button">${t('code.close')}</button></div>
         </div>`;
       document.body.appendChild(panel);
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
@@ -1435,6 +1417,20 @@ const API = (() => {
   /* ── settings: painel (⚙ no canto inferior direito ou Ctrl+,) ── */
   const settings = (() => {
     let panel = null, open = false;
+    const ic = p => '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+    const IC = {
+      gear: ic('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'),
+      x: ic('<path d="M6 6l12 12M18 6L6 18"/>'),
+      model: ic('<path d="M12 5a3 3 0 1 0-6 .1 4 4 0 0 0-2.5 5.7 4 4 0 0 0 .6 6.6A4 4 0 1 0 12 18z"/><path d="M12 5a3 3 0 1 1 6 .1 4 4 0 0 1 2.5 5.7 4 4 0 0 1-.6 6.6A4 4 0 1 1 12 18z"/><path d="M12 5v13"/>'),
+      voice: ic('<path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/>'),
+      sound: ic('<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>'),
+      theme: ic('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" fill-opacity=".35"/>'),
+      globe: ic('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>'),
+      image: ic('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'),
+      trash: ic('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>'),
+      out: ic('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
+      star: ic('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
+    };
 
     function coreLabel() {
       if (!API.configured()) return t('core.none');
@@ -1455,7 +1451,9 @@ const API = (() => {
       else avBtn.textContent = (((user && (user.displayName || user.email)) || '?').trim().charAt(0) || '?').toUpperCase();
       panel.querySelector('#avatarDel').hidden = !av;
       panel.querySelector('#setPlan').textContent = quota ? quota.plan.toUpperCase() + ' · ' + quota.used + '/' + quota.limit : '—';
-      panel.querySelector('#toggleSound').textContent = prefs.sound ? t('on') : t('off');
+      const ts = panel.querySelector('#toggleSound');
+      ts.textContent = prefs.sound ? t('on') : t('off'); ts.classList.toggle('on', !!prefs.sound); ts.setAttribute('aria-pressed', String(!!prefs.sound));
+      panel.querySelector('#setName').textContent = (user && (user.displayName || (user.email || '').split('@')[0])) || '—';
       panel.querySelectorAll('#themeSwatches .sw').forEach(b => b.setAttribute('aria-checked', String(b.dataset.k === prefs.theme)));
       const sel = panel.querySelector('#modelSelect');
       sel.textContent = '';
@@ -1472,38 +1470,41 @@ const API = (() => {
       panel = document.createElement('div');
       panel.id = 'settingsPanel';
       panel.innerHTML = `
-        <div class="settings-card">
-          <p class="settings-title">${t('set.title')}</p>
-          <div class="settings-grid">
-            <div class="settings-side">
-              <div class="avatar-block">
-                <button id="avatarBtn" class="avatar-btn" type="button" aria-label="${t('set.photo')}" title="${t('set.photo')}"></button>
-                <div class="avatar-actions">
-                  <button id="avatarPick" class="settings-toggle" type="button">${t('set.photoPick')}</button>
-                  <button id="avatarDel" class="settings-toggle" type="button">${t('set.photoDel')}</button>
-                </div>
-                <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-                <p class="settings-note warn" id="avatarMsg" role="status" hidden></p>
+        <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+          <header class="set-head">
+            <span class="ico">${IC.gear}</span>
+            <div><h2 id="setTitle">${t('set.title')}</h2><p>${t('set.sub')}</p></div>
+            <button id="setClose" class="icon-btn" type="button" aria-label="${t('code.close')}" title="${t('code.close')}">${IC.x}</button>
+          </header>
+          <div class="set-body">
+            <aside class="set-side">
+              <button id="avatarBtn" class="avatar-btn" type="button" aria-label="${t('set.photo')}" title="${t('set.photo')}"></button>
+              <div class="set-name" id="setName">—</div>
+              <span class="settings-email" id="setEmail">—</span>
+              <div class="avatar-actions">
+                <button id="avatarPick" class="pill-btn block" type="button">${IC.image}${t('set.photoPick')}</button>
+                <button id="avatarDel" class="pill-btn block" type="button">${IC.trash}${t('set.photoDel')}</button>
               </div>
+              <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+              <p class="avatar-msg" id="avatarMsg" role="status" hidden></p>
               <div class="side-info">
-                <span class="settings-email" id="setEmail">—</span>
-                <span class="plan-chip" id="setPlan" title="${t('set.plan')}">—</span>
-                <div class="mini-row"><span>${t('set.history')}</span><button id="clearChat" class="settings-toggle">${t('set.clear')}</button></div>
+                <div class="mini-row"><span>${t('set.plan')}</span><span class="plan-chip" id="setPlan">—</span></div>
+                <div class="mini-row"><span>${t('set.history')}</span><button id="clearChat" class="pill-btn" type="button">${t('set.clear')}</button></div>
                 <div class="mini-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
-                <p class="settings-note side-note">${t('set.photoNote')}</p>
+                <p class="side-note">${t('set.photoNote')}</p>
               </div>
-            </div>
-            <div class="settings-main">
-              <div class="settings-row"><span>${t('set.model')}</span><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
-              <div class="settings-row"><span>${t('set.voice')}</span><button id="openVoice" class="settings-toggle has-arrow">${t('set.open')}</button></div>
-              <div class="settings-row"><span>${t('set.sound')}</span><button id="toggleSound" class="settings-toggle"></button></div>
-              <div class="settings-row"><span>${t('set.theme')}</span><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
-              <div class="settings-row"><span>${t('set.ui')}</span><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
+            </aside>
+            <div class="set-list">
+              <div class="set-row"><span class="ico">${IC.model}</span><div><h3>${t('set.model')}</h3><p>${t('set.modelD')}</p></div><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
+              <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
+              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-btn toggle" type="button" aria-pressed="true"></button></div>
+              <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
             </div>
           </div>
-          <div class="settings-actions">
-            <button id="signOutBtn" class="settings-out" type="button">${t('set.signout')}</button>
-            <button id="upgradeBtn" class="settings-upgrade" type="button">${t('set.upgrade')}</button>
+          <div class="set-foot">
+            <button id="signOutBtn" class="pill-btn danger grow" type="button">${IC.out}${t('set.signout')}</button>
+            <button id="upgradeBtn" class="pill-btn primary grow" type="button">${IC.star}${t('set.upgrade')}</button>
           </div>
           <p class="settings-hint" id="settingsHint">ORION AI V5.0</p>
           <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
@@ -1511,6 +1512,7 @@ const API = (() => {
       document.body.appendChild(panel);
 
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
+      panel.querySelector('#setClose').addEventListener('click', () => setOpen(false));
       const aMsg = panel.querySelector('#avatarMsg'), aFile = panel.querySelector('#avatarFile');
       const aErr = c => { aMsg.textContent = t(c === 'size' ? 'set.photoBig' : c === 'save' ? 'set.photoSave' : 'set.photoType'); aMsg.hidden = false; };
       panel.querySelector('#avatarBtn').addEventListener('click', () => aFile.click());
@@ -1557,6 +1559,7 @@ const API = (() => {
       open = on;
       if (open) { sync(); if (!online) loadModels(); }
       panel.classList.toggle('open', open);
+      if (open) setTimeout(() => { const c = panel && panel.querySelector('#setClose'); if (c && open) c.focus(); }, 80);
     }
     $('gearBtn').addEventListener('click', () => { if (!vs.isOpen()) setOpen(!open); });
     document.addEventListener('keydown', e => {
