@@ -175,10 +175,10 @@ const VISUAL_STATE = (() => {
   const GREEN = { a: '#15803D', b: '#052E16', c: '#22C55E' };
   const CFG = {
     standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: IDLE },
-    listening:  { amp: 1.14, rot: 1.40, bright: 0.95, cls: 'st-listening', color: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' } },
-    processing: { amp: 1.10, rot: 1.60, bright: 0.90, cls: 'st-thinking',  color: GREEN },
-    speaking:   { amp: 1.20, rot: 1.60, bright: 1.00, cls: 'st-speaking',  color: GREEN },   // pulsa com o áudio
-    error:      { amp: 0.90, rot: 0.60, bright: 0.85, cls: 'st-error',     color: { a: '#B91C1C', b: '#450A0A', c: '#EF4444' } },
+    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#102B5C', b: '#0B1630', c: '#2F5DA8' } },
+    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: GREEN },
+    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: GREEN },   // pulsa com o áudio
+    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#B91C1C', b: '#450A0A', c: '#EF4444' } },
   };
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
@@ -331,7 +331,7 @@ const ORB = (() => {
   function decorate() {
     const cur = VISUAL_STATE.get(), cls = VISUAL_STATE.config(cur).cls;
     fastHalo = ['listening', 'speaking', 'processing'].includes(cur);
-    breathPeriod = ({ listening: 3.4, processing: 2.4, speaking: 2.6 })[cur] || 6;   // idle: respira devagar, como sempre
+    breathPeriod = ({ listening: 3.4, processing: 2.2, speaking: 2.6 })[cur] || 6;   // idle: respira devagar, como sempre
     orbZone.dataset.state = cur; orbEl.dataset.state = cur;
     [[orbEl, haloEl, orbZone, halo2El], vs && [vs.orb, vs.halo, vs.zone, vs.halo2]].forEach(set => {
       if (!set) return;
@@ -380,8 +380,8 @@ const ORB = (() => {
     });
     // brilho central: apagado em repouso, acende com o volume da fala
     const core = c.createRadialGradient(R, R, 0, R, R, R * 0.62);
-    const cl = lighten(col.c, 0.45);
-    core.addColorStop(0, rgba(cl, 0.70 * lvl * b));   // só brilha com o volume da fala
+    const cl = lighten(col.c, 0.55);
+    core.addColorStop(0, rgba(cl, 0.85 * lvl * b));   // só brilha com o volume da fala
     core.addColorStop(1, rgba(cl, 0));
     c.fillStyle = core; c.fillRect(0, 0, S, S);
 
