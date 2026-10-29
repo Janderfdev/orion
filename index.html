@@ -13,8 +13,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+/* V5.0: botões em índigo mais escuro (--active / --active-hover). Logo, wordmark e standby não mudam. */
 :root{--font:'Sora',-apple-system,'Helvetica Neue',sans-serif;--mono:'Space Grotesk','Inter',sans-serif;
-  --bg:#000000;--surface:#0D1020;--blue-dark:#080912;--active:#2D2A5E;--line:#29243A;--accent:#7770B8;--accent-soft:#A9A6C9;
+  --bg:#000000;--surface:#0D1020;--blue-dark:#080912;--active:#17153A;--active-hover:#1F1D4A;--line:#29243A;--accent:#7770B8;--accent-soft:#A9A6C9;
   --text:#F4F2FF;--muted:#929BAA;--faint:#7D8697;--ok:#86efac;--soon:#fcd34d;--r:20px;}
 html{scroll-behavior:smooth;scroll-padding-top:84px;}
 body{background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.65;overflow-x:hidden;animation:pageIn .45s ease both;}
@@ -36,13 +37,13 @@ a{color:inherit;}
 .lang{display:flex;gap:2px;padding:3px;margin:0 6px;border-radius:999px;border:1px solid var(--line);background:rgba(13,16,32,.7);}
 .lang button{height:28px;min-width:36px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:background .2s ease,color .2s ease;}
 .lang button:hover{color:#fff;}
-.lang button[aria-pressed="true"]{background:var(--active);color:#fff;}
+.lang button[aria-pressed="true"]{background:var(--active);color:#E4E2EE;}
 .lang button:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
-.btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 28px;border-radius:999px;text-decoration:none;font:600 12px var(--font);letter-spacing:.16em;text-transform:uppercase;color:#fff;background:var(--active);border:1px solid rgba(119,112,184,.45);transition:background .2s ease,border-color .2s ease,transform .2s ease;}
-.btn:hover{background:#383472;border-color:rgba(119,112,184,.75);transform:translateY(-1px);}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 28px;border-radius:999px;text-decoration:none;font:600 12px var(--font);letter-spacing:.16em;text-transform:uppercase;color:#E4E2EE;background:var(--active);border:1px solid rgba(78,72,150,.4);transition:background .2s ease,border-color .2s ease,transform .2s ease;}
+.btn:hover{background:var(--active-hover);border-color:rgba(78,72,150,.65);transform:translateY(-1px);}
 .btn:active{background:#0C0D1C;transform:none;}
 .btn.ghost{background:rgba(13,16,32,.7);border-color:var(--line);}
-.btn.ghost:hover{background:var(--blue-dark);border-color:rgba(119,112,184,.5);}
+.btn.ghost:hover{background:var(--blue-dark);border-color:rgba(78,72,150,.5);}
 .btn.small{height:40px;padding:0 20px;font-size:11px;}
 .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:88px 0 96px;}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;font:500 11px var(--mono);letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin-bottom:22px;}
