@@ -1,0 +1,156 @@
+/* ═══════════════════════════════════════════════════════════════
+   ORION AI V5.0 — Cosmic Indigo + Absolute Black   (pages/css/orion-v5.css)
+   Carregar DEPOIS do <style> de orion.html.
+
+   O que NÃO muda: a cor da Orb (--core-a/b/c são escritos ao vivo pelo app.js), logo, wordmark e standby.
+   O que muda: o índigo dos botões, menus e superfícies (mais escuro, sem brilho, sem neon).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Tokens ────────────────────────────────────────────────
+   `:root, :root[data-theme]` também vence os antigos temas midnight/purple,
+   caso o localStorage de alguém ainda guarde um deles. */
+:root, :root[data-theme]{
+  --bg:#000000;
+  --fg:#E4E2EE;            /* branco escuro */
+  --fg2:#8B89A3;           /* cinza com um fio de índigo */
+  --w:228,226,238;
+
+  --surface:#07070D;       /* superfícies: preto com variação mínima */
+  --surface2:#040408;
+  --line:#1A192B;          /* bordas */
+
+  --active:#17153A;        /* botão ativo / primário */
+  --active-hover:#1F1D4A;
+  --acc:78,72,150;         /* índigo de contorno e foco (rgb) */
+  --act:7,7,14;
+  --act-hi:23,21,58;
+  --accent:#5F59A8;
+  --accent-soft:#8E8BB4;
+  --accent-text:#E4E2EE;
+
+  --scrim:rgba(0,0,0,.84);
+  --card-solid:#07070D;
+  --panel-bg:rgba(6,6,12,.97);
+  --r-lg:32px;
+}
+
+/* ── 2. Cabeçalho: logo + wordmark, canto superior esquerdo ── */
+.header{
+  justify-content:flex-start; align-items:center; gap:12px;
+  padding:clamp(18px,3.4vh,30px) clamp(16px,3vw,28px) 0;
+}
+.header-mark{ width:clamp(30px,4.4vmin,38px); height:auto; flex:none; }
+.header-logo{ width:clamp(120px,17vmin,170px); filter:none; }
+
+/* ── 3. Versão (inferior esquerdo) ── */
+.version-tag{ left:clamp(16px,3vw,28px); bottom:clamp(20px,3.4vh,28px); color:rgba(var(--w),.38); }
+
+/* ── 4. Dock (inferior direito): Chat · Código · Multitarefa · Configurações ── */
+.dock{
+  right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); padding:5px; gap:2px;
+  background:rgba(7,7,14,.8); border:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.55);
+}
+.dock-sep{ background:var(--line); }
+.dock-btn{ color:rgba(var(--w),.55); }
+.dock-btn:hover{ color:var(--fg); background:rgba(var(--act-hi),.7); }
+.dock-btn.on{ color:var(--fg); background:var(--active); box-shadow:inset 0 0 0 1px rgba(var(--acc),.4); }
+.dock-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+/* mobile: o texto de dica sobe para não bater na versão nem na dock */
+@media (max-width:760px){
+  .hint{ bottom:84px; }
+  .dock-btn{ width:38px; height:38px; }
+}
+
+/* ── 5. Botões, campos e controles: índigo escuro, sem brilho ── */
+.pill-btn{ background:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.28); color:var(--accent-text); }
+.pill-btn:hover{ background:var(--active-hover); border-color:rgba(var(--acc),.5); }
+.pill-btn.primary{ background:var(--active); border-color:rgba(var(--acc),.4); }
+.pill-btn.primary:hover{ background:var(--active-hover); }
+.ask-send{ background:var(--active); }
+.ask-send:hover{ filter:brightness(1.25); }
+.ask-mic.live{ background:var(--active); }
+.ask{ background:rgba(7,7,14,.84); }
+.ask:focus-within{ border-color:rgba(var(--acc),.6); box-shadow:0 0 0 3px rgba(var(--act-hi),.8); }
+.settings-select{ background-color:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.28); }
+.icon-btn:hover{ background:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.35); }
+.plan-chip{ background:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.32); color:var(--accent-soft); }
+.avatar-btn{ background:radial-gradient(circle at 34% 30%, var(--active-hover), #000); border-color:rgba(var(--acc),.4); box-shadow:none; }
+.avatar-btn:hover{ box-shadow:0 0 0 3px rgba(var(--act-hi),.9); }
+.pill-btn.toggle.on{ background:var(--active); }
+.vs-range::-webkit-slider-thumb{ background:#BEBCD2; box-shadow:0 2px 8px rgba(0,0,0,.6); }
+.vs-range::-moz-range-thumb{ background:#BEBCD2; box-shadow:0 2px 8px rgba(0,0,0,.6); }
+.vs-switch[aria-checked="true"]{ background:var(--active-hover); }
+.vs-switch[aria-checked="true"]::after{ background:#BEBCD2; }
+.answer-source{ background:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.32); }
+
+/* ── 6. OrbFrame — o contorno adaptativo ─────────────────────
+   Um painel que herda a linguagem da Orb: superfície preta, cantos amplos e um arco
+   que acompanha a curva do próprio painel. O arco usa --core-a/b (a mesma cor da Orb),
+   gira devagar e nunca captura cliques. */
+@property --arc{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+@keyframes frameArc{ to{ --arc:360deg; } }
+@keyframes frameOpen{
+  from{ clip-path:inset(calc(50% - 56px) calc(50% - 56px) round 999px); }
+  to{   clip-path:inset(-90px round 34px); }
+}
+
+.settings-card, .orb-frame{
+  position:relative; isolation:isolate; overflow:hidden;
+  border:1px solid var(--line); border-radius:34px; background:var(--panel-bg);
+  box-shadow:0 40px 110px rgba(0,0,0,.75), inset 0 1px 0 rgba(var(--w),.035);
+  max-height:94dvh; display:flex; flex-direction:column;
+}
+.settings-card::before, .orb-frame::before{
+  content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1.5px; pointer-events:none; z-index:5;
+  background:conic-gradient(from var(--arc),
+    transparent 0%,
+    color-mix(in srgb, var(--core-a) 75%, transparent) 20%,
+    color-mix(in srgb, var(--core-b) 55%, transparent) 42%,
+    transparent 58%,
+    color-mix(in srgb, var(--core-a) 38%, transparent) 76%,
+    transparent 92%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  animation:frameArc 28s linear infinite;
+}
+/* o conteúdo rola por dentro; cabeçalho e rodapé ficam fixos e o arco nunca sai do lugar */
+.settings-card .set-body, .orb-frame-body{ flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(var(--acc),.35) transparent; }
+.settings-card .set-head, .settings-card .set-foot, .settings-card .settings-hint, .settings-card .code-foot{ flex:none; }
+
+/* esfera → painel: ao abrir, o painel nasce do tamanho de uma esfera e se abre */
+#settingsPanel.open .settings-card, #codePanel.open .settings-card, #taskPanel.open .settings-card{
+  animation:frameOpen .7s var(--ease) both;
+}
+#settingsPanel, #codePanel, #taskPanel{
+  position:fixed; inset:0; z-index:150; display:flex; align-items:center; justify-content:center; padding:16px;
+  background:var(--scrim); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  opacity:0; pointer-events:none; transition:opacity .3s ease;
+}
+#taskPanel.open{ opacity:1; pointer-events:auto; }
+#taskPanel.open .settings-card{ transform:none; }
+
+/* ── 7. Cabeçalho e linhas dos painéis ── */
+.set-head{ padding:24px 28px 18px; border-bottom:1px solid rgba(var(--w),.05); }
+.set-head .ico{ background:rgba(var(--act-hi),.8); border-color:rgba(var(--acc),.28); color:var(--accent-soft); }
+.set-head h2{ font:600 13px var(--font); letter-spacing:.2em; }
+.set-row .ico{ color:var(--accent-soft); background:var(--surface2); }
+.set-row{ padding:16px 0; }
+
+/* ── 8. Painéis informativos (ORION Code/API e Multitarefa) ── */
+.code-card{ background:var(--surface); border:1px solid var(--line); }
+.code-ver{ color:rgba(var(--w),.5); }
+.orb-note{ padding:18px 28px 4px; font-size:13px; line-height:1.7; color:var(--fg2); max-width:62ch; }
+
+/* a identidade é única: o seletor de tema (Midnight/Deep Purple) saiu das configurações */
+.set-row:has(#themeSwatches){ display:none; }
+
+/* ── 9. Movimento reduzido ── */
+@media (prefers-reduced-motion:reduce){
+  .settings-card::before, .orb-frame::before{ animation:none; }
+  #settingsPanel.open .settings-card, #codePanel.open .settings-card, #taskPanel.open .settings-card{ animation:none; }
+}
+body.calm .settings-card::before, body.calm .orb-frame::before{ animation:none; }
+body.calm #settingsPanel.open .settings-card, body.calm #codePanel.open .settings-card, body.calm #taskPanel.open .settings-card{ animation:none; }
