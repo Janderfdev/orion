@@ -195,7 +195,7 @@ const VISUAL_STATE = (() => {
   let current = 'standby';
   function setTheme(name) {
     BASE = THEME_ORB[name] || THEME_ORB.indigo;
-    const black = pal(c => darker(c, .9), BASE);
+    const black = { a: '#34343E', b: '#1C1C24', c: '#4A4A56' };   // cinza muito escuro, sem cor de tema
     CFG.standby.color = black;  CFG.standby.ring = BASE;
     CFG.error.color = black;    CFG.error.ring = BASE;
     CFG.listening.color = { a: lighter(BASE.c, .72), b: lighter(BASE.c, .52), c: lighter(BASE.c, .86) };
@@ -854,7 +854,7 @@ const API = (() => {
 
   const bootEl = $('boot'), appEl = $('app'), orbZone = $('orbZone'), orbEl = $('orb');
   const statusText = $('statusText'), statusBox = $('statusBox'), hintEl = $('hintText');
-  const respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
+  const capBox = $('capBox'), respText = $('responseText'), answerScroll = $('answerScroll'), answerSrc = $('answerSource'), answerGallery = $('answerGallery');
   const askForm = $('askForm'), askInput = $('askInput'), askSend = $('askSend'), micBtn = $('micBtn');
   const chatBtn = $('chatBtn'), siri = $('siri');
   const attachBtn = $('attachBtn'), attachFile = $('attachFile'), attachChip = $('attachChip'), attachThumb = $('attachThumb'), attachName = $('attachName'), attachDel = $('attachDel');
@@ -1014,14 +1014,14 @@ const API = (() => {
   function openPanel() {
     if (panelOpen) return;
     panelOpen = true;
-    orbEl.classList.add('panel'); orbZone.classList.add('panel-open'); document.body.classList.add('panel-on');
+    capBox.classList.add('show');
   }
   function closePanel() {
     clearTimeout(holdTimer);
     if (!panelOpen) return;
     panelOpen = false;
     stopSpeech(false);
-    orbEl.classList.remove('panel'); orbZone.classList.remove('panel-open'); document.body.classList.remove('panel-on');
+    capBox.classList.remove('show');
     if (curState === 'speaking' || curState === 'processing' || curState === 'error') setState('standby');
   }
   // o painel não fecha sozinho enquanto o ORION ainda está falando
@@ -1063,12 +1063,12 @@ const API = (() => {
   function clearAnswer() {
     respText.textContent = ''; answerSrc.hidden = true; answerScroll.classList.remove('scrolls');
     answerGallery.hidden = true; answerGallery.textContent = '';
-    orbEl.classList.remove('answer-error'); hasAnswer = false;
+    capBox.classList.remove('answer-error'); hasAnswer = false;
   }
 
   // a resposta aparece palavra por palavra dentro do painel, com a galeria e o link da Wikipédia quando houver
   function showAnswer(text, { error = false, sources = [], query = '' } = {}) {
-    orbEl.classList.toggle('answer-error', error);
+    capBox.classList.toggle('answer-error', error);
     respText.textContent = '';
     const words = text.split(/\s+/).filter(Boolean);
     const step = Math.min(18, 700 / Math.max(words.length, 1));
@@ -1166,7 +1166,7 @@ const API = (() => {
   function respondInPanel(reply, understood, sources, query, byVoice) {
     const willSpeak = canSpeak() && (understood || byVoice);
     const waitAudio = understood && willSpeak;   // com voz: continua em "processando" até o áudio começar de verdade
-    const gen = setState(waitAudio ? 'processing' : (understood ? 'speaking' : 'error'), waitAudio ? '' : (understood ? t('status.responding') : t('status.unheard')));
+    const gen = setState(waitAudio ? 'processing' : (understood ? 'speaking' : 'error'), '');
     openPanel();
     showAnswer(reply, { sources, query, error: !understood });
     sfx(understood ? 'answer' : 'error');
@@ -1175,7 +1175,7 @@ const API = (() => {
       startSpeech(reply, () => {
         if (understood ? (curState === 'speaking' || curState === 'processing') : stateGen === gen) setState('standby');
         if (panelOpen && hasAnswer) scheduleHold(5000);
-      }, { onStart: () => { if (understood && (curState === 'processing' || curState === 'speaking')) setState('speaking', t('status.responding')); } });
+      }, { onStart: () => { if (understood && (curState === 'processing' || curState === 'speaking')) setState('speaking', ''); } });
     } else if (understood) {
       setTimeout(() => { if (stateGen === gen && curState === 'speaking') setState('standby'); }, 2800);   // sem voz: o estado "respondendo" dura só um instante
     }
@@ -1200,7 +1200,7 @@ const API = (() => {
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
 
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #askForm, #chatBtn, #codeBtn, #gearBtn, #settingsPanel, #codePanel, #voiceScreen')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #gearBtn, #settingsPanel, #codePanel, #voiceScreen')) closePanel();
   });
   orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
   orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && hasAnswer) scheduleHold(5000); });
@@ -1235,8 +1235,8 @@ const API = (() => {
   orbZone.addEventListener('click', e => {
     if (panelOpen) {
       if (e.target.closest('a') || String(window.getSelection && window.getSelection())) return;
-      closePanel();
-      return;
+      if (speaking) { activate(); return; }   // tocar na Orb enquanto ela fala interrompe a fala
+      closePanel();                            // com a legenda aberta, o toque fecha e já começa a ouvir
     }
     activate();
   });
