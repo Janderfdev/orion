@@ -168,28 +168,43 @@ const t = I18N.t;
    STANDBY (azul escuro) → LISTENING (azul mais claro) → PROCESSING (azul escuro, mais atividade) → SPEAKING (verde + pulsação do áudio) → STANDBY
    (qualquer) → ERROR (vermelho: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
 const VISUAL_STATE = (() => {
-  const THEME_ORB = {   // a Orb é sempre preta; só a cor da nebulosa muda com o tema
+  /* Cor-base de cada tema. A Orb é sempre preta; a nebulosa por dentro muda conforme o estado real:
+       idle / não entendi → nebulosa preta (sem brilho colorido) · ouvindo → nebulosa branca com leve reflexo do tema
+       processando → cor do tema bem contida · respondendo (áudio tocando) → cor do tema, um pouco mais intensa, ainda escura.
+     "color" é a nebulosa desenhada dentro da Orb; "ring" é a cor dos arcos, do contorno e do halo (a forma original não muda). */
+  const THEME_ORB = {
     indigo:   { a: '#3A3678', b: '#1C1A40', c: '#6A63B0' },
     midnight: { a: '#1E3A6E', b: '#0E1F40', c: '#4A7AB8' },
     purple:   { a: '#4A2E7A', b: '#241446', c: '#7E5FB0' },
   };
-  const mix = (hex, k) => { const h = hex.replace('#', ''); const f = i => Math.round(parseInt(h.substr(i, 2), 16) + (255 - parseInt(h.substr(i, 2), 16)) * k).toString(16).padStart(2, '0'); return '#' + f(0) + f(2) + f(4); };
+  const hx = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+  const toHex = v => '#' + v.map(n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('');
+  const lighter = (hex, k) => toHex(hx(hex).map(n => n + (255 - n) * k));
+  const darker = (hex, k) => toHex(hx(hex).map(n => n * (1 - k)));
+  const pal = (f, p) => ({ a: f(p.a), b: f(p.b), c: f(p.c) });
   let BASE = THEME_ORB.indigo;
   const CFG = {
-    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BASE },
-    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: BASE },
-    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: BASE },
-    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#3FA66B' } },   // verde suave
-    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#991b1b', b: '#450a0a', c: '#d65a5a' } },   // vermelho suave
+    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BASE, ring: BASE },
+    listening:  { amp: 1.18, rot: 1.50, bright: 0.74, cls: 'st-listening', color: BASE, ring: BASE },
+    processing: { amp: 1.12, rot: 1.80, bright: 0.86, cls: 'st-thinking',  color: BASE, ring: BASE },
+    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: BASE, ring: BASE },
+    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: BASE, ring: BASE },
   };
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
   let current = 'standby';
   function setTheme(name) {
     BASE = THEME_ORB[name] || THEME_ORB.indigo;
-    CFG.standby.color = BASE; CFG.processing.color = BASE;
-    CFG.listening.color = { a: mix(BASE.a, .14), b: mix(BASE.b, .10), c: mix(BASE.c, .22) };
+    const black = pal(c => darker(c, .9), BASE);
+    CFG.standby.color = black;  CFG.standby.ring = BASE;
+    CFG.error.color = black;    CFG.error.ring = BASE;
+    CFG.listening.color = { a: lighter(BASE.c, .72), b: lighter(BASE.c, .52), c: lighter(BASE.c, .86) };
+    CFG.listening.ring = { a: lighter(BASE.a, .18), b: BASE.b, c: lighter(BASE.c, .30) };
+    CFG.processing.color = pal(c => darker(c, .45), BASE);  CFG.processing.ring = BASE;
+    CFG.speaking.color = { a: lighter(BASE.a, .10), b: lighter(BASE.b, .08), c: lighter(BASE.c, .14) };
+    CFG.speaking.ring = pal(c => lighter(c, .12), BASE);
   }
+  setTheme('indigo');
   const apply = name => { current = ALIAS[name] || 'standby'; return CFG[current]; };
   return { apply, setTheme, base: () => BASE, get: () => current, config: name => CFG[ALIAS[name] || current] };
 })();
@@ -306,10 +321,10 @@ const ORB = (() => {
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
   const lighten = (o, k) => ({ r: o.r + (255 - o.r) * k, g: o.g + (255 - o.g) * k, b: o.b + (255 - o.b) * k });
 
-  let vsColor = triple(VISUAL_STATE.base()), vsTarget = triple(VISUAL_STATE.base());
   let rings = [], vsRings = [], lastSpawn = 0, prevTarget = 0, clock = 0;
   let colorNow = triple(VISUAL_STATE.config('standby').color);
   let colorTarget = triple(VISUAL_STATE.config('standby').color);
+  let ringNow = triple(VISUAL_STATE.config('standby').ring), ringTarget = triple(VISUAL_STATE.config('standby').ring);
 
   const dprOf = () => Math.min(window.devicePixelRatio || 1, 2);
   function fitSquare(c) {   // canvas quadrado em alta resolução; devolve o lado em px CSS
@@ -345,7 +360,7 @@ const ORB = (() => {
   function setState(name) {
     const cfg = VISUAL_STATE.apply(name);
     targetAmp = cfg.amp; targetRot = cfg.rot; targetBright = cfg.bright;
-    colorTarget = triple(cfg.color);
+    colorTarget = triple(cfg.color); ringTarget = triple(cfg.ring);
     decorate();
   }
 
@@ -402,13 +417,16 @@ const ORB = (() => {
     amp += (targetAmp - amp) * k(2.2);
     rotSpeed += (targetRot - rotSpeed) * k(2.2);
     bright += (targetBright - bright) * k(2.6);
-    const kc = k(5.5);   // transição de cor ≈ 300–400 ms
-    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, kc);
-    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, kc);
-    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, kc);
-    root.style.setProperty('--core-a', rgbToHex(colorNow.a));
-    root.style.setProperty('--core-b', rgbToHex(colorNow.b));
-    root.style.setProperty('--core-c', rgbToHex(colorNow.c));
+    const kn = k(2.6), kr = k(3.4);   // transições suaves: a nebulosa leva ~1 s para assentar; os arcos, um pouco menos
+    colorNow.a = lerpRgb(colorNow.a, colorTarget.a, kn);
+    colorNow.b = lerpRgb(colorNow.b, colorTarget.b, kn);
+    colorNow.c = lerpRgb(colorNow.c, colorTarget.c, kn);
+    ringNow.a = lerpRgb(ringNow.a, ringTarget.a, kr);
+    ringNow.b = lerpRgb(ringNow.b, ringTarget.b, kr);
+    ringNow.c = lerpRgb(ringNow.c, ringTarget.c, kr);
+    root.style.setProperty('--core-a', rgbToHex(ringNow.a));   // arcos, contorno, brilho externo e anéis de energia
+    root.style.setProperty('--core-b', rgbToHex(ringNow.b));
+    root.style.setProperty('--core-c', rgbToHex(ringNow.c));
 
     breathT += dt * Math.PI * 2 / breathPeriod;
     floatT += dt * Math.PI * 2 / 10;
@@ -455,12 +473,11 @@ const ORB = (() => {
     if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
       vs.halo.style.transform = rot;
       if (vs.halo2) vs.halo2.style.transform = rot2;
-      vsColor.a = lerpRgb(vsColor.a, vsTarget.a, kc); vsColor.b = lerpRgb(vsColor.b, vsTarget.b, kc); vsColor.c = lerpRgb(vsColor.c, vsTarget.c, kc);
-      vs.zone.style.setProperty('--vs-a', rgbToHex(vsColor.a));
-      vs.zone.style.setProperty('--vs-b', rgbToHex(vsColor.b));
-      vs.zone.style.setProperty('--vs-c', rgbToHex(vsColor.c));
+      vs.zone.style.setProperty('--vs-a', rgbToHex(ringNow.a));
+      vs.zone.style.setProperty('--vs-b', rgbToHex(ringNow.b));
+      vs.zone.style.setProperty('--vs-c', rgbToHex(ringNow.c));
       const D = fitSquare(vs.disc), d = dprOf();
-      if (D) { vs.ctx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vs.ctx, D, b, vsColor); }
+      if (D) { vs.ctx.setTransform(d, 0, 0, d, 0, 0); drawDisc(vs.ctx, D, b, colorNow); }
       return;
     }
     if (inPanel) return;                                  // Orb virou painel de resposta: nada a desenhar
@@ -475,9 +492,9 @@ const ORB = (() => {
     setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, halo2: els.halo2, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
     setTheme: (name, snap) => {
       VISUAL_STATE.setTheme(name);
-      colorTarget = triple(VISUAL_STATE.config(VISUAL_STATE.get()).color);
-      vsTarget = triple(VISUAL_STATE.base());
-      if (snap) { colorNow = triple(VISUAL_STATE.config(VISUAL_STATE.get()).color); vsColor = triple(VISUAL_STATE.base()); }
+      const cfg = VISUAL_STATE.config(VISUAL_STATE.get());
+      colorTarget = triple(cfg.color); ringTarget = triple(cfg.ring);
+      if (snap) { colorNow = triple(cfg.color); ringNow = triple(cfg.ring); }
     },
     pressEffect: () => { press = 1; },
   };
@@ -1148,7 +1165,8 @@ const API = (() => {
   // Enquanto o servidor gera: azul (processing). Quando a resposta chega: verde (speaking) até a fala terminar. "Não entendi": vermelho.
   function respondInPanel(reply, understood, sources, query, byVoice) {
     const willSpeak = canSpeak() && (understood || byVoice);
-    const gen = setState(understood ? 'speaking' : 'error', understood ? t('status.responding') : t('status.unheard'));
+    const waitAudio = understood && willSpeak;   // com voz: continua em "processando" até o áudio começar de verdade
+    const gen = setState(waitAudio ? 'processing' : (understood ? 'speaking' : 'error'), waitAudio ? '' : (understood ? t('status.responding') : t('status.unheard')));
     openPanel();
     showAnswer(reply, { sources, query, error: !understood });
     sfx(understood ? 'answer' : 'error');
@@ -1157,9 +1175,9 @@ const API = (() => {
       startSpeech(reply, () => {
         if (understood ? (curState === 'speaking' || curState === 'processing') : stateGen === gen) setState('standby');
         if (panelOpen && hasAnswer) scheduleHold(5000);
-      });
+      }, { onStart: () => { if (understood && (curState === 'processing' || curState === 'speaking')) setState('speaking', t('status.responding')); } });
     } else if (understood) {
-      setTimeout(() => { if (stateGen === gen && curState === 'speaking') setState('standby'); }, 2800);   // sem voz: o verde dura só um instante
+      setTimeout(() => { if (stateGen === gen && curState === 'speaking') setState('standby'); }, 2800);   // sem voz: o estado "respondendo" dura só um instante
     }
   }
 
