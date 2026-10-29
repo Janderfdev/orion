@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const START = Date.parse('2026-10-28T10:00:00-03:00');   // começa em 28/10/2026 às 22:00:00
+  const START = Date.parse('2026-10-28T22:00:00-03:00');   // começa em 28/10/2026 às 22:00:00
   const END   = Date.parse('2026-10-30T10:00:00-03:00');   // termina em 30/10/2026 às 10:00:00
 
   /* Se uma das datas estiver inválida, prende no standby. */
