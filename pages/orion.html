@@ -6,7 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ORION AI</title>
 <meta name="theme-color" content="#000000">
-<script>try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.documentElement.dataset.theme=['indigo','midnight','purple'].indexOf(s.theme)>-1?s.theme:'indigo'}catch(e){document.documentElement.dataset.theme='indigo'}</script>
+<script>
+/* V5.0: identidade única Cosmic Indigo + Absolute Black. Midnight Blue e Deep Purple foram aposentados:
+   se o navegador ainda guarda um deles, volta para o índigo antes do app.js ler as preferências. */
+document.documentElement.dataset.theme='indigo';
+try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');if(s.theme&&s.theme!=='indigo'){s.theme='indigo';localStorage.setItem('orion_settings',JSON.stringify(s));}}catch(e){}
+</script>
 <link rel="icon" href="../favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +19,8 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
 
-/* ═══════ ORION AI V5.0.2 — preto + azul escuro. A Orb mantém o desenho original (só o roxo virou azul escuro). ═══════ */
+/* ═══════ ORION AI V5.0 — Cosmic Indigo + Absolute Black. A Orb mantém o desenho e a cor originais. ═══════
+   Os tokens de cor da interface (botões, menus, superfícies) estão em css/orion-v5.css, carregado logo depois deste bloco. */
 :root{
   --font:'Sora', -apple-system, 'Helvetica Neue', sans-serif;
   --font-mono:'Space Grotesk', 'Inter', sans-serif;
@@ -31,21 +37,12 @@
   --scrim:rgba(0,0,0,.8); --card:rgba(var(--act),.96); --card-solid:var(--surface);
   --panel-bg:rgba(var(--act),.94); --ask-bg:rgba(var(--act),.78); --chip:var(--surface2); --bar:var(--surface); --track-b:var(--surface2);
   --accent-text:#F4F2FF;
-  /* Cosmic Indigo (padrão) */
   --surface:#0D1020; --surface2:#080912; --active:#2D2A5E; --active-hover:#383472; --line:#29243A;
   --acc:119,112,184; --act:13,16,32; --act-hi:41,38,80; --accent:#7770B8; --accent-soft:#A9A6C9;
 }
-:root[data-theme="midnight"]{
-  --surface:#0A1222; --surface2:#060A14; --active:#1F3560; --active-hover:#29437A; --line:#1F2B42;
-  --acc:111,149,201; --act:10,18,34; --act-hi:28,44,78; --accent:#6F95C9; --accent-soft:#A3B8D6;
-}
-:root[data-theme="purple"]{
-  --surface:#120D20; --surface2:#0A0714; --active:#3A2866; --active-hover:#48327E; --line:#2E2342;
-  --acc:154,127,203; --act:18,13,32; --act-hi:48,34,84; --accent:#9A7FCB; --accent-soft:#BDA9DB;
-}
 html,body{ width:100vw; height:100dvh; overflow:hidden; background:var(--bg); font-family:var(--font); color:var(--fg); -webkit-font-smoothing:antialiased; }
 button{ font-family:inherit; }
-.void{ position:fixed; inset:0; background:var(--bg-grad, var(--bg)); z-index:0; }
+.void{ position:fixed; inset:0; background:var(--bg); z-index:0; }
 .orb-bleed{ display:none; }
 
 body{ transition:opacity .3s ease; }
@@ -153,7 +150,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 body.chat-open .hint-text{ opacity:0; }
 .version-tag{ position:fixed; left:20px; bottom:26px; z-index:40; font:500 9px var(--font-mono); letter-spacing:.22em; text-transform:uppercase; color:rgba(var(--w),.42); user-select:none; pointer-events:none; }
 
-/* ═══════ DOCK (chat · código · configurações): um só grupo, canto inferior direito ═══════ */
+/* ═══════ DOCK (chat · código · multitarefa · configurações): um só grupo, canto inferior direito ═══════ */
 .dock{
   position:fixed; right:16px; bottom:14px; z-index:40; display:flex; align-items:center; gap:2px; padding:4px;
   border-radius:999px; background:rgba(var(--act),.72); border:1px solid var(--line);
@@ -169,7 +166,7 @@ body.chat-open .hint-text{ opacity:0; }
 .dock-btn.on{ color:var(--fg); background:var(--active); }
 .dock-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 
-/* ═══════ painel de resposta: a própria Orb vira o painel ═══════ */
+/* ═══════ painel de resposta ═══════ */
 .orb-zone{ transition:transform .9s cubic-bezier(.2,.7,.2,1); }
 body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }
 .orb-zone.panel-open{ cursor:default; }
@@ -250,7 +247,7 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }
 .siri.play{ animation:siri 1.7s cubic-bezier(.2,.75,.2,1) forwards; }
 @keyframes siri{ 0%{ opacity:0; transform:translateY(100%); } 30%{ opacity:1; } 62%{ opacity:.9; transform:translateY(8%); } 100%{ opacity:0; transform:translateY(-6%); } }
 
-/* ═══════ FOLHAS (configurações e ORION CODE) ═══════ */
+/* ═══════ FOLHAS (configurações, ORION CODE e Multitarefa) — o contorno e o visual do OrbFrame estão em css/orion-v5.css ═══════ */
 #settingsPanel, #codePanel{
   position:fixed; inset:0; z-index:150; display:flex; align-items:center; justify-content:center; padding:16px;
   background:var(--scrim); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
@@ -329,14 +326,6 @@ body.panel-on .status{ top:calc(50% + var(--panel-h)/2 + 18px); }
 .settings-select:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 .settings-select:disabled{ opacity:.45; cursor:default; }
 .settings-select option{ background:var(--card-solid); color:var(--fg); }
-.theme-swatches{ display:flex; gap:10px; }
-.sw{ width:28px; height:28px; padding:0; border-radius:50%; border:1px solid rgba(var(--w),.3); cursor:pointer; transition:transform .2s ease, box-shadow .2s ease; }
-.sw:hover{ transform:translateY(-1px); }
-.sw[aria-checked="true"]{ box-shadow:0 0 0 2px var(--card-solid), 0 0 0 3.5px var(--accent); }
-.sw:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
-.sw-indigo{ background:radial-gradient(circle at 30% 28%, #454080, #000 72%); }
-.sw-midnight{ background:radial-gradient(circle at 30% 28%, #2A4F8C, #000 72%); }
-.sw-purple{ background:radial-gradient(circle at 30% 28%, #5A3A94, #000 72%); }
 
 @media (max-width:640px){
   .set-body{ grid-template-columns:1fr; }
@@ -424,6 +413,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 #leaveOverlay{ position:fixed; inset:0; z-index:300; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; pointer-events:all; transition:opacity .45s ease; }
 #leaveOverlay.on{ opacity:1; }
 </style>
+<link rel="stylesheet" href="css/orion-v5.css?v=5.0">
 </head>
 <body>
 
@@ -442,7 +432,9 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 <!-- APP -->
 <div id="app">
 
+  <!-- canto superior esquerdo: logo + wordmark -->
   <div class="header">
+    <img class="header-mark" src="../assets/orion_ai_logo.png" alt="">
     <img class="header-logo" src="../assets/orion_ai_wordmark.png" alt="ORION AI">
   </div>
 
@@ -562,6 +554,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 <nav class="dock" aria-label="ORION">
   <button class="dock-btn" id="chatBtn" aria-label="Perguntar ao ORION" aria-pressed="false" title="Perguntar ao ORION ( / )" data-i18n-aria="chat.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></button>
   <button class="dock-btn" id="codeBtn" aria-label="ORION CODE e ORION API" title="ORION CODE e ORION API" data-i18n-aria="code.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5L3 12l5.5 5.5M15.5 6.5L21 12l-5.5 5.5M13.5 4.5l-3 15"/></svg></button>
+  <button class="dock-btn" id="taskBtn" aria-label="Multitarefa" aria-pressed="false" title="Multitarefa"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></button>
   <span class="dock-sep" aria-hidden="true"></span>
   <button class="dock-btn" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
@@ -611,6 +604,8 @@ window.ORION_SIGNOUT = async () => {
   leave();
 };
 </script>
+<script src="js/orb-frame.js?v=5.0"></script>
 <script defer src="js/app.js?v=5.0"></script>
+<script defer src="js/orion-v5.js?v=5.0"></script>
 </body>
 </html>
