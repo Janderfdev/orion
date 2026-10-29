@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V5.0 — Interaction Layer  (pages/js/app.js)
+   ORION AI V5.0 — Interaction Layer (Cosmic Indigo / Midnight Blue / Deep Purple)  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
@@ -56,7 +56,7 @@ const I18N = (() => {
       'code.codeDesc': 'A programming assistant: it reads your project, proposes changes and only applies what you approve.',
       'code.apiDesc': 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.',
       'code.planned': 'Planned: {v}', 'code.note': 'Not available yet. Versions and dates may change.', 'code.close': 'Close',
-      'set.theme': 'Theme', 'theme.preto': 'Black', 'theme.nebulosa': 'Nebula',
+      'set.theme': 'Theme', 'theme.indigo': 'Cosmic Indigo', 'theme.midnight': 'Midnight Blue', 'theme.purple': 'Deep Purple', 'vs.voiceN': 'Voice {n}',
       'attach.aria': 'Attach an image or file', 'attach.default': 'Describe this attachment.', 'attach.remove': 'Remove attachment',
       'attach.errType': 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'attach.errSize': 'That file is too large.',
       'attach.errRead': 'I couldn’t read that file.', 'err.attachment_invalid': 'I couldn’t use that attachment.',
@@ -115,7 +115,7 @@ const I18N = (() => {
       'code.codeDesc': 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.',
       'code.apiDesc': 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.',
       'code.planned': 'Previsto: {v}', 'code.note': 'Ainda não está disponível. Versões e datas podem mudar.', 'code.close': 'Fechar',
-      'set.theme': 'Tema', 'theme.preto': 'Preto', 'theme.nebulosa': 'Nebulosa',
+      'set.theme': 'Tema', 'theme.indigo': 'Cosmic Indigo', 'theme.midnight': 'Midnight Blue', 'theme.purple': 'Deep Purple', 'vs.voiceN': 'Voz {n}',
       'attach.aria': 'Anexar imagem ou arquivo', 'attach.default': 'Descreva este anexo.', 'attach.remove': 'Remover anexo',
       'attach.errType': 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'attach.errSize': 'Esse arquivo é grande demais.',
       'attach.errRead': 'Não consegui ler esse arquivo.', 'err.attachment_invalid': 'Não consegui usar esse anexo.',
@@ -168,19 +168,30 @@ const t = I18N.t;
    STANDBY (azul escuro) → LISTENING (azul mais claro) → PROCESSING (azul escuro, mais atividade) → SPEAKING (verde + pulsação do áudio) → STANDBY
    (qualquer) → ERROR (vermelho: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
 const VISUAL_STATE = (() => {
-  const BLUE = { a: '#1E3A8A', b: '#0F1F52', c: '#2A5BC4' };   // era o roxo #5b21b6 / #2e1065 / #8b5cf6
+  const THEME_ORB = {   // a Orb é sempre preta; só a cor da nebulosa muda com o tema
+    indigo:   { a: '#3A3678', b: '#1C1A40', c: '#6A63B0' },
+    midnight: { a: '#1E3A6E', b: '#0E1F40', c: '#4A7AB8' },
+    purple:   { a: '#4A2E7A', b: '#241446', c: '#7E5FB0' },
+  };
+  const mix = (hex, k) => { const h = hex.replace('#', ''); const f = i => Math.round(parseInt(h.substr(i, 2), 16) + (255 - parseInt(h.substr(i, 2), 16)) * k).toString(16).padStart(2, '0'); return '#' + f(0) + f(2) + f(4); };
+  let BASE = THEME_ORB.indigo;
   const CFG = {
-    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BLUE },
-    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: { a: '#1E4BB8', b: '#10286A', c: '#4C8DF0' } },
-    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: BLUE },
-    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#22c55e' } },   // verde (pulsa com o áudio)
-    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#991b1b', b: '#450a0a', c: '#ef4444' } },   // vermelho
+    standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BASE },
+    listening:  { amp: 1.18, rot: 1.50, bright: 0.95, cls: 'st-listening', color: BASE },
+    processing: { amp: 1.12, rot: 1.80, bright: 0.88, cls: 'st-thinking',  color: BASE },
+    speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: { a: '#166534', b: '#052e16', c: '#3FA66B' } },   // verde suave
+    error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: { a: '#991b1b', b: '#450a0a', c: '#d65a5a' } },   // vermelho suave
   };
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
   let current = 'standby';
+  function setTheme(name) {
+    BASE = THEME_ORB[name] || THEME_ORB.indigo;
+    CFG.standby.color = BASE; CFG.processing.color = BASE;
+    CFG.listening.color = { a: mix(BASE.a, .14), b: mix(BASE.b, .10), c: mix(BASE.c, .22) };
+  }
   const apply = name => { current = ALIAS[name] || 'standby'; return CFG[current]; };
-  return { apply, get: () => current, config: name => CFG[ALIAS[name] || current] };
+  return { apply, setTheme, base: () => BASE, get: () => current, config: name => CFG[ALIAS[name] || current] };
 })();
 
 /* ═══ logger.js — diagnóstico leve (nunca grava texto bruto fora de dev) ═══ */
@@ -295,14 +306,7 @@ const ORB = (() => {
   const rgba = (o, a) => `rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${Math.max(0, Math.min(1, a))})`;
   const lighten = (o, k) => ({ r: o.r + (255 - o.r) * k, g: o.g + (255 - o.g) * k, b: o.b + (255 - o.b) * k });
 
-  /* cor da Orb da tela Voice & Speech conforme a voz escolhida (a Orb principal NÃO usa isto) */
-  const VOICE_PALETTE = {
-    1: { a: '#1E3A8A', b: '#0F1F52', c: '#2A5BC4' },
-    2: { a: '#1E40AF', b: '#172554', c: '#5B9BFF' },
-    3: { a: '#166534', b: '#052e16', c: '#22c55e' },
-    4: { a: '#991b1b', b: '#450a0a', c: '#ef4444' },
-  };
-  let vsColor = triple(VOICE_PALETTE[1]), vsTarget = triple(VOICE_PALETTE[1]);
+  let vsColor = triple(VISUAL_STATE.base()), vsTarget = triple(VISUAL_STATE.base());
   let rings = [], vsRings = [], lastSpawn = 0, prevTarget = 0, clock = 0;
   let colorNow = triple(VISUAL_STATE.config('standby').color);
   let colorTarget = triple(VISUAL_STATE.config('standby').color);
@@ -353,7 +357,7 @@ const ORB = (() => {
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.clip();
     const bg = c.createRadialGradient(R * 0.8, R * 0.6, 0, R, R, R);
     bg.addColorStop(0, rgba(col.b, 0.55 * b));
-    bg.addColorStop(1, 'rgba(5,8,15,0.96)');   // base da Orb: #05080F
+    bg.addColorStop(1, 'rgba(0,0,0,0.96)');   // base da Orb: #05080F
     c.fillStyle = bg; c.fillRect(0, 0, S, S);
 
     c.globalCompositeOperation = 'lighter';
@@ -382,8 +386,8 @@ const ORB = (() => {
 
     c.globalCompositeOperation = 'source-over';
     const vig = c.createRadialGradient(R, R, R * 0.30, R, R, R);
-    vig.addColorStop(0, 'rgba(5,8,15,0)');
-    vig.addColorStop(1, 'rgba(5,8,15,0.82)');
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.82)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
     c.restore();
@@ -469,7 +473,12 @@ const ORB = (() => {
     setHover: on => { hovered = on; },
     setCalm: on => { calm = !!on; },
     setVoiceScreen: els => { vs = els ? { zone: els.zone, orb: els.orb, halo: els.halo, halo2: els.halo2, disc: els.disc, ctx: els.disc.getContext('2d') } : null; vsRings = vs ? makeRings(vs.zone) : []; if (vs) decorate(); },
-    setVoiceColor: (slot, snap) => { vsTarget = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); if (snap) vsColor = triple(VOICE_PALETTE[slot] || VOICE_PALETTE[1]); },
+    setTheme: (name, snap) => {
+      VISUAL_STATE.setTheme(name);
+      colorTarget = triple(VISUAL_STATE.config(VISUAL_STATE.get()).color);
+      vsTarget = triple(VISUAL_STATE.base());
+      if (snap) { colorNow = triple(VISUAL_STATE.config(VISUAL_STATE.get()).color); vsColor = triple(VISUAL_STATE.base()); }
+    },
     pressEffect: () => { press = 1; },
   };
 })();
@@ -819,7 +828,7 @@ const API = (() => {
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
-  prefs.theme = prefs.theme === 'nebulosa' ? 'nebulosa' : 'preto';   // padrão: preto 100% (valores antigos viram preto)
+  prefs.theme = ['indigo', 'midnight', 'purple'].includes(prefs.theme) ? prefs.theme : 'indigo';   // 'preto'/'nebulosa' antigos viram índigo
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
   savePrefs();
 
@@ -852,11 +861,12 @@ const API = (() => {
 
   /* ── temas (V5.0): PRETO (padrão) e NEBULOSA (o mesmo preto, com estrelas e nuvens azul-escuras ao fundo) ──
      A Orb e as cores da interface são idênticas nos dois. A escolha fica salva neste navegador. */
-  const THEMES = ['preto', 'nebulosa'];
+  const THEMES = ['indigo', 'midnight', 'purple'];
   function applyTheme(animate) {
     const next = prefs.theme, root = document.documentElement;
+    try { ORB.setTheme(next, !animate); } catch (_) {}
     if (!animate || calm() || root.dataset.theme === next) { root.dataset.theme = next; return; }
-    root.classList.add('theme-swap');   // a página some por um instante, troca e volta
+    root.classList.add('theme-swap');
     setTimeout(() => { root.dataset.theme = next; root.classList.remove('theme-swap'); }, 230);
   }
   applyTheme(false);
@@ -1248,9 +1258,9 @@ const API = (() => {
   /* ── Voice & Speech (tela dedicada) ── */
   const vs = (() => {
     const el = $('voiceScreen');
-    const dots = [...el.querySelectorAll('.vs-dot')];
+    const dots = [...el.querySelectorAll('.vs-voice')];
     const pace = $('vsPace'), expr = $('vsExpr'), paceVal = $('vsPaceVal'), exprVal = $('vsExprVal');
-    const msgEl = $('vsMsg'), engine = $('vsEngine'), wakeBtn = $('vsWake');
+    const msgEl = $('vsMsg'), engine = $('vsEngine'), wakeBtn = $('vsWake'), exprNote = $('vsExprNote'), wakeSec = $('vsWakeSec');
     let open = false, previewing = false, transient = false;
 
     const fill = inp => inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min) * 100) + '%');
@@ -1265,22 +1275,23 @@ const API = (() => {
       const eleven = ttsOn === true;
       dots.forEach(d => {
         const s = +d.dataset.slot, v = voices.find(x => x.slot === s);
+        const name = v ? v.label : t('vs.voiceN', { n: s });   // nome vindo do servidor; nada inventado
+        d.querySelector('.vs-vname').textContent = name;
         d.disabled = !(eleven && v);
         d.setAttribute('aria-checked', String(prefs.slot === s));
-        d.setAttribute('aria-label', v ? v.label : 'Voice ' + s);
-        d.title = v ? v.label : '';
+        d.setAttribute('aria-label', name);
       });
       pace.value = prefs.pace; expr.value = prefs.expr; paintSliders();
-      expr.disabled = !eleven;
+      expr.disabled = !eleven; exprNote.hidden = eleven;   // expressividade só vale nas vozes da ElevenLabs
+      wakeSec.hidden = !VOICE.isAvailable;                 // Hey ORION só aparece se o navegador suporta
       // botão do Hey ORION: azul ativo quando ligado, cinza quando desligado (verde e vermelho são reservados aos estados da Orb)
       const wakeOn = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault;
       wakeBtn.setAttribute('aria-checked', String(wakeOn));
       wakeBtn.disabled = !VOICE.isAvailable;
       wakeBtn.title = !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : '';
-      ORB.setVoiceColor(prefs.slot);   // a Orb desta tela fica na cor da voz selecionada
       engine.textContent = ttsOn === true ? t('vs.eleven') : ttsOn === false ? t('vs.browser') : t('vs.checking');
       if (!transient) {
-        msgEl.textContent = ttsOn === false ? t('vs.noVoices') : (ttsOn === true ? t('vs.apply') : '');
+        msgEl.textContent = ttsOn === false ? t('vs.noVoices') : '';
         msgEl.classList.remove('err');
       }
     }
@@ -1329,7 +1340,6 @@ const API = (() => {
     function show() {
       open = true; el.classList.add('open'); el.setAttribute('aria-hidden', 'false');
       ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), halo2: $('vsHalo2'), disc: $('vsDisc') });
-      ORB.setVoiceColor(prefs.slot, true);
       transient = false; sync();
       if (ttsOn === null && !loading) loadModels();
       setTimeout(() => $('vsBack').focus(), 60);
@@ -1361,6 +1371,11 @@ const API = (() => {
     });
     $('vsOrb').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preview(); } });
     $('vsBack').addEventListener('click', back);
+    $('vsDots').addEventListener('keydown', e => {   // setas movem o foco entre as vozes
+      const k = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!k) return;
+      const on = dots.filter(d => !d.disabled), i = on.indexOf(document.activeElement);
+      if (on.length) { e.preventDefault(); on[(i + k + on.length) % on.length].focus(); }
+    });
     document.addEventListener('keydown', e => { if (open && e.key === 'Escape') { e.preventDefault(); back(); } });
 
     return { show, hide, sync, isOpen: () => open };
@@ -1498,7 +1513,7 @@ const API = (() => {
               <div class="set-row"><span class="ico">${IC.model}</span><div><h3>${t('set.model')}</h3><p>${t('set.modelD')}</p></div><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
               <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
               <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-btn toggle" type="button" aria-pressed="true"></button></div>
-              <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${['preto', 'nebulosa'].map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
+              <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
               <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
             </div>
           </div>
@@ -1527,7 +1542,7 @@ const API = (() => {
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
       panel.querySelector('#themeSwatches').addEventListener('click', e => {
         const b = e.target.closest('.sw'); if (!b) return;
-        prefs.theme = THEMES.includes(b.dataset.k) ? b.dataset.k : 'preto'; savePrefs(); applyTheme(true); sync();
+        prefs.theme = THEMES.includes(b.dataset.k) ? b.dataset.k : 'indigo'; savePrefs(); applyTheme(true); sync();
       });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
         prefs.ui = e.target.value === 'en' ? 'en' : 'pt'; savePrefs();
