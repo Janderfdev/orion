@@ -169,9 +169,10 @@ const t = I18N.t;
    (qualquer) → ERROR (vermelho: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
 const VISUAL_STATE = (() => {
   /* Cor-base de cada tema. A Orb é sempre preta; a nebulosa por dentro muda conforme o estado real:
-       idle / não entendi → nebulosa preta (sem brilho colorido) · ouvindo → nebulosa branca com leve reflexo do tema
-       processando → cor do tema bem contida · respondendo (áudio tocando) → cor do tema, um pouco mais intensa, ainda escura.
-     "color" é a nebulosa desenhada dentro da Orb; "ring" é a cor dos arcos, do contorno e do halo (a forma original não muda). */
+       normal (idle) → cor do tema · ouvindo → branco escuro (cinza-claro contido, com leve reflexo do tema)
+       processando → cor do tema · respondendo (áudio tocando) → cor do tema, um pouco mais intensa, ainda escura
+       não entendi / erro → cinza muito escuro, quase preto.
+     "color" é a nebulosa desenhada dentro da Orb; "ring" é a cor do arco, do contorno e do halo (a forma original não muda). */
   const THEME_ORB = {
     indigo:   { a: '#3A3678', b: '#1C1A40', c: '#6A63B0' },
     midnight: { a: '#1E3A6E', b: '#0E1F40', c: '#4A7AB8' },
@@ -185,7 +186,7 @@ const VISUAL_STATE = (() => {
   let BASE = THEME_ORB.indigo;
   const CFG = {
     standby:    { amp: 1.00, rot: 1.00, bright: 0.82, cls: '',             color: BASE, ring: BASE },
-    listening:  { amp: 1.18, rot: 1.50, bright: 0.74, cls: 'st-listening', color: BASE, ring: BASE },
+    listening:  { amp: 1.18, rot: 1.50, bright: 0.66, cls: 'st-listening', color: BASE, ring: BASE },
     processing: { amp: 1.12, rot: 1.80, bright: 0.86, cls: 'st-thinking',  color: BASE, ring: BASE },
     speaking:   { amp: 1.24, rot: 1.65, bright: 1.00, cls: 'st-speaking',  color: BASE, ring: BASE },
     error:      { amp: 0.82, rot: 0.50, bright: 0.60, cls: 'st-error',     color: BASE, ring: BASE },
@@ -193,14 +194,16 @@ const VISUAL_STATE = (() => {
   const ALIAS = { idle: 'standby', standby: 'standby', listening: 'listening', processing: 'processing', thinking: 'processing',
                   speaking: 'speaking', responding: 'speaking', error: 'error' };
   let current = 'standby';
+  const blend = (h1, h2, k) => toHex(hx(h1).map((n, i) => n + (hx(h2)[i] - n) * k));
   function setTheme(name) {
     BASE = THEME_ORB[name] || THEME_ORB.indigo;
-    const black = { a: '#34343E', b: '#1C1C24', c: '#4A4A56' };   // cinza muito escuro, sem cor de tema
-    CFG.standby.color = black;  CFG.standby.ring = BASE;
-    CFG.error.color = black;    CFG.error.ring = BASE;
-    CFG.listening.color = { a: lighter(BASE.c, .72), b: lighter(BASE.c, .52), c: lighter(BASE.c, .86) };
-    CFG.listening.ring = { a: lighter(BASE.a, .18), b: BASE.b, c: lighter(BASE.c, .30) };
-    CFG.processing.color = pal(c => darker(c, .45), BASE);  CFG.processing.ring = BASE;
+    CFG.standby.color = BASE;    CFG.standby.ring = BASE;                    // normal: a cor do tema selecionado
+    CFG.processing.color = BASE; CFG.processing.ring = BASE;
+    CFG.error.color = { a: '#34343E', b: '#1C1C24', c: '#4A4A56' };       // não entendi: cinza muito escuro
+    CFG.error.ring = BASE;
+    // ouvindo: branco escuro (neutro, 80%) com um leve reflexo da cor do tema (20%)
+    CFG.listening.color = { a: blend('#9A9AA8', BASE.c, .20), b: blend('#4A4A58', BASE.b, .20), c: blend('#C2C2D0', BASE.c, .20) };
+    CFG.listening.ring = { a: lighter(BASE.a, .12), b: BASE.b, c: lighter(BASE.c, .22) };
     CFG.speaking.color = { a: lighter(BASE.a, .10), b: lighter(BASE.b, .08), c: lighter(BASE.c, .14) };
     CFG.speaking.ring = pal(c => lighter(c, .12), BASE);
   }
