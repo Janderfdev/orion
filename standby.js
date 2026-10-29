@@ -8,12 +8,12 @@
      index.html e pages/orion.html:  <script src="standby.js" data-mount></script>  (mostram a tela de standby por cima de tudo)
      login.html:                      <script src="standby.js"></script>             (mostram a tela de standby por cima de tudo)
 
-   Teste local (só localhost / file://):  ?simular=2026-10-25T10:00:00-03:00
+   Teste local (só localhost / file://):  ?simular=2026-10-28T22:00:00-03:00
    Liberação do dono, só neste navegador:  abra qualquer página com ?liberar=0  (e ?liberar=0 para voltar ao normal). */
 (function () {
   'use strict';
 
-  const START = Date.parse('2026-10-25T10:00:00-03:00');   // começa em 25/10/2026 às 10:00:00
+  const START = Date.parse('2026-10-28T10:00:00-03:00');   // começa em 28/10/2026 às 22:00:00
   const END   = Date.parse('2026-10-30T10:00:00-03:00');   // termina em 30/10/2026 às 10:00:00
 
   /* Se uma das datas estiver inválida, prende no standby. */
