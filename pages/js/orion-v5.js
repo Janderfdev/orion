@@ -13,26 +13,67 @@
   const zone = $('orbZone'), orb = $('orb');
   if (!zone || !orb || !window.OrbFrame) return;
 
-  /* ── 1. Morph esfera ⇄ painel ── */
+  /* ── 1. Orb Adaptive: esfera ⇄ painel ──
+     A Orb vira painel em dois casos: (a) um módulo abre (Configurações, ORION Code/API, Multitarefa);
+     (b) a resposta de uma pergunta ESCRITA chega (a resposta e as imagens ficam dentro do painel).
+     Pergunta por VOZ: o ORION responde falando e nada aparece na tela. */
   const arc = document.createElement('div');
   arc.className = 'orb-arc'; arc.setAttribute('aria-hidden', 'true');
   zone.insertBefore(arc, orb);
+  const body = document.body, cap = $('capBox'), form = $('askForm');
   const MODS = [['#settingsPanel', 'gearBtn'], ['#codePanel', 'codeBtn'], ['#taskPanel', 'taskBtn']];
-  let morphed = false;
+  let morphed = false, moduleOpen = false, textMode = false, capOn = false, src = 'voice';
+
   function sync() {
     let any = false;
     MODS.forEach(([sel, btn]) => {
       const on = !!document.querySelector(sel + '.open'); any = any || on;
       const b = $(btn); if (b) b.classList.toggle('on', on);
     });
-    if (any === morphed) return;
-    morphed = any;
-    zone.classList.toggle('panel-open', any);
-    orb.classList.toggle('panel', any);       // app.js: a Orb pára de desenhar a nebulosa enquanto é painel
-    orb.classList.toggle('module', any);
-    document.body.classList.toggle('module-open', any);
+    // o chat não é usado dentro dos módulos: se estava aberto, fecha antes de abrir o painel
+    if (any && !moduleOpen && body.classList.contains('chat-open')) { const c = $('chatBtn'); if (c) c.click(); }
+    moduleOpen = any;
+    const chatPanel = textMode && !any;
+    body.classList.toggle('module-open', any);
+    body.classList.toggle('chat-answer', chatPanel);
+    const chatBtn = $('chatBtn'); if (chatBtn) { if (any) chatBtn.setAttribute('aria-disabled', 'true'); else chatBtn.removeAttribute('aria-disabled'); }
+    const want = any || chatPanel;
+    if (want === morphed) return;
+    morphed = want;
+    zone.classList.toggle('panel-open', want);
+    orb.classList.toggle('panel', want);       // app.js: a Orb pára de desenhar a nebulosa enquanto é painel
+    orb.classList.toggle('module', want);
   }
-  new MutationObserver(sync).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(sync).observe(body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+
+  // origem da pergunta: só o formulário do chat é "escrita"; voz, "Hey ORION" e toque na Orb são "voz"
+  form.addEventListener('submit', () => {
+    if ($('askInput').value.trim() || !$('attachChip').hidden) src = 'text';
+  }, true);
+  new MutationObserver(() => {
+    const on = cap.classList.contains('show');
+    if (on && !capOn) {
+      capOn = true;
+      textMode = src === 'text';
+      body.classList.toggle('voice-answer', !textMode);
+      src = 'voice';
+    } else if (!on && capOn) {
+      capOn = false; textMode = false;
+      body.classList.remove('voice-answer');
+    }
+    sync();
+  }).observe(cap, { attributes: true, attributeFilter: ['class'] });
+  // enquanto a pessoa lê a resposta no painel, o app.js não deve fechá-lo: repassa o "mouse em cima" para a Orb
+  cap.addEventListener('pointerenter', () => orb.dispatchEvent(new PointerEvent('pointerenter')));
+  cap.addEventListener('pointerleave', () => orb.dispatchEvent(new PointerEvent('pointerleave')));
+
+  // a barra do chat e o atalho "/" não funcionam dentro dos módulos
+  document.addEventListener('click', e => {
+    if (moduleOpen && e.target.closest && e.target.closest('#chatBtn')) { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
+  document.addEventListener('keydown', e => {
+    if (moduleOpen && e.key === '/' && !e.target.matches('input,textarea,select')) { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
 
   /* ── 2. Multitarefa ── */
   const TXT = {
@@ -240,4 +281,103 @@
   label();
   new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
   window.ORION_TASK_PANEL = panel;
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   Voice & Speech — dois arcos em volta da Orb
+   Arco interno = Ritmo · arco externo = Expressividade. Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
+   Arraste o arco (mouse, toque) ou use as setas do teclado. Os valores reais ficam nos campos #vsPace e #vsExpr,
+   que o app.js já lê e salva — os arcos só os controlam e os refletem.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const svg = $('vsRings'), screen = $('voiceScreen'), pace = $('vsPace'), expr = $('vsExpr');
+  if (!svg || !screen || !pace || !expr) return;
+  const NS = 'http://www.w3.org/2000/svg', C = 110;
+  const mk = (tag, at) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+  const defs = [
+    { inp: pace, r: 66, color: '#5F59A8', name: 'vsPaceName', fmt: v => v.toFixed(2) + '×' },
+    { inp: expr, r: 86, color: '#8782C2', name: 'vsExprName', fmt: (v, p) => Math.round(p) + '%' },
+  ];
+  const readP = d => { const i = d.inp, min = +i.min, max = +i.max; return Math.min(1, Math.max(0, (+i.value - min) / (max - min))) * 100; };
+  const fire = (d, type) => d.inp.dispatchEvent(new Event(type, { bubbles: true }));
+
+  function paint(d, force) {
+    const p = readP(d), off = d.inp.disabled;
+    if (!force && p === d.last && off === d.off) return;
+    d.last = p; d.off = off;
+    d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
+    d.prog.style.visibility = p < 0.4 ? 'hidden' : 'visible';
+    const a = p * 3.6 * Math.PI / 180;
+    d.tip.setAttribute('cx', (C + d.r * Math.sin(a)).toFixed(2));
+    d.tip.setAttribute('cy', (C - d.r * Math.cos(a)).toFixed(2));
+    d.g.setAttribute('aria-valuenow', String(Math.round(p)));
+    d.g.setAttribute('aria-valuetext', d.fmt(+d.inp.value, p));
+    d.g.setAttribute('aria-disabled', String(off));
+    d.g.classList.toggle('off', off);
+    d.g.tabIndex = off ? -1 : 0;
+  }
+  function setP(d, p) {
+    if (d.inp.disabled) return;
+    p = Math.min(100, Math.max(0, p));
+    const min = +d.inp.min, max = +d.inp.max;
+    const v = Math.round((min + p / 100 * (max - min)) * 100) / 100;
+    if (v === +d.inp.value) return;
+    d.inp.value = String(v);
+    fire(d, 'input'); paint(d);
+  }
+  function angleP(e) {   // posição do ponteiro → % ao longo do círculo, a partir do topo
+    const r = svg.getBoundingClientRect();
+    let deg = Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    return deg / 3.6;
+  }
+
+  defs.forEach(d => {
+    d.g = mk('g', { class: 'vs-ring', role: 'slider', tabindex: '0', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-orientation': 'horizontal', 'aria-labelledby': d.name });
+    d.g.append(
+      mk('circle', { class: 'track', cx: C, cy: C, r: d.r }),
+      d.prog = mk('circle', { class: 'prog', cx: C, cy: C, r: d.r, pathLength: '100', stroke: d.color, transform: 'rotate(-90 ' + C + ' ' + C + ')', 'stroke-dasharray': '0 100' }),
+      d.tip = mk('circle', { class: 'tip', r: '7', cx: C, cy: C - d.r }),
+      mk('circle', { class: 'hit', cx: C, cy: C, r: d.r }));
+    svg.append(d.g);
+
+    d.g.addEventListener('pointerdown', e => {
+      if (d.inp.disabled) return;
+      d.drag = true; d.g.setPointerCapture(e.pointerId); e.preventDefault();
+      setP(d, angleP(e));
+    });
+    d.g.addEventListener('pointermove', e => {
+      if (!d.drag) return;
+      let p = angleP(e); const prev = readP(d);
+      if (prev > 85 && p < 15) p = 100;       // não "dá a volta" de 100% para 0% (e vice-versa)
+      else if (prev < 15 && p > 85) p = 0;
+      setP(d, p);
+    });
+    const end = () => { if (!d.drag) return; d.drag = false; fire(d, 'change'); };
+    d.g.addEventListener('pointerup', end);
+    d.g.addEventListener('pointercancel', end);
+    d.g.addEventListener('keydown', e => {
+      const step = e.shiftKey ? 10 : 2, k = e.key;
+      let p = readP(d);
+      if (k === 'ArrowRight' || k === 'ArrowUp') p += step;
+      else if (k === 'ArrowLeft' || k === 'ArrowDown') p -= step;
+      else if (k === 'PageUp') p += 10;
+      else if (k === 'PageDown') p -= 10;
+      else if (k === 'Home') p = 0;
+      else if (k === 'End') p = 100;
+      else return;
+      e.preventDefault(); e.stopPropagation();
+      setP(d, p); fire(d, 'change');
+    });
+    paint(d, true);
+  });
+
+  // reflete os valores do app.js (que escreve nos campos ao abrir a tela e ao trocar de idioma) enquanto a tela está aberta
+  let raf = 0;
+  const loop = () => { defs.forEach(d => paint(d)); raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0; };
+  new MutationObserver(() => { if (screen.classList.contains('open') && !raf) raf = requestAnimationFrame(loop); })
+    .observe(screen, { attributes: true, attributeFilter: ['class'] });
 })();
