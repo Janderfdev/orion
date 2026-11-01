@@ -71,9 +71,15 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 #app.on{ opacity:1; }
 
 /* canto superior esquerdo: logo + wordmark */
-.header{ position:absolute; top:0; left:0; display:flex; align-items:center; gap:14px; padding:clamp(16px,3vh,26px) clamp(14px,3vw,28px); pointer-events:none; user-select:none; z-index:3; }
-.header-mark{ width:clamp(35px,5.4vmin,45px); height:auto; flex:none; }
-.header-logo{ width:clamp(142px,20vmin,201px); height:auto; }
+.header{ position:absolute; top:0; left:0; display:flex; align-items:center; gap:12px; padding:clamp(16px,3vh,26px) clamp(10px,2vw,22px); pointer-events:none; user-select:none; z-index:3; }
+.header-mark{ width:clamp(36px,5.8vmin,46px); height:auto; flex:none; }
+.header-logo{ width:clamp(150px,21vmin,205px); height:auto; }
+/* Desktop: o painel começa em max(232px,17vw) (arco 12px antes dele). A logo ocupa só o que sobra à esquerda, com folga de 9px. */
+@media (min-width:1100px){
+  .header{ padding-left:6px; }
+  .header-mark{ width:40px; }
+  .header-logo{ width:min(calc(max(232px, 17vw) - 79px), 235px); }
+}
 
 /* ═══════ STAGE / ORB (desenho original) ═══════ */
 .stage{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
@@ -113,14 +119,12 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
     color-mix(in srgb, var(--core-c) 12%, transparent) 0%,
     color-mix(in srgb, var(--core-a) 6%, transparent) 32%,
     var(--orb-mid) 68%, var(--orb-end) 100%);
-  border:1px solid color-mix(in srgb, var(--core-a) 36%, transparent);
+  border:1px solid color-mix(in srgb, var(--core-a) 28%, transparent);
   box-shadow:
-    0 0 52px color-mix(in srgb, var(--core-a) 26%, transparent),
-    0 0 120px color-mix(in srgb, var(--core-b) 18%, transparent),
+    0 0 60px color-mix(in srgb, var(--core-a) 30%, transparent),
+    0 0 130px color-mix(in srgb, var(--core-b) 22%, transparent),
     inset 0 0 60px var(--orb-inset),
-    inset 0 -22px 46px rgba(0,0,0,.5),
-    inset 0 14px 34px color-mix(in srgb, var(--core-c) 10%, transparent),
-    inset 0 1px 0 rgba(var(--w),.14);
+    inset 0 1px 0 rgba(var(--w),.12);
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
   transform:translateY(var(--orb-y,0px)) scale(var(--orb-s,1));
   transition:box-shadow .9s ease, filter .6s ease, opacity .45s ease,
@@ -130,10 +134,9 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 .orb-zone:hover .orb{
   filter:brightness(1.06);
   box-shadow:
-    0 0 66px color-mix(in srgb, var(--core-a) 34%, transparent),
-    0 0 136px color-mix(in srgb, var(--core-b) 22%, transparent),
-    inset 0 0 60px var(--orb-inset), inset 0 -22px 46px rgba(0,0,0,.5),
-    inset 0 14px 34px color-mix(in srgb, var(--core-c) 12%, transparent), inset 0 1px 0 rgba(var(--w),.16);
+    0 0 78px color-mix(in srgb, var(--core-a) 40%, transparent),
+    0 0 150px color-mix(in srgb, var(--core-b) 28%, transparent),
+    inset 0 0 60px var(--orb-inset), inset 0 1px 0 rgba(var(--w),.14);
 }
 .orb.st-listening{ filter:brightness(1.08); }
 .orb.st-thinking{ filter:brightness(1.03); }
@@ -141,13 +144,11 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 .orb.st-error{ filter:brightness(.62); animation:orberr .42s ease; }
 @keyframes orberr{ 0%,100%{ translate:0 0; } 25%{ translate:-4px 0; } 60%{ translate:4px 0; } 85%{ translate:-1px 0; } }
 .orb-canvas{ position:absolute; inset:0; width:100%; height:100%; border-radius:50%; mix-blend-mode:screen; }
-.glass-hi{ position:absolute; top:7%; left:11%; width:40%; height:30%; border-radius:50%;
-  background:radial-gradient(ellipse at 40% 34%, rgba(255,255,255,.17) 0%, rgba(255,255,255,.05) 42%, transparent 72%);
-  transform:rotate(-24deg); translate:var(--hl-x,0%) var(--hl-y,0%); pointer-events:none; z-index:2; }
-.glass-hi::after{ content:""; position:absolute; left:24%; top:20%; width:18%; height:13%; border-radius:50%;
-  background:radial-gradient(ellipse, rgba(255,255,255,.22), transparent 70%); }
-.glass-rim{ position:absolute; bottom:5%; right:9%; width:30%; height:10%; border-radius:50%;
-  background:radial-gradient(ellipse, rgba(var(--w),.07) 0%, transparent 70%); pointer-events:none; z-index:2; }
+.glass-hi{ position:absolute; top:6%; left:9%; width:44%; height:38%; border-radius:50%;
+  background:radial-gradient(ellipse at 38% 32%, rgba(255,255,255,.18) 0%, rgba(255,255,255,.04) 46%, transparent 74%);
+  transform:rotate(-22deg); pointer-events:none; z-index:2; }
+.glass-rim{ position:absolute; bottom:6%; right:8%; width:24%; height:12%; border-radius:50%;
+  background:radial-gradient(ellipse, rgba(255,255,255,.06) 0%, transparent 72%); pointer-events:none; z-index:2; }
 .orb-canvas, .glass-hi, .glass-rim{ transition:opacity .45s ease; }
 .panel-bg{ position:absolute; inset:0; z-index:1; background:var(--panel-bg); opacity:0; transition:opacity .35s ease; pointer-events:none; }
 
@@ -537,7 +538,7 @@ body.voice-answer .cap{ opacity:0 !important; visibility:hidden !important; poin
 .vs-back{ pointer-events:auto; position:absolute; left:12px; top:calc(12px + env(safe-area-inset-top, 0px)); width:44px; height:44px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgba(var(--w),.7); background:transparent; border:1px solid transparent; transition:color .2s ease, background .2s ease, border-color .2s ease; }
 .vs-back:hover{ color:var(--fg); background:rgba(var(--act-hi),.9); border-color:rgba(var(--acc),.35); }
 .vs-back:focus-visible, .vs-voice:focus-visible, .vs-zone:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
-.vs-scroll{ height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:safe center; overflow-x:hidden; overflow-y:auto; padding:72px 20px calc(92px + env(safe-area-inset-bottom, 0px)); }
+.vs-scroll{ height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:safe center; overflow-x:hidden; overflow-y:auto; padding:60px 20px calc(154px + env(safe-area-inset-bottom, 0px)); }
 .vs-stage{ position:relative; flex:none; width:calc(var(--orb) * 2); height:calc(var(--orb) * 2); display:grid; place-items:center; }
 .vs-zone{ --halo:calc(var(--orb) * 1.9); --core-a:var(--vs-a, #3A3678); --core-b:var(--vs-b, #1C1A40); --core-c:var(--vs-c, #6A63B0);
   position:relative; width:var(--halo); height:var(--halo); flex:none; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:50%; -webkit-tap-highlight-color:transparent; }
@@ -546,10 +547,17 @@ body.voice-answer .cap{ opacity:0 !important; visibility:hidden !important; poin
 .vs-rings .track{ fill:none; stroke:rgba(var(--w),.08); stroke-width:2.5; }
 .vs-rings .prog{ fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linecap:round; }
 .vs-rings .tip{ fill:#A9A6C9; stroke:#000; stroke-width:1.5; }
-.vs-lab{ position:absolute; top:76%; font:600 12px var(--font); letter-spacing:.26em; text-transform:uppercase; color:rgba(var(--w),.7); white-space:nowrap; pointer-events:none; }
-.vs-lab.l{ right:calc(100% + 6px); } .vs-lab.r{ left:calc(100% + 6px); }
-@media (max-width:900px){ .vs-lab{ top:auto; bottom:2px; font-size:10.5px; letter-spacing:.2em; } .vs-lab.l{ right:auto; left:0; } .vs-lab.r{ left:auto; right:0; } }
+.vs-zone .orb{ transform:scale(var(--orb-s,1)); }   /* a Orb daqui só vai para frente e para trás (escala): nunca sobe nem desce */
 @media (max-width:420px){ .vs-stage{ transform:scale(.84); margin:-30px 0; } }
+/* medidores reais acima do dock: Ritmo (0.0× a 1.50×) à esquerda e Expressividade (0% a 100%) à direita */
+.vs-meters{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(90px + env(safe-area-inset-bottom, 0px)); width:min(400px,88vw); display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.vs-meter{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.vs-meter-top{ display:flex; justify-content:space-between; align-items:baseline; gap:6px; font:600 10.5px var(--font); letter-spacing:.14em; text-transform:uppercase; color:rgba(var(--w),.72); }
+.vs-meter-top output{ font:500 12px var(--font-mono); letter-spacing:.04em; color:var(--accent-soft); }
+.vs-bar{ height:4px; border-radius:4px; background:rgba(var(--w),.08); overflow:hidden; }
+.vs-bar i{ display:block; height:100%; width:0; border-radius:4px; background:var(--accent); }
+.vs-meter-ends{ display:flex; justify-content:space-between; font:500 9px var(--font-mono); letter-spacing:.1em; color:rgba(var(--w),.4); }
+@media (max-width:420px){ .vs-meter-top{ font-size:9px; letter-spacing:.06em; } }
 /* dock das 4 vozes: botões iguais, indicador índigo que desliza */
 .vs-voices{ --sel:0; position:absolute; left:50%; bottom:calc(18px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); display:grid; grid-template-columns:repeat(4,1fr); width:min(400px,88vw); padding:4px; border-radius:999px; background:var(--surface); border:1px solid var(--line); }
 .vs-ind{ position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px) / 4); border-radius:999px; background:var(--active); box-shadow:inset 0 0 0 1px rgba(var(--acc),.55); transform:translateX(calc(var(--sel) * 100%)); transition:transform .35s cubic-bezier(.22,1,.36,1); }
@@ -610,7 +618,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
       <div class="wave-ring"></div>
       <div class="wave-ring"></div>
       <div class="halo" id="halo"></div>
-      <div class="halo halo2" id="halo2"></div>
+      <div class="halo halo2" id="haloOuter"></div>
       <div class="orb" id="orb">
         <canvas class="orb-canvas" id="orbCanvas"></canvas>
         <div class="glass-hi"></div>
@@ -662,7 +670,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 
 </div>
 
-<!-- V5.0 — Voz e Fala (como no rabisco): título, Orb original com dois arcos (interno = Ritmo, externo = Expressividade), rótulos e o dock das 4 vozes embaixo -->
+<!-- V5.0 — Voz e Fala: título, Orb original com dois arcos (interno = Ritmo, externo = Expressividade), medidores reais e o dock das 4 vozes -->
 <section class="vscreen" id="voiceScreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vsTitle">
   <header class="vs-top">
     <button class="vs-back" id="vsBack" aria-label="Voltar às configurações" title="Voltar" data-i18n-aria="vs.back">
@@ -681,8 +689,18 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
         </div>
       </div>
       <svg class="vs-rings" id="vsRings" viewBox="0 0 200 200" role="img" aria-hidden="true" focusable="false"></svg>
-      <span class="vs-lab l" data-i18n="vs.pace">Ritmo</span>
-      <span class="vs-lab r" data-i18n="vs.expr">Expressividade</span>
+    </div>
+    <div class="vs-meters" id="vsMeters">
+      <div class="vs-meter">
+        <div class="vs-meter-top"><span data-i18n="vs.pace">Ritmo</span><output id="vsPaceVal">0.00×</output></div>
+        <div class="vs-bar"><i id="vsPaceBar"></i></div>
+        <div class="vs-meter-ends"><span>0.0×</span><span>1.50×</span></div>
+      </div>
+      <div class="vs-meter">
+        <div class="vs-meter-top"><span data-i18n="vs.expr">Expressividade</span><output id="vsExprVal">0%</output></div>
+        <div class="vs-bar"><i id="vsExprBar"></i></div>
+        <div class="vs-meter-ends"><span>0%</span><span>100%</span></div>
+      </div>
     </div>
     <div class="vs-voices" id="vsDots" role="radiogroup" aria-labelledby="vsTitle">
       <span class="vs-ind" aria-hidden="true"></span>
@@ -747,9 +765,9 @@ window.ORION_SIGNOUT = async () => {
   leave();
 };
 </script>
-<script src="js/i18n.js?c=3"></script>
-<script src="js/orb-frame.js?c=3"></script>
-<script defer src="js/app.js?c=3"></script>
-<script defer src="js/orion-v5.js?c=3"></script>
+<script src="js/i18n.js?c=4"></script>
+<script src="js/orb-frame.js?c=4"></script>
+<script defer src="js/app.js?c=4"></script>
+<script defer src="js/orion-v5.js?c=4"></script>
 </body>
 </html>
