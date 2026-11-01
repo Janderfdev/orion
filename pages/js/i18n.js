@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════════════════
+   ORION AI V5.0 — Textos da interface em 6 idiomas (pages/js/i18n.js)
+   Ordem em cada linha: Português · English · Español · Français · Deutsch · Italiano
+   Carregar ANTES do app.js. Marcas (ORION AI, ORION Core, Hey ORION) nunca são traduzidas.
+   Chaves que faltam em um idioma caem para o inglês.
+   ═══════════════════════════════════════════════════════════════ */
+window.ORION_I18N = (() => {
+  const LANGS = ['pt', 'en', 'es', 'fr', 'de', 'it'];
+  const D = {}; LANGS.forEach(l => { D[l] = {}; });
+  const add = (key, ...v) => { LANGS.forEach((l, i) => { D[l][key] = v[i] !== undefined ? v[i] : v[1]; }); };
+  const same = (key, v) => add(key, v, v, v, v, v, v);
+
+  same('online', 'ORION ONLINE');
+  add('version', 'VERSÃO V5.0', 'VERSION V5.0', 'VERSIÓN V5.0', 'VERSION V5.0', 'VERSION V5.0', 'VERSIONE V5.0');
+  add('status.listening', 'Ouvindo…', 'Listening…', 'Escuchando…', 'J’écoute…', 'Ich höre zu…', 'In ascolto…');
+  add('status.processing', 'Processando…', 'Processing…', 'Procesando…', 'Traitement…', 'Verarbeitung…', 'Elaborazione…');
+  add('status.responding', 'Respondendo…', 'Responding…', 'Respondiendo…', 'Réponse…', 'Antwort…', 'Risposta…');
+  add('status.unheard', 'Não entendi. Tente de novo.', 'I didn’t understand. Please try again.', 'No entendí. Inténtalo de nuevo.', 'Je n’ai pas compris. Réessayez.', 'Ich habe das nicht verstanden. Versuch es noch einmal.', 'Non ho capito. Riprova.');
+  add('hint.base', 'toque na orb para falar · ou use o botão de chat', 'tap the orb to speak · or use the chat button', 'toca la orb para hablar · o usa el botón de chat', 'touchez l’orb pour parler · ou utilisez le bouton de chat', 'tippe auf die Orb, um zu sprechen · oder nutze die Chat-Taste', 'tocca l’orb per parlare · oppure usa il pulsante chat');
+  add('hint.wake', 'diga “hey orion” · toque na orb · ou use o botão de chat', 'say “hey orion” · tap the orb · or use the chat button', 'di «hey orion» · toca la orb · o usa el botón de chat', 'dites « hey orion » · touchez l’orb · ou utilisez le bouton de chat', 'sag „hey orion“ · tippe auf die Orb · oder nutze die Chat-Taste', 'di’ “hey orion” · tocca l’orb · oppure usa il pulsante chat');
+  add('ask.ph', 'Pergunte ou dê um comando ao ORION', 'Ask or give ORION a command', 'Pregunta o da una orden a ORION', 'Posez une question ou donnez une commande à ORION', 'Frag ORION etwas oder gib einen Befehl', 'Chiedi o dai un comando a ORION');
+  add('ask.aria', 'Pergunta ao ORION', 'Question for ORION', 'Pregunta para ORION', 'Question pour ORION', 'Frage an ORION', 'Domanda per ORION');
+  add('mic.aria', 'Falar', 'Speak', 'Hablar', 'Parler', 'Sprechen', 'Parla');
+  add('send.aria', 'Enviar', 'Send', 'Enviar', 'Envoyer', 'Senden', 'Invia');
+  add('chat.aria', 'Perguntar ao ORION', 'Ask ORION', 'Preguntar a ORION', 'Interroger ORION', 'ORION fragen', 'Chiedi a ORION');
+  add('gear.aria', 'Configurações', 'Settings', 'Configuración', 'Réglages', 'Einstellungen', 'Impostazioni');
+
+  add('err.mic_unavailable', 'Microfone indisponível.', 'Microphone unavailable.', 'Micrófono no disponible.', 'Microphone indisponible.', 'Mikrofon nicht verfügbar.', 'Microfono non disponibile.');
+  add('err.stt_unavailable', 'Reconhecimento de voz indisponível neste navegador.', 'Speech recognition isn’t available in this browser.', 'El reconocimiento de voz no está disponible en este navegador.', 'La reconnaissance vocale n’est pas disponible dans ce navigateur.', 'Die Spracherkennung ist in diesem Browser nicht verfügbar.', 'Il riconoscimento vocale non è disponibile in questo browser.');
+  add('err.model_unavailable', 'Não consegui acessar o modelo.', 'I couldn’t reach the model.', 'No pude acceder al modelo.', 'Je n’ai pas pu joindre le modèle.', 'Ich konnte das Modell nicht erreichen.', 'Non sono riuscito a raggiungere il modello.');
+  add('err.timeout', 'A resposta demorou demais.', 'The response took too long.', 'La respuesta tardó demasiado.', 'La réponse a pris trop de temps.', 'Die Antwort hat zu lange gedauert.', 'La risposta ha impiegato troppo tempo.');
+  add('err.api_error', 'Falha ao comunicar com o serviço.', 'Couldn’t reach the service.', 'No se pudo conectar con el servicio.', 'Impossible de joindre le service.', 'Der Dienst ist nicht erreichbar.', 'Impossibile raggiungere il servizio.');
+  add('err.invalid_response', 'Recebi uma resposta inválida.', 'I received an invalid response.', 'Recibí una respuesta no válida.', 'J’ai reçu une réponse invalide.', 'Ich habe eine ungültige Antwort erhalten.', 'Ho ricevuto una risposta non valida.');
+  add('err.tool_unavailable', 'Essa ferramenta ainda não está disponível.', 'That tool isn’t available yet.', 'Esa herramienta aún no está disponible.', 'Cet outil n’est pas encore disponible.', 'Dieses Werkzeug ist noch nicht verfügbar.', 'Questo strumento non è ancora disponibile.');
+  add('err.offline', 'Sem conexão com a internet.', 'No internet connection.', 'Sin conexión a internet.', 'Pas de connexion internet.', 'Keine Internetverbindung.', 'Nessuna connessione a internet.');
+  add('err.tts_unavailable', 'Não consigo falar a resposta agora.', 'I can’t speak the answer right now.', 'Ahora no puedo decir la respuesta en voz alta.', 'Je ne peux pas dire la réponse à voix haute pour l’instant.', 'Ich kann die Antwort gerade nicht sprechen.', 'Al momento non posso pronunciare la risposta.');
+  add('err.unexpected_input', 'Não entendi. Tente de novo.', 'I didn’t understand. Please try again.', 'No entendí. Inténtalo de nuevo.', 'Je n’ai pas compris. Réessayez.', 'Ich habe das nicht verstanden. Versuch es noch einmal.', 'Non ho capito. Riprova.');
+  add('err.forbidden', 'Esta conta não tem acesso ao ORION.', 'This account doesn’t have access to ORION.', 'Esta cuenta no tiene acceso a ORION.', 'Ce compte n’a pas accès à ORION.', 'Dieses Konto hat keinen Zugriff auf ORION.', 'Questo account non ha accesso a ORION.');
+  add('err.rate_limited', 'Muitas solicitações. Aguarde um instante.', 'Too many requests. Please wait a moment.', 'Demasiadas solicitudes. Espera un momento.', 'Trop de requêtes. Patientez un instant.', 'Zu viele Anfragen. Bitte warte einen Moment.', 'Troppe richieste. Attendi un momento.');
+  add('err.quota_exceeded', 'Você atingiu o limite de perguntas. Faça upgrade para continuar usando a IA em breve.', 'You’ve reached your question limit. Upgrade to keep using the AI soon.', 'Has alcanzado tu límite de preguntas. Pronto podrás mejorar tu plan para seguir usando la IA.', 'Vous avez atteint votre limite de questions. Vous pourrez bientôt passer à un plan supérieur.', 'Du hast dein Fragenlimit erreicht. Bald kannst du upgraden, um die KI weiter zu nutzen.', 'Hai raggiunto il limite di domande. Presto potrai fare l’upgrade per continuare a usare l’IA.');
+  add('err.core_unavailable', 'Não consegui falar com o núcleo do ORION.', 'I couldn’t reach the ORION core.', 'No pude comunicarme con el núcleo de ORION.', 'Je n’ai pas pu joindre le cœur d’ORION.', 'Ich konnte den ORION-Kern nicht erreichen.', 'Non sono riuscito a raggiungere il nucleo di ORION.');
+  add('err.voice_disabled', 'Voz desativada nas configurações.', 'Voice is turned off in settings.', 'La voz está desactivada en la configuración.', 'La voix est désactivée dans les réglages.', 'Die Stimme ist in den Einstellungen deaktiviert.', 'La voce è disattivata nelle impostazioni.');
+  add('err.voice_unavailable', 'Essa voz não está disponível.', 'That voice isn’t available.', 'Esa voz no está disponible.', 'Cette voix n’est pas disponible.', 'Diese Stimme ist nicht verfügbar.', 'Questa voce non è disponibile.');
+  add('err.unknown', 'Não consegui processar.', 'I couldn’t process that.', 'No pude procesar eso.', 'Je n’ai pas pu traiter cela.', 'Das konnte ich nicht verarbeiten.', 'Non sono riuscito a elaborarlo.');
+  add('err.attachment_invalid', 'Não consegui usar esse anexo.', 'I couldn’t use that attachment.', 'No pude usar ese adjunto.', 'Je n’ai pas pu utiliser cette pièce jointe.', 'Ich konnte diesen Anhang nicht verwenden.', 'Non sono riuscito a usare questo allegato.');
+
+  add('wiki.read', 'Ler na Wikipédia ↗', 'Read on Wikipedia ↗', 'Leer en Wikipedia ↗', 'Lire sur Wikipédia ↗', 'Auf Wikipedia lesen ↗', 'Leggi su Wikipedia ↗');
+  add('wiki.search', 'Pesquisar na Wikipédia ↗', 'Search Wikipedia ↗', 'Buscar en Wikipedia ↗', 'Rechercher sur Wikipédia ↗', 'Auf Wikipedia suchen ↗', 'Cerca su Wikipedia ↗');
+  add('wiki.title', 'Pesquisar “{q}” na Wikipédia', 'Search “{q}” on Wikipedia', 'Buscar «{q}» en Wikipedia', 'Rechercher « {q} » sur Wikipédia', '„{q}“ auf Wikipedia suchen', 'Cerca “{q}” su Wikipedia');
+
+  add('set.title', 'Configurações', 'Settings', 'Configuración', 'Réglages', 'Einstellungen', 'Impostazioni');
+  add('set.sub', 'Personalize sua experiência', 'Personalize your experience', 'Personaliza tu experiencia', 'Personnalisez votre expérience', 'Passe dein Erlebnis an', 'Personalizza la tua esperienza');
+  add('set.modelD', 'Escolha o modelo de IA para suas conversas.', 'Choose the AI model for your conversations.', 'Elige el modelo de IA para tus conversaciones.', 'Choisissez le modèle d’IA pour vos conversations.', 'Wähle das KI-Modell für deine Unterhaltungen.', 'Scegli il modello di IA per le tue conversazioni.');
+  add('set.voiceD', 'Escolha a voz do ORION e veja a intensidade e o ritmo da fala.', 'Pick ORION’s voice and watch the intensity and pace of speech.', 'Elige la voz de ORION y observa la intensidad y el ritmo del habla.', 'Choisissez la voix d’ORION et suivez l’intensité et le rythme de la parole.', 'Wähle die Stimme von ORION und sieh Intensität und Tempo der Sprache.', 'Scegli la voce di ORION e osserva intensità e ritmo del parlato.');
+  add('set.soundD', 'Ative ou desative os sons da interface.', 'Turn interface sounds on or off.', 'Activa o desactiva los sonidos de la interfaz.', 'Activez ou désactivez les sons de l’interface.', 'Schalte die Oberflächentöne ein oder aus.', 'Attiva o disattiva i suoni dell’interfaccia.');
+  add('set.themeD', 'Escolha a cor de destaque da interface.', 'Choose the interface accent color.', 'Elige el color de acento de la interfaz.', 'Choisissez la couleur d’accent de l’interface.', 'Wähle die Akzentfarbe der Oberfläche.', 'Scegli il colore d’accento dell’interfaccia.');
+  add('set.uiD', 'Defina o idioma da interface.', 'Set the interface language.', 'Define el idioma de la interfaz.', 'Définissez la langue de l’interface.', 'Lege die Sprache der Oberfläche fest.', 'Imposta la lingua dell’interfaccia.');
+  add('set.wakeD', 'Ative o ORION dizendo o nome dele.', 'Wake ORION by saying its name.', 'Activa a ORION diciendo su nombre.', 'Activez ORION en prononçant son nom.', 'Aktiviere ORION, indem du seinen Namen sagst.', 'Attiva ORION dicendo il suo nome.');
+  add('set.model', 'Modelo', 'Model', 'Modelo', 'Modèle', 'Modell', 'Modello');
+  add('set.voice', 'Voz e Fala', 'Voice & Speech', 'Voz y habla', 'Voix et parole', 'Stimme & Sprache', 'Voce e parlato');
+  add('set.open', 'Abrir', 'Open', 'Abrir', 'Ouvrir', 'Öffnen', 'Apri');
+  add('set.sound', 'Sons', 'Sounds', 'Sonidos', 'Sons', 'Töne', 'Suoni');
+  add('set.ui', 'Idioma', 'Language', 'Idioma', 'Langue', 'Sprache', 'Lingua');
+  same('set.wake', 'Hey ORION');
+  add('set.history', 'Histórico', 'History', 'Historial', 'Historique', 'Verlauf', 'Cronologia');
+  add('set.clear', 'Limpar', 'Clear', 'Borrar', 'Effacer', 'Löschen', 'Cancella');
+  add('set.cleared', 'Limpo', 'Cleared', 'Borrado', 'Effacé', 'Gelöscht', 'Cancellato');
+  add('set.failed', 'Falhou', 'Failed', 'Falló', 'Échec', 'Fehlgeschlagen', 'Non riuscito');
+  add('set.photo', 'Foto de perfil', 'Profile photo', 'Foto de perfil', 'Photo de profil', 'Profilbild', 'Foto del profilo');
+  add('set.photoPick', 'Escolher', 'Choose', 'Elegir', 'Choisir', 'Auswählen', 'Scegli');
+  add('set.photoDel', 'Remover', 'Remove', 'Quitar', 'Supprimer', 'Entfernen', 'Rimuovi');
+  add('set.photoNote', 'Sua foto fica só neste aparelho.', 'Your photo stays on this device only.', 'Tu foto se queda solo en este dispositivo.', 'Votre photo reste uniquement sur cet appareil.', 'Dein Foto bleibt nur auf diesem Gerät.', 'La tua foto resta solo su questo dispositivo.');
+  add('set.photoType', 'Use uma imagem JPG, PNG ou WebP.', 'Use a JPG, PNG or WebP image.', 'Usa una imagen JPG, PNG o WebP.', 'Utilisez une image JPG, PNG ou WebP.', 'Verwende ein JPG-, PNG- oder WebP-Bild.', 'Usa un’immagine JPG, PNG o WebP.');
+  add('set.photoBig', 'Essa imagem é grande demais (máx. 8 MB).', 'That image is too large (max 8 MB).', 'Esa imagen es demasiado grande (máx. 8 MB).', 'Cette image est trop volumineuse (8 Mo max).', 'Das Bild ist zu groß (max. 8 MB).', 'L’immagine è troppo grande (max 8 MB).');
+  add('set.photoSave', 'Não consegui salvar a foto.', 'Couldn’t save the photo.', 'No pude guardar la foto.', 'Impossible d’enregistrer la photo.', 'Das Foto konnte nicht gespeichert werden.', 'Impossibile salvare la foto.');
+  add('set.plan', 'Plano', 'Plan', 'Plan', 'Forfait', 'Tarif', 'Piano');
+  add('set.upgrade', 'Upgrade', 'Upgrade', 'Mejorar', 'Améliorer', 'Upgrade', 'Upgrade');
+  add('set.upgradeSoon', 'Em breve você poderá fazer upgrade.', 'You’ll be able to upgrade soon.', 'Pronto podrás mejorar tu plan.', 'Vous pourrez bientôt passer à un plan supérieur.', 'Bald kannst du upgraden.', 'Presto potrai fare l’upgrade.');
+  add('set.theme', 'Cor do sistema', 'System color', 'Color del sistema', 'Couleur du système', 'Systemfarbe', 'Colore del sistema');
+  add('set.core', 'Núcleo', 'Core', 'Núcleo', 'Cœur', 'Kern', 'Nucleo');
+  add('set.signout', 'Sair da conta', 'Sign out', 'Cerrar sesión', 'Se déconnecter', 'Abmelden', 'Esci');
+  add('set.none', 'Não conectada', 'Not signed in', 'Sin sesión', 'Non connecté', 'Nicht angemeldet', 'Non connesso');
+  add('set.nomodel', 'Sem modelo', 'No model', 'Sin modelo', 'Aucun modèle', 'Kein Modell', 'Nessun modello');
+  add('set.unavail', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
+
+  add('code.aria', 'ORION CODE e ORION API', 'ORION CODE and ORION API', 'ORION CODE y ORION API', 'ORION CODE et ORION API', 'ORION CODE und ORION API', 'ORION CODE e ORION API');
+  same('code.title', 'ORION CODE · ORION API');
+  add('code.soon', 'Em breve', 'Coming soon', 'Próximamente', 'Bientôt', 'Demnächst', 'Prossimamente');
+  add('code.codeDesc', 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.', 'A programming assistant: it reads your project, proposes changes and only applies what you approve.', 'Un asistente de programación: lee tu proyecto, propone cambios y solo aplica lo que apruebes.', 'Un assistant de programmation : il lit votre projet, propose des modifications et n’applique que ce que vous approuvez.', 'Ein Programmierassistent: Er liest dein Projekt, schlägt Änderungen vor und wendet nur an, was du genehmigst.', 'Un assistente di programmazione: legge il tuo progetto, propone modifiche e applica solo ciò che approvi.');
+  add('code.apiDesc', 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.', 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.', 'Usa la inteligencia de ORION en tus propias apps, con clave de API y límites por plan.', 'Utilisez l’intelligence d’ORION dans vos propres applications, avec une clé d’API et des limites selon le forfait.', 'Nutze die Intelligenz von ORION in deinen eigenen Apps – mit API-Schlüssel und Limits je nach Tarif.', 'Usa l’intelligenza di ORION nelle tue app, con chiave API e limiti per piano.');
+  add('code.planned', 'Previsto: {v}', 'Planned: {v}', 'Previsto: {v}', 'Prévu : {v}', 'Geplant: {v}', 'Previsto: {v}');
+  add('code.note', 'Ainda não está disponível. Versões e datas podem mudar.', 'Not available yet. Versions and dates may change.', 'Aún no está disponible. Las versiones y fechas pueden cambiar.', 'Pas encore disponible. Les versions et les dates peuvent changer.', 'Noch nicht verfügbar. Versionen und Termine können sich ändern.', 'Non ancora disponibile. Versioni e date possono cambiare.');
+  add('code.close', 'Fechar', 'Close', 'Cerrar', 'Fermer', 'Schließen', 'Chiudi');
+
+  same('theme.indigo', 'Cosmic Indigo'); same('theme.midnight', 'Dark Blue'); same('theme.purple', 'Deep Purple');
+  add('vs.voiceN', 'Voz {n}', 'Voice {n}', 'Voz {n}', 'Voix {n}', 'Stimme {n}', 'Voce {n}');
+
+  add('attach.aria', 'Anexar imagem ou arquivo', 'Attach an image or file', 'Adjuntar imagen o archivo', 'Joindre une image ou un fichier', 'Bild oder Datei anhängen', 'Allega immagine o file');
+  add('attach.default', 'Descreva este anexo.', 'Describe this attachment.', 'Describe este adjunto.', 'Décrivez cette pièce jointe.', 'Beschreibe diesen Anhang.', 'Descrivi questo allegato.');
+  add('attach.remove', 'Remover anexo', 'Remove attachment', 'Quitar adjunto', 'Retirer la pièce jointe', 'Anhang entfernen', 'Rimuovi allegato');
+  add('attach.errType', 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'Usa una imagen JPG, PNG o WebP, o un archivo de texto (.txt, .md, .csv, .json, código).', 'Utilisez une image JPG, PNG ou WebP, ou un fichier texte (.txt, .md, .csv, .json, code).', 'Verwende ein JPG-, PNG- oder WebP-Bild oder eine Textdatei (.txt, .md, .csv, .json, Code).', 'Usa un’immagine JPG, PNG o WebP, oppure un file di testo (.txt, .md, .csv, .json, codice).');
+  add('attach.errSize', 'Esse arquivo é grande demais.', 'That file is too large.', 'Ese archivo es demasiado grande.', 'Ce fichier est trop volumineux.', 'Die Datei ist zu groß.', 'Il file è troppo grande.');
+  add('attach.errRead', 'Não consegui ler esse arquivo.', 'I couldn’t read that file.', 'No pude leer ese archivo.', 'Je n’ai pas pu lire ce fichier.', 'Ich konnte die Datei nicht lesen.', 'Non sono riuscito a leggere il file.');
+  add('toast.model', 'Modelo: {m}', 'Model: {m}', 'Modelo: {m}', 'Modèle : {m}', 'Modell: {m}', 'Modello: {m}');
+
+  add('core.none', 'Backend não configurado', 'Backend not configured', 'Backend sin configurar', 'Backend non configuré', 'Backend nicht konfiguriert', 'Backend non configurato');
+  add('core.connecting', 'Conectando…', 'Connecting…', 'Conectando…', 'Connexion…', 'Verbinde…', 'Connessione…');
+  add('core.ok', 'Conectado', 'Connected', 'Conectado', 'Connecté', 'Verbunden', 'Connesso');
+  add('core.nomodel', 'Sem chave de modelo no servidor', 'No model key on the server', 'Sin clave de modelo en el servidor', 'Aucune clé de modèle sur le serveur', 'Kein Modellschlüssel auf dem Server', 'Nessuna chiave del modello sul server');
+  add('core.forbidden', 'E-mail sem acesso', 'E-mail without access', 'Correo sin acceso', 'E-mail sans accès', 'E-Mail ohne Zugriff', 'E-mail senza accesso');
+  add('core.timeout', 'Servidor demorou a responder', 'Server took too long', 'El servidor tardó demasiado', 'Le serveur a mis trop de temps', 'Der Server hat zu lange gebraucht', 'Il server ha impiegato troppo tempo');
+  add('core.unreach', 'Sem resposta do servidor', 'Server not responding', 'El servidor no responde', 'Le serveur ne répond pas', 'Server antwortet nicht', 'Il server non risponde');
+  add('core.err', 'Erro no servidor', 'Server error', 'Error del servidor', 'Erreur du serveur', 'Serverfehler', 'Errore del server');
+  add('core.down', 'Servidor indisponível', 'Server unavailable', 'Servidor no disponible', 'Serveur indisponible', 'Server nicht verfügbar', 'Server non disponibile');
+
+  same('lang.pt', 'Português'); same('lang.en', 'English'); same('lang.es', 'Español'); same('lang.fr', 'Français'); same('lang.de', 'Deutsch'); same('lang.it', 'Italiano');
+
+  add('vs.title', 'Voz e Fala', 'Voice & Speech', 'Voz y habla', 'Voix et parole', 'Stimme & Sprache', 'Voce e parlato');
+  add('vs.back', 'Voltar às configurações', 'Back to settings', 'Volver a la configuración', 'Retour aux réglages', 'Zurück zu den Einstellungen', 'Torna alle impostazioni');
+  add('vs.voice', 'Voz', 'Voice', 'Voz', 'Voix', 'Stimme', 'Voce');
+  add('vs.orbAria', 'Ouvir prévia da voz', 'Preview voice', 'Escuchar vista previa de la voz', 'Écouter un aperçu de la voix', 'Stimme probehören', 'Ascolta l’anteprima della voce');
+  add('vs.unavailWake', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
+  add('vs.wakeMic', 'Sem microfone', 'No microphone', 'Sin micrófono', 'Pas de microphone', 'Kein Mikrofon', 'Nessun microfono');
+  add('vs.intensity', 'Intensidade da voz', 'Voice intensity', 'Intensidad de la voz', 'Intensité de la voix', 'Stimmintensität', 'Intensità della voce');
+  add('vs.rhythm', 'Ritmo da fala', 'Speech rhythm', 'Ritmo del habla', 'Rythme de la parole', 'Sprechrhythmus', 'Ritmo del parlato');
+  add('wake.say', 'Diga “Hey ORION” para falar', 'Say “Hey ORION” to talk', 'Di «Hey ORION» para hablar', 'Dites « Hey ORION » pour parler', 'Sag „Hey ORION“, um zu sprechen', 'Di’ “Hey ORION” per parlare');
+  add('wake.mic', 'Microfone bloqueado: “Hey ORION” desligado', 'Microphone blocked: wake word turned off', 'Micrófono bloqueado: «Hey ORION» desactivado', 'Microphone bloqué : « Hey ORION » désactivé', 'Mikrofon blockiert: „Hey ORION“ ist aus', 'Microfono bloccato: “Hey ORION” disattivato');
+  add('wake.unstable', '“Hey ORION” instável: desligado', 'Wake word unstable: turned off', '«Hey ORION» inestable: desactivado', '« Hey ORION » instable : désactivé', '„Hey ORION“ instabil: ausgeschaltet', '“Hey ORION” instabile: disattivato');
+
+  /* Multitarefa */
+  add('task.name', 'Multitarefa', 'Multitasking', 'Multitarea', 'Multitâche', 'Multitasking', 'Multitasking');
+  add('task.sub', 'Várias tarefas. Um só ORION.', 'Many tasks. One ORION.', 'Muchas tareas. Un solo ORION.', 'Plusieurs tâches. Un seul ORION.', 'Viele Aufgaben. Ein ORION.', 'Tante attività. Un solo ORION.');
+  add('task.active1', '1 tarefa ativa', '1 active task', '1 tarea activa', '1 tâche active', '1 aktive Aufgabe', '1 attività attiva');
+  add('task.activeN', '{n} tarefas ativas', '{n} active tasks', '{n} tareas activas', '{n} tâches actives', '{n} aktive Aufgaben', '{n} attività attive');
+  add('task.newTask', 'Nova tarefa', 'New task', 'Nueva tarea', 'Nouvelle tâche', 'Neue Aufgabe', 'Nuova attività');
+  add('task.nTitle', 'Título da tarefa', 'Task title', 'Título de la tarea', 'Titre de la tâche', 'Titel der Aufgabe', 'Titolo dell’attività');
+  add('task.nNote', 'Objetivo (opcional)', 'Goal (optional)', 'Objetivo (opcional)', 'Objectif (facultatif)', 'Ziel (optional)', 'Obiettivo (facoltativo)');
+  add('task.nSteps', 'Passos, um por linha (opcional)', 'Steps, one per line (optional)', 'Pasos, uno por línea (opcional)', 'Étapes, une par ligne (facultatif)', 'Schritte, einer pro Zeile (optional)', 'Passaggi, uno per riga (facoltativo)');
+  add('task.create', 'Criar tarefa', 'Create task', 'Crear tarea', 'Créer la tâche', 'Aufgabe erstellen', 'Crea attività');
+  add('task.cancel', 'Cancelar', 'Cancel', 'Cancelar', 'Annuler', 'Abbrechen', 'Annulla');
+  add('task.quick', 'Adicione uma tarefa e pressione Enter', 'Add a task and press Enter', 'Añade una tarea y pulsa Intro', 'Ajoutez une tâche et appuyez sur Entrée', 'Aufgabe hinzufügen und Enter drücken', 'Aggiungi un’attività e premi Invio');
+  add('task.add', 'Adicionar', 'Add', 'Añadir', 'Ajouter', 'Hinzufügen', 'Aggiungi');
+  add('task.st.running', 'Em andamento', 'In progress', 'En curso', 'En cours', 'In Arbeit', 'In corso');
+  add('task.st.paused', 'Pausada', 'Paused', 'En pausa', 'En pause', 'Pausiert', 'In pausa');
+  add('task.st.done', 'Concluída', 'Done', 'Completada', 'Terminée', 'Erledigt', 'Completata');
+  add('task.pause', 'Pausar', 'Pause', 'Pausar', 'Mettre en pause', 'Pausieren', 'Metti in pausa');
+  add('task.resume', 'Retomar', 'Resume', 'Reanudar', 'Reprendre', 'Fortsetzen', 'Riprendi');
+  add('task.complete', 'Concluir', 'Complete', 'Completar', 'Terminer', 'Abschließen', 'Completa');
+  add('task.reopen', 'Reabrir', 'Reopen', 'Reabrir', 'Rouvrir', 'Wieder öffnen', 'Riapri');
+  add('task.del', 'Excluir', 'Delete', 'Eliminar', 'Supprimer', 'Löschen', 'Elimina');
+  add('task.delAsk', 'Excluir esta tarefa?', 'Delete this task?', '¿Eliminar esta tarea?', 'Supprimer cette tâche ?', 'Diese Aufgabe löschen?', 'Eliminare questa attività?');
+  add('task.details', 'Detalhes', 'Details', 'Detalles', 'Détails', 'Details', 'Dettagli');
+  add('task.activity', 'Atividade', 'Activity', 'Actividad', 'Activité', 'Aktivität', 'Attività');
+  add('task.goal', 'Objetivo', 'Goal', 'Objetivo', 'Objectif', 'Ziel', 'Obiettivo');
+  add('task.noGoal', 'Sem objetivo descrito.', 'No goal described.', 'Sin objetivo descrito.', 'Aucun objectif décrit.', 'Kein Ziel beschrieben.', 'Nessun obiettivo descritto.');
+  add('task.steps', 'Passos', 'Steps', 'Pasos', 'Étapes', 'Schritte', 'Passaggi');
+  add('task.noSteps', 'Nenhum passo ainda.', 'No steps yet.', 'Aún no hay pasos.', 'Aucune étape pour l’instant.', 'Noch keine Schritte.', 'Ancora nessun passaggio.');
+  add('task.stepPh', 'Novo passo', 'New step', 'Nuevo paso', 'Nouvelle étape', 'Neuer Schritt', 'Nuovo passaggio');
+  add('task.stepAdd', 'Adicionar passo', 'Add step', 'Añadir paso', 'Ajouter l’étape', 'Schritt hinzufügen', 'Aggiungi passaggio');
+  add('task.created', 'Criada', 'Created', 'Creada', 'Créée', 'Erstellt', 'Creata');
+  add('task.today', 'Hoje às', 'Today at', 'Hoy a las', 'Aujourd’hui à', 'Heute um', 'Oggi alle');
+  add('task.summary', 'Resumo', 'Summary', 'Resumen', 'Résumé', 'Übersicht', 'Riepilogo');
+  add('task.sActive', 'Tarefas ativas', 'Active tasks', 'Tareas activas', 'Tâches actives', 'Aktive Aufgaben', 'Attività attive');
+  add('task.sDone', 'Concluídas hoje', 'Done today', 'Completadas hoy', 'Terminées aujourd’hui', 'Heute erledigt', 'Completate oggi');
+  add('task.sPaused', 'Em pausa', 'Paused', 'En pausa', 'En pause', 'Pausiert', 'In pausa');
+  add('task.shortcuts', 'Atalhos', 'Shortcuts', 'Atajos', 'Raccourcis', 'Kürzel', 'Scorciatoie');
+  add('task.clearDone', 'Limpar concluídas', 'Clear completed', 'Borrar completadas', 'Effacer les terminées', 'Erledigte entfernen', 'Cancella completate');
+  add('task.infoT', 'Organize e acompanhe', 'Organize and track', 'Organiza y sigue', 'Organisez et suivez', 'Organisieren und verfolgen', 'Organizza e monitora');
+  add('task.info', 'As tarefas ficam salvas neste navegador. O ORION ainda não executa tarefas sozinho.', 'Tasks are saved in this browser. ORION does not run tasks on its own yet.', 'Las tareas se guardan en este navegador. ORION aún no ejecuta tareas por sí solo.', 'Les tâches sont enregistrées dans ce navigateur. ORION n’exécute pas encore de tâches seul.', 'Aufgaben werden in diesem Browser gespeichert. ORION führt Aufgaben noch nicht selbstständig aus.', 'Le attività sono salvate in questo browser. ORION non esegue ancora attività da solo.');
+  add('task.empty', 'Nenhuma tarefa ainda. Crie a primeira em “Nova tarefa”.', 'No tasks yet. Create the first one with “New task”.', 'Aún no hay tareas. Crea la primera con «Nueva tarea».', 'Aucune tâche pour l’instant. Créez la première avec « Nouvelle tâche ».', 'Noch keine Aufgaben. Erstelle die erste mit „Neue Aufgabe“.', 'Ancora nessuna attività. Crea la prima con “Nuova attività”.');
+  add('task.lNew', 'Tarefa criada', 'Task created', 'Tarea creada', 'Tâche créée', 'Aufgabe erstellt', 'Attività creata');
+  add('task.lPause', 'Pausada', 'Paused', 'Pausada', 'Mise en pause', 'Pausiert', 'Messa in pausa');
+  add('task.lResume', 'Retomada', 'Resumed', 'Reanudada', 'Reprise', 'Fortgesetzt', 'Ripresa');
+  add('task.lDone', 'Concluída', 'Completed', 'Completada', 'Terminée', 'Abgeschlossen', 'Completata');
+  add('task.lReopen', 'Reaberta', 'Reopened', 'Reabierta', 'Rouverte', 'Wieder geöffnet', 'Riaperta');
+  add('task.lStepOn', 'Passo concluído: ', 'Step done: ', 'Paso completado: ', 'Étape terminée : ', 'Schritt erledigt: ', 'Passaggio completato: ');
+  add('task.lStepOff', 'Passo reaberto: ', 'Step reopened: ', 'Paso reabierto: ', 'Étape rouverte : ', 'Schritt wieder geöffnet: ', 'Passaggio riaperto: ');
+  add('task.lStepAdd', 'Passo adicionado: ', 'Step added: ', 'Paso añadido: ', 'Étape ajoutée : ', 'Schritt hinzugefügt: ', 'Passaggio aggiunto: ');
+  add('task.progress', 'Progresso', 'Progress', 'Progreso', 'Progression', 'Fortschritt', 'Avanzamento');
+
+  D.langs = LANGS;
+  D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
+  return D;
+})();
