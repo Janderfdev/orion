@@ -187,7 +187,7 @@ window.ORION_AUDIO = { level: () => AUDIO.level(), rate: () => AUDIO.rate(), rea
 
 /* ═══ orb.js — motor visual: blobs de luz na Orb + dois arcos orbitais + anéis ondulados e partículas ═══
    Cor interpolada quadro a quadro; brilho e anéis reagem ao nível real do áudio durante a fala.
-   Arco principal (#halo): o original. Segundo arco (#halo2): mais fino, raio menor, inclinado e girando devagar no sentido oposto. */
+   Arco interno (#halo) e arco externo (#halo2): dois círculos concêntricos; o externo é maior, mais fino e gira devagar no sentido oposto. */
 const ORB = (() => {
   const $ = id => document.getElementById(id);
   const canvas = $('orbCanvas'), ctx = canvas.getContext('2d');
@@ -196,7 +196,6 @@ const ORB = (() => {
   let vs = null;   // elementos da Orb da tela Voz e Fala (réplica da Orb principal)
   const orbZone = $('orbZone');
 
-  const TILT2 = -24, SQUASH2 = 0.8;   // inclinação (graus) e achatamento do segundo arco
   let amp = 1, targetAmp = 1, rotSpeed = 1, targetRot = 1, bright = 0.82, targetBright = 0.82;
   let hovered = false, calm = false, flow = 0, lastTs = 0, lvl = 0;
   let breathPeriod = 6, breathT = 0, floatT = 0, press = 0, orbS = 1, orbY = 0, haloAng = 0, haloAng2 = 40, haloV = 360 / 28, fastHalo = false;
@@ -304,6 +303,11 @@ const ORB = (() => {
     vig.addColorStop(1, 'rgba(0,0,0,0.82)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
+    // luz de borda sutil (definição sem excesso de brilho)
+    c.globalCompositeOperation = 'lighter';
+    const rim = c.createRadialGradient(R, R, R * 0.86, R, R, R);
+    rim.addColorStop(0, rgba(col.c, 0)); rim.addColorStop(0.82, rgba(col.c, 0.16 * b)); rim.addColorStop(1, rgba(col.c, 0));
+    c.fillStyle = rim; c.fillRect(0, 0, S, S);
     c.restore();
   }
 
@@ -339,10 +343,13 @@ const ORB = (() => {
     // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque) — igual ao de sempre, mas contínuo entre estados
     const live = calm ? 0 : 1, inPanel = orbEl.classList.contains('panel');
     const sT = inPanel ? 1 : 1 + live * (0.035 * (0.5 - 0.5 * Math.cos(breathT)) + 0.09 * lvl + 0.08 * press);
-    const yT = inPanel ? 0 : -14 * live * (0.5 - 0.5 * Math.cos(floatT));
+    const yT = (inPanel || vs) ? 0 : -14 * live * (0.5 - 0.5 * Math.cos(floatT));   // na tela Voz e Fala a Orb não sobe nem desce: só vai para frente e para trás (escala)
     orbS += (sT - orbS) * k(16); orbY += (yT - orbY) * k(10);
     root.style.setProperty('--orb-s', orbS.toFixed(4));
     root.style.setProperty('--orb-y', orbY.toFixed(2) + 'px');
+    const hlx = (Math.sin(flow * 0.23) * 2.2).toFixed(2) + '%', hly = (Math.cos(flow * 0.19) * 1.6).toFixed(2) + '%';   // o reflexo "respira" de leve com a luz da Orb
+    orbEl.style.setProperty('--hl-x', hlx); orbEl.style.setProperty('--hl-y', hly);
+    if (vs) { vs.orb.style.setProperty('--hl-x', hlx); vs.orb.style.setProperty('--hl-y', hly); }
     // ondas de energia: nascem nas batidas do áudio e seguem até o fim mesmo depois que a voz para
     clock += dt;
     if (!calm && target > 0.16 && ((target - prevTarget > 0.07 && clock - lastSpawn > 0.30) || clock - lastSpawn > 0.9)) {
@@ -364,8 +371,8 @@ const ORB = (() => {
     haloAng = (haloAng + dt * haloV) % 360;
     haloAng2 = (haloAng2 - dt * haloV * 0.55) % 360;   // o segundo arco gira mais devagar e no sentido oposto
     const rot = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + haloAng.toFixed(2) + 'deg)';   // o arco sobe e desce junto com a Orb
-    // segundo arco: gira no próprio plano, depois é achatado e inclinado (a ordem da transformação importa)
-    const rot2 = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + TILT2 + 'deg) scaleY(' + SQUASH2 + ') rotate(' + haloAng2.toFixed(2) + 'deg)';
+    // arco externo: circular e concêntrico, gira devagar no sentido oposto
+    const rot2 = 'translateY(' + orbY.toFixed(2) + 'px) rotate(' + haloAng2.toFixed(2) + 'deg)';
     haloEl.style.transform = rot;
     if (halo2El) halo2El.style.transform = rot2;
 
