@@ -121,6 +121,8 @@ window.ORION_I18N = (() => {
   add('vs.orbAria', 'Ouvir prévia da voz', 'Preview voice', 'Escuchar vista previa de la voz', 'Écouter un aperçu de la voix', 'Stimme probehören', 'Ascolta l’anteprima della voce');
   add('vs.unavailWake', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
   add('vs.wakeMic', 'Sem microfone', 'No microphone', 'Sin micrófono', 'Pas de microphone', 'Kein Mikrofon', 'Nessun microfono');
+  add('vs.pace', 'Ritmo', 'Pace', 'Ritmo', 'Rythme', 'Tempo', 'Ritmo');
+  add('vs.expr', 'Expressividade', 'Expressivity', 'Expresividad', 'Expressivité', 'Ausdruck', 'Espressività');
   add('vs.intensity', 'Intensidade da voz', 'Voice intensity', 'Intensidad de la voz', 'Intensité de la voix', 'Stimmintensität', 'Intensità della voce');
   add('vs.rhythm', 'Ritmo da fala', 'Speech rhythm', 'Ritmo del habla', 'Rythme de la parole', 'Sprechrhythmus', 'Ritmo del parlato');
   add('wake.say', 'Diga “Hey ORION” para falar', 'Say “Hey ORION” to talk', 'Di «Hey ORION» para hablar', 'Dites « Hey ORION » pour parler', 'Sag „Hey ORION“, um zu sprechen', 'Di’ “Hey ORION” per parlare');
