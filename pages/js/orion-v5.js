@@ -76,40 +76,24 @@
   }, true);
 
   /* ── 2. Multitarefa ── */
-  const TXT = {
-    pt: {
-      name: 'Multitarefa', sub: 'Várias tarefas. Um só ORION.', close: 'Fechar',
-      active: n => (n === 1 ? '1 tarefa ativa' : n + ' tarefas ativas'), newTask: 'Nova tarefa', nTitle: 'Título da tarefa',
-      nNote: 'Objetivo (opcional)', nSteps: 'Passos, um por linha (opcional)', create: 'Criar tarefa', cancel: 'Cancelar',
-      quick: 'Adicione uma tarefa e pressione Enter', add: 'Adicionar',
-      st: { running: 'Em andamento', paused: 'Pausada', done: 'Concluída' },
-      pause: 'Pausar', resume: 'Retomar', complete: 'Concluir', reopen: 'Reabrir', del: 'Excluir', delAsk: 'Excluir esta tarefa?',
-      details: 'Detalhes', activity: 'Atividade', goal: 'Objetivo', noGoal: 'Sem objetivo descrito.', steps: 'Passos', noSteps: 'Nenhum passo ainda.',
-      stepPh: 'Novo passo', stepAdd: 'Adicionar passo', created: 'Criada', today: 'Hoje às', summary: 'Resumo',
-      sActive: 'Tarefas ativas', sDone: 'Concluídas hoje', sPaused: 'Em pausa', shortcuts: 'Atalhos', clearDone: 'Limpar concluídas',
-      infoT: 'Organize e acompanhe', info: 'As tarefas ficam salvas neste navegador. O ORION ainda não executa tarefas sozinho.',
-      empty: 'Nenhuma tarefa ainda. Crie a primeira em “Nova tarefa”.',
-      lNew: 'Tarefa criada', lPause: 'Pausada', lResume: 'Retomada', lDone: 'Concluída', lReopen: 'Reaberta',
-      lStepOn: 'Passo concluído: ', lStepOff: 'Passo reaberto: ', lStepAdd: 'Passo adicionado: ', progress: 'Progresso',
-    },
-    en: {
-      name: 'Multitasking', sub: 'Many tasks. One ORION.', close: 'Close',
-      active: n => (n === 1 ? '1 active task' : n + ' active tasks'), newTask: 'New task', nTitle: 'Task title',
-      nNote: 'Goal (optional)', nSteps: 'Steps, one per line (optional)', create: 'Create task', cancel: 'Cancel',
-      quick: 'Add a task and press Enter', add: 'Add',
-      st: { running: 'In progress', paused: 'Paused', done: 'Done' },
-      pause: 'Pause', resume: 'Resume', complete: 'Complete', reopen: 'Reopen', del: 'Delete', delAsk: 'Delete this task?',
-      details: 'Details', activity: 'Activity', goal: 'Goal', noGoal: 'No goal described.', steps: 'Steps', noSteps: 'No steps yet.',
-      stepPh: 'New step', stepAdd: 'Add step', created: 'Created', today: 'Today at', summary: 'Summary',
-      sActive: 'Active tasks', sDone: 'Done today', sPaused: 'Paused', shortcuts: 'Shortcuts', clearDone: 'Clear completed',
-      infoT: 'Organize and track', info: 'Tasks are saved in this browser. ORION does not run tasks on its own yet.',
-      empty: 'No tasks yet. Create the first one with “New task”.',
-      lNew: 'Task created', lPause: 'Paused', lResume: 'Resumed', lDone: 'Completed', lReopen: 'Reopened',
-      lStepOn: 'Step done: ', lStepOff: 'Step reopened: ', lStepAdd: 'Step added: ', progress: 'Progress',
-    },
+  const LANGS = ['pt', 'en', 'es', 'fr', 'de', 'it'];
+  const LOCALES = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
+  const lang = () => { const l = (document.documentElement.lang || 'pt').slice(0, 2).toLowerCase(); return LANGS.includes(l) ? l : 'pt'; };
+  const tr = (key, vars) => {   // texto do i18n.js (cai para o inglês)
+    const D = window.ORION_I18N || {}; let s = (D[lang()] && D[lang()][key]) || (D.en && D.en[key]) || key;
+    if (vars) for (const x in vars) s = s.split('{' + x + '}').join(vars[x]);
+    return s;
   };
-  const lang = () => (/^en/i.test(document.documentElement.lang) ? 'en' : 'pt');
-  const T = () => TXT[lang()];
+  const TASK_KEYS = ['name', 'sub', 'newTask', 'nTitle', 'nNote', 'nSteps', 'create', 'cancel', 'quick', 'add', 'pause', 'resume', 'complete', 'reopen', 'del', 'delAsk',
+    'details', 'activity', 'goal', 'noGoal', 'steps', 'noSteps', 'stepPh', 'stepAdd', 'created', 'today', 'summary', 'sActive', 'sDone', 'sPaused', 'shortcuts',
+    'clearDone', 'infoT', 'info', 'empty', 'lNew', 'lPause', 'lResume', 'lDone', 'lReopen', 'lStepOn', 'lStepOff', 'lStepAdd', 'progress'];
+  const T = () => {
+    const o = {}; TASK_KEYS.forEach(k => { o[k] = tr('task.' + k); });
+    o.st = { running: tr('task.st.running'), paused: tr('task.st.paused'), done: tr('task.st.done') };
+    o.active = n => tr(n === 1 ? 'task.active1' : 'task.activeN', { n });
+    o.close = tr('code.close');
+    return o;
+  };
 
   const P = { plus: 'M12 5v14M5 12h14', play: 'M7 4.5v15l12-7.5z', pause: 'M8 5v14M16 5v14', check: 'M5 12.5l4.5 4.5L19 7.5', trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6', undo: 'M3 7v6h6M3.5 13A9 9 0 1 0 6 6.5', list: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01' };
   const icon = (n, s = 15) => {
@@ -153,7 +137,7 @@
   const progress = t => (t.status === 'done' ? 100 : t.steps.length ? Math.round(t.steps.filter(s => s.done).length / t.steps.length * 100) : 0);
   const sameDay = ts => { const a = new Date(ts), b = new Date(); return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
   const when = ts => {
-    const loc = lang() === 'en' ? 'en-US' : 'pt-BR', hm = new Date(ts).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    const loc = LOCALES[lang()], hm = new Date(ts).toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
     return sameDay(ts) ? T().today + ' ' + hm : new Date(ts).toLocaleDateString(loc, { day: '2-digit', month: 'short' }) + ' ' + hm;
   };
   const ensureSel = () => { if (!tasks.some(t => t.id === sel)) sel = tasks.length ? tasks[0].id : null; };
@@ -284,100 +268,48 @@
 })();
 
 /* ═══════════════════════════════════════════════════════════════
-   Voice & Speech — dois arcos em volta da Orb
-   Arco interno = Ritmo · arco externo = Expressividade. Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
-   Arraste o arco (mouse, toque) ou use as setas do teclado. Os valores reais ficam nos campos #vsPace e #vsExpr,
-   que o app.js já lê e salva — os arcos só os controlam e os refletem.
+   Voz e Fala — dois arcos concêntricos em volta da Orb (puramente informativos)
+   Arco interno = intensidade da voz · arco externo = ritmo da fala. Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
+   Os dados vêm do áudio REAL da fala (window.ORION_AUDIO, definido no app.js: analisador do ElevenLabs). Com a voz de reserva do
+   navegador não há dados de áudio, então os arcos ficam parados — nunca há animação simulada.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  const $ = id => document.getElementById(id);
-  const svg = $('vsRings'), screen = $('voiceScreen'), pace = $('vsPace'), expr = $('vsExpr');
-  if (!svg || !screen || !pace || !expr) return;
-  const NS = 'http://www.w3.org/2000/svg', C = 110;
+  const svg = document.getElementById('vsRings'), screen = document.getElementById('voiceScreen');
+  if (!svg || !screen) return;
+  const NS = 'http://www.w3.org/2000/svg', C = 100;
   const mk = (tag, at) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
-
-  const defs = [
-    { inp: pace, r: 66, color: '#5F59A8', name: 'vsPaceName', fmt: v => v.toFixed(2) + '×' },
-    { inp: expr, r: 86, color: '#8782C2', name: 'vsExprName', fmt: (v, p) => Math.round(p) + '%' },
-  ];
-  const readP = d => { const i = d.inp, min = +i.min, max = +i.max; return Math.min(1, Math.max(0, (+i.value - min) / (max - min))) * 100; };
-  const fire = (d, type) => d.inp.dispatchEvent(new Event(type, { bubbles: true }));
-
-  function paint(d, force) {
-    const p = readP(d), off = d.inp.disabled;
-    if (!force && p === d.last && off === d.off) return;
-    d.last = p; d.off = off;
-    d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
-    d.prog.style.visibility = p < 0.4 ? 'hidden' : 'visible';
-    const a = p * 3.6 * Math.PI / 180;
-    d.tip.setAttribute('cx', (C + d.r * Math.sin(a)).toFixed(2));
-    d.tip.setAttribute('cy', (C - d.r * Math.cos(a)).toFixed(2));
-    d.g.setAttribute('aria-valuenow', String(Math.round(p)));
-    d.g.setAttribute('aria-valuetext', d.fmt(+d.inp.value, p));
-    d.g.setAttribute('aria-disabled', String(off));
-    d.g.classList.toggle('off', off);
-    d.g.tabIndex = off ? -1 : 0;
-  }
-  function setP(d, p) {
-    if (d.inp.disabled) return;
-    p = Math.min(100, Math.max(0, p));
-    const min = +d.inp.min, max = +d.inp.max;
-    const v = Math.round((min + p / 100 * (max - min)) * 100) / 100;
-    if (v === +d.inp.value) return;
-    d.inp.value = String(v);
-    fire(d, 'input'); paint(d);
-  }
-  function angleP(e) {   // posição do ponteiro → % ao longo do círculo, a partir do topo
-    const r = svg.getBoundingClientRect();
-    let deg = Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
-    if (deg < 0) deg += 360;
-    return deg / 3.6;
-  }
-
-  defs.forEach(d => {
-    d.g = mk('g', { class: 'vs-ring', role: 'slider', tabindex: '0', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-orientation': 'horizontal', 'aria-labelledby': d.name });
-    d.g.append(
-      mk('circle', { class: 'track', cx: C, cy: C, r: d.r }),
-      d.prog = mk('circle', { class: 'prog', cx: C, cy: C, r: d.r, pathLength: '100', stroke: d.color, transform: 'rotate(-90 ' + C + ' ' + C + ')', 'stroke-dasharray': '0 100' }),
-      d.tip = mk('circle', { class: 'tip', r: '7', cx: C, cy: C - d.r }),
-      mk('circle', { class: 'hit', cx: C, cy: C, r: d.r }));
-    svg.append(d.g);
-
-    d.g.addEventListener('pointerdown', e => {
-      if (d.inp.disabled) return;
-      d.drag = true; d.g.setPointerCapture(e.pointerId); e.preventDefault();
-      setP(d, angleP(e));
-    });
-    d.g.addEventListener('pointermove', e => {
-      if (!d.drag) return;
-      let p = angleP(e); const prev = readP(d);
-      if (prev > 85 && p < 15) p = 100;       // não "dá a volta" de 100% para 0% (e vice-versa)
-      else if (prev < 15 && p > 85) p = 0;
-      setP(d, p);
-    });
-    const end = () => { if (!d.drag) return; d.drag = false; fire(d, 'change'); };
-    d.g.addEventListener('pointerup', end);
-    d.g.addEventListener('pointercancel', end);
-    d.g.addEventListener('keydown', e => {
-      const step = e.shiftKey ? 10 : 2, k = e.key;
-      let p = readP(d);
-      if (k === 'ArrowRight' || k === 'ArrowUp') p += step;
-      else if (k === 'ArrowLeft' || k === 'ArrowDown') p -= step;
-      else if (k === 'PageUp') p += 10;
-      else if (k === 'PageDown') p -= 10;
-      else if (k === 'Home') p = 0;
-      else if (k === 'End') p = 100;
-      else return;
-      e.preventDefault(); e.stopPropagation();
-      setP(d, p); fire(d, 'change');
-    });
-    paint(d, true);
+  // viewBox 200: a Orb ocupa 100 (raio 50); o arco interno fica em r=64 e o externo em r=80
+  const rings = [{ r: 64, key: 'level', up: 14, down: 5 }, { r: 80, key: 'rate', up: 4, down: 2.2 }].map(d => {
+    const g = mk('g', {});
+    d.prog = mk('circle', { class: 'prog', cx: C, cy: C, r: d.r, pathLength: '100', transform: 'rotate(-90 ' + C + ' ' + C + ')', 'stroke-dasharray': '0 100', visibility: 'hidden' });
+    g.append(mk('circle', { class: 'track', cx: C, cy: C, r: d.r }), d.prog);
+    svg.append(g); d.v = 0; return d;
   });
+  const lang = () => (document.documentElement.lang || 'pt').slice(0, 2).toLowerCase();
+  function label() {   // descrição para leitores de tela (os arcos em si não têm texto na tela)
+    const D = window.ORION_I18N || {}, T = D[lang()] || D.en || {};
+    svg.setAttribute('aria-label', (T['vs.intensity'] || 'Voice intensity') + ' · ' + (T['vs.rhythm'] || 'Speech rhythm'));
+  }
+  label();
+  new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 
-  // reflete os valores do app.js (que escreve nos campos ao abrir a tela e ao trocar de idioma) enquanto a tela está aberta
-  let raf = 0;
-  const loop = () => { defs.forEach(d => paint(d)); raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0; };
+  let raf = 0, last = 0;
+  function loop(ts) {
+    const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
+    const A = window.ORION_AUDIO;
+    let lv = 0, rt = 0;
+    if (A) { const l = A.level(); if (A.real()) { lv = l; rt = A.rate(); } }   // só dados reais
+    const target = { level: lv, rate: rt };
+    rings.forEach(d => {
+      const t = target[d.key], k = 1 - Math.exp(-dt * (t > d.v ? d.up : d.down));
+      d.v += (t - d.v) * k;
+      const p = Math.max(0, Math.min(1, d.v)) * 100;
+      d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
+      d.prog.setAttribute('visibility', p < 0.5 ? 'hidden' : 'visible');
+    });
+    raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0;
+  }
   new MutationObserver(() => { if (screen.classList.contains('open') && !raf) raf = requestAnimationFrame(loop); })
     .observe(screen, { attributes: true, attributeFilter: ['class'] });
 })();
