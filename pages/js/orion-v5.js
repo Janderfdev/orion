@@ -269,7 +269,7 @@
 
 /* ═══════════════════════════════════════════════════════════════
    Voz e Fala — dois arcos concêntricos em volta da Orb (puramente informativos)
-   Arco interno = intensidade da voz · arco externo = ritmo da fala. Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
+   Arco interno = Ritmo da fala · arco externo = Expressividade (intensidade da voz). Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
    Os dados vêm do áudio REAL da fala (window.ORION_AUDIO, definido no app.js: analisador do ElevenLabs). Com a voz de reserva do
    navegador não há dados de áudio, então os arcos ficam parados — nunca há animação simulada.
    ═══════════════════════════════════════════════════════════════ */
@@ -279,17 +279,18 @@
   if (!svg || !screen) return;
   const NS = 'http://www.w3.org/2000/svg', C = 100;
   const mk = (tag, at) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
-  // viewBox 200: a Orb ocupa 100 (raio 50); o arco interno fica em r=64 e o externo em r=80
-  const rings = [{ r: 64, key: 'level', up: 14, down: 5 }, { r: 80, key: 'rate', up: 4, down: 2.2 }].map(d => {
+  // viewBox 200: a Orb ocupa 100 (raio 50); arco interno r=64 = Ritmo (início de sílabas por segundo); externo r=80 = Expressividade (intensidade da voz)
+  const rings = [{ r: 64, key: 'rate', up: 4, down: 2.2 }, { r: 80, key: 'level', up: 14, down: 5 }].map(d => {
     const g = mk('g', {});
     d.prog = mk('circle', { class: 'prog', cx: C, cy: C, r: d.r, pathLength: '100', transform: 'rotate(-90 ' + C + ' ' + C + ')', 'stroke-dasharray': '0 100', visibility: 'hidden' });
-    g.append(mk('circle', { class: 'track', cx: C, cy: C, r: d.r }), d.prog);
+    d.tip = mk('circle', { class: 'tip', r: '3', cx: C, cy: C - d.r });   // fica no topo (0%) e acompanha o valor real
+    g.append(mk('circle', { class: 'track', cx: C, cy: C, r: d.r }), d.prog, d.tip);
     svg.append(g); d.v = 0; return d;
   });
   const lang = () => (document.documentElement.lang || 'pt').slice(0, 2).toLowerCase();
   function label() {   // descrição para leitores de tela (os arcos em si não têm texto na tela)
     const D = window.ORION_I18N || {}, T = D[lang()] || D.en || {};
-    svg.setAttribute('aria-label', (T['vs.intensity'] || 'Voice intensity') + ' · ' + (T['vs.rhythm'] || 'Speech rhythm'));
+    svg.setAttribute('aria-label', (T['vs.pace'] || 'Pace') + ' · ' + (T['vs.expr'] || 'Expressivity'));
   }
   label();
   new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
@@ -307,6 +308,8 @@
       const p = Math.max(0, Math.min(1, d.v)) * 100;
       d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
       d.prog.setAttribute('visibility', p < 0.5 ? 'hidden' : 'visible');
+      const ang = p * 3.6 * Math.PI / 180;
+      d.tip.setAttribute('cx', (C + d.r * Math.sin(ang)).toFixed(2)); d.tip.setAttribute('cy', (C - d.r * Math.cos(ang)).toFixed(2));
     });
     raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0;
   }
