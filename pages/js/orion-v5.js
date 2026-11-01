@@ -268,51 +268,105 @@
 })();
 
 /* ═══════════════════════════════════════════════════════════════
-   Voz e Fala — dois arcos concêntricos em volta da Orb (puramente informativos)
-   Arco interno = Ritmo da fala · arco externo = Expressividade (intensidade da voz). Cada um vai de 0% a 100%, a partir do topo, no sentido horário.
-   Os dados vêm do áudio REAL da fala (window.ORION_AUDIO, definido no app.js: analisador do ElevenLabs). Com a voz de reserva do
-   navegador não há dados de áudio, então os arcos ficam parados — nunca há animação simulada.
+   Voz e Fala — Ritmo e Expressividade
+   Arco interno + barra da esquerda = Ritmo (0.0× a 1.50×) · arco externo + barra da direita = Expressividade (0% a 100%).
+   Cada arco começa no topo e vai no sentido horário. Arraste o arco ou a barra (mouse/toque), ou use as setas nas barras.
+   Os valores são os REAIS da voz: ficam em prefs (app.js, window.ORION_VOICE), são salvos e usados na próxima fala.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  const svg = document.getElementById('vsRings'), screen = document.getElementById('voiceScreen');
+  const el = id => document.getElementById(id);
+  const svg = el('vsRings'), screen = el('voiceScreen');
   if (!svg || !screen) return;
   const NS = 'http://www.w3.org/2000/svg', C = 100;
   const mk = (tag, at) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
-  // viewBox 200: a Orb ocupa 100 (raio 50); arco interno r=64 = Ritmo (início de sílabas por segundo); externo r=80 = Expressividade (intensidade da voz)
-  const rings = [{ r: 64, key: 'rate', up: 4, down: 2.2 }, { r: 80, key: 'level', up: 14, down: 5 }].map(d => {
-    const g = mk('g', {});
+  const V = () => window.ORION_VOICE;
+
+  // viewBox 200: a Orb ocupa 100 (raio 50); arco interno r=64, externo r=80
+  const defs = [
+    { key: 'pace', r: 64, min: 0, max: 1.5, step: 0.05, fmt: v => v.toFixed(2) + '×', val: 'vsPaceVal', bar: 'vsPaceBar', thumb: 'vsPaceThumb', track: 'vsPaceTrack' },
+    { key: 'expr', r: 80, min: 0, max: 1, step: 0.05, fmt: v => Math.round(v * 100) + '%', val: 'vsExprVal', bar: 'vsExprBar', thumb: 'vsExprThumb', track: 'vsExprTrack' },
+  ];
+  const frac = d => { const v = V(); return v ? Math.min(1, Math.max(0, (v.get()[d.key] - d.min) / (d.max - d.min))) : 0; };
+  const enabled = d => { const v = V(); return !!v && (d.key !== 'expr' || v.exprEnabled()); };
+  function setFrac(d, f, commit) {
+    const v = V(); if (!v || !enabled(d)) return;
+    f = Math.min(1, Math.max(0, f));
+    v.set(d.key, d.min + f * (d.max - d.min));
+    paint(d);
+    if (commit) v.save();
+  }
+
+  defs.forEach(d => {
+    d.g = mk('g', { 'aria-hidden': 'true' });
     d.prog = mk('circle', { class: 'prog', cx: C, cy: C, r: d.r, pathLength: '100', transform: 'rotate(-90 ' + C + ' ' + C + ')', 'stroke-dasharray': '0 100', visibility: 'hidden' });
-    d.tip = mk('circle', { class: 'tip', r: '3', cx: C, cy: C - d.r });   // fica no topo (0%) e acompanha o valor real
-    g.append(mk('circle', { class: 'track', cx: C, cy: C, r: d.r }), d.prog, d.tip);
-    svg.append(g); d.v = 0; return d;
+    d.tip = mk('circle', { class: 'tip', r: '4.5', cx: C, cy: C - d.r });
+    d.g.append(mk('circle', { class: 'track', cx: C, cy: C, r: d.r }), d.prog, d.tip, mk('circle', { class: 'hit', cx: C, cy: C, r: d.r }));
+    svg.append(d.g);
+    d.barEl = el(d.bar); d.thumbEl = el(d.thumb); d.valEl = el(d.val); d.trackEl = el(d.track);
+
+    // arraste no arco (o arco é só um espelho da barra para quem usa mouse/toque; teclado e leitor de tela usam a barra)
+    const angleF = e => {
+      const r = svg.getBoundingClientRect();
+      let deg = Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+      if (deg < 0) deg += 360;
+      return deg / 360;
+    };
+    d.g.addEventListener('pointerdown', e => { if (!enabled(d)) return; d.drag = true; d.g.setPointerCapture(e.pointerId); e.preventDefault(); setFrac(d, angleF(e)); });
+    d.g.addEventListener('pointermove', e => {
+      if (!d.drag) return;
+      let f = angleF(e); const prev = frac(d);
+      if (prev > 0.85 && f < 0.15) f = 1; else if (prev < 0.15 && f > 0.85) f = 0;   // não "dá a volta" de 100% para 0%
+      setFrac(d, f);
+    });
+    const end = () => { if (!d.drag) return; d.drag = false; V() && V().save(); };
+    d.g.addEventListener('pointerup', end); d.g.addEventListener('pointercancel', end);
+
+    // arraste na barra
+    const barF = e => { const r = d.trackEl.getBoundingClientRect(); return (e.clientX - r.left) / r.width; };
+    d.trackEl.addEventListener('pointerdown', e => { if (!enabled(d)) return; d.dragB = true; d.trackEl.setPointerCapture(e.pointerId); e.preventDefault(); setFrac(d, barF(e)); });
+    d.trackEl.addEventListener('pointermove', e => { if (d.dragB) setFrac(d, barF(e)); });
+    const endB = () => { if (!d.dragB) return; d.dragB = false; V() && V().save(); };
+    d.trackEl.addEventListener('pointerup', endB); d.trackEl.addEventListener('pointercancel', endB);
+    d.trackEl.addEventListener('keydown', e => {
+      const big = e.shiftKey ? 4 : 1, k = e.key; let f = frac(d);
+      if (k === 'ArrowRight' || k === 'ArrowUp') f += big * d.step / (d.max - d.min);
+      else if (k === 'ArrowLeft' || k === 'ArrowDown') f -= big * d.step / (d.max - d.min);
+      else if (k === 'Home') f = 0; else if (k === 'End') f = 1; else return;
+      e.preventDefault(); e.stopPropagation(); setFrac(d, f, true);
+    });
   });
+
+  function paint(d) {
+    const v = V(); if (!v) return;
+    const val = v.get()[d.key], f = frac(d), p = f * 100, off = !enabled(d);
+    d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
+    d.prog.setAttribute('visibility', p < 0.5 ? 'hidden' : 'visible');
+    const ang = f * 2 * Math.PI;
+    d.tip.setAttribute('cx', (C + d.r * Math.sin(ang)).toFixed(2)); d.tip.setAttribute('cy', (C - d.r * Math.cos(ang)).toFixed(2));
+    if (d.barEl) d.barEl.style.width = p.toFixed(1) + '%';
+    if (d.thumbEl) d.thumbEl.style.left = p.toFixed(1) + '%';
+    if (d.valEl) d.valEl.textContent = d.fmt(val);
+    const te = d.trackEl;
+    if (te) {
+      te.setAttribute('aria-valuemin', String(d.min)); te.setAttribute('aria-valuemax', String(d.max));
+      te.setAttribute('aria-valuenow', String(val)); te.setAttribute('aria-valuetext', d.fmt(val));
+      te.setAttribute('aria-disabled', String(off)); te.tabIndex = off ? -1 : 0; te.classList.toggle('off', off);
+    }
+    d.g.classList.toggle('off', off);
+  }
+
+  // mantém tudo em dia enquanto a tela está aberta (idioma, vozes carregadas, valores salvos)
+  let raf = 0;
+  const loop = () => { defs.forEach(paint); raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0; };
+  new MutationObserver(() => { if (screen.classList.contains('open') && !raf) raf = requestAnimationFrame(loop); })
+    .observe(screen, { attributes: true, attributeFilter: ['class'] });
+
   const lang = () => (document.documentElement.lang || 'pt').slice(0, 2).toLowerCase();
-  function label() {   // descrição para leitores de tela (os arcos em si não têm texto na tela)
+  function label() {
     const D = window.ORION_I18N || {}, T = D[lang()] || D.en || {};
     svg.setAttribute('aria-label', (T['vs.pace'] || 'Pace') + ' · ' + (T['vs.expr'] || 'Expressivity'));
   }
   label();
   new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-
-  let raf = 0, last = 0;
-  function loop(ts) {
-    const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
-    const A = window.ORION_AUDIO;
-    let lv = 0, rt = 0;
-    if (A) { const l = A.level(); if (A.real()) { lv = l; rt = A.rate(); } }   // só dados reais
-    const target = { level: lv, rate: rt };
-    rings.forEach(d => {
-      const t = target[d.key], k = 1 - Math.exp(-dt * (t > d.v ? d.up : d.down));
-      d.v += (t - d.v) * k;
-      const p = Math.max(0, Math.min(1, d.v)) * 100;
-      d.prog.setAttribute('stroke-dasharray', p.toFixed(2) + ' 100');
-      d.prog.setAttribute('visibility', p < 0.5 ? 'hidden' : 'visible');
-      const ang = p * 3.6 * Math.PI / 180;
-      d.tip.setAttribute('cx', (C + d.r * Math.sin(ang)).toFixed(2)); d.tip.setAttribute('cy', (C - d.r * Math.cos(ang)).toFixed(2));
-    });
-    raf = screen.classList.contains('open') ? requestAnimationFrame(loop) : 0;
-  }
-  new MutationObserver(() => { if (screen.classList.contains('open') && !raf) raf = requestAnimationFrame(loop); })
-    .observe(screen, { attributes: true, attributeFilter: ['class'] });
 })();
