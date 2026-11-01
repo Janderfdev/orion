@@ -1,18 +1,18 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V5.0 — Interaction Layer (Cosmic Indigo / Midnight Blue / Deep Purple)  (pages/js/app.js)
+   ORION AI V5.0 — Interaction Layer (Cosmic Indigo · Dark Blue · Deep Purple)  (pages/js/app.js)
 
    Frontend = interação, eventos, estados visuais e comunicação com a API.
    Backend  = autenticação, contexto, orquestração, modelos, ferramentas, segurança.
    O app.js NÃO substitui o ORION Core.
 
-   V4.5.0: interface em inglês (I18N en/pt), tela Voice & Speech, Orb com anéis ondulados e áudio reativo,
-           4 vozes + Pace/Expressivity, "Hey ORION".
-   V4.5.5: boot mais rápido, nome maior no topo (orion.html), respostas mais rápidas (backend).
-   V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), linha de plano/uso nas configurações,
-           tema claro/escuro, botão "+" (imagem ou arquivo de texto), campo "agent" do /ask (Agent Engine) registrado no log.
-   V5.0.2: Orb como no original (roxo → azul escuro); resposta sempre escrita no painel; menus redesenhados.
-   V5.0.1: identidade preto + azul escuro (sem roxo); segundo arco orbital na Orb; 4 estados visuais ligados aos eventos reais:
-           idle (preto/azul escuro) · listening (azul escuro) · responding (verde: gerando OU falando) · not understood (vermelho).
+   V4.5.0: tela Voice & Speech, Orb com anéis ondulados e áudio reativo, 4 vozes, "Hey ORION".
+   V4.5.5: boot mais rápido, nome maior no topo, respostas mais rápidas (backend).
+   V5.0:   foto de perfil escolhida pelo usuário (só neste navegador), plano/uso nas configurações, botão "+" (imagem ou
+           arquivo de texto), campo "agent" do /ask registrado no log.
+   V5.0.2: Orb como no original; resposta sempre escrita no painel; menus redesenhados.
+   V5.0 (esta revisão): interface em 6 idiomas (js/i18n.js); Voz e Fala = Orb + dois arcos reais (intensidade e ritmo da voz)
+           + dock com 4 vozes; Sons e "Hey ORION" como interruptores nas configurações; temas Cosmic Indigo / Dark Blue /
+           Deep Purple (só em orion.html).
    ═══════════════════════════════════════════════════════════════ */
 
 /* Durante o standby (standby.js) o app NÃO inicia: sem microfone, sem "Hey ORION", sem chamadas ao servidor. Quando a janela acaba,
@@ -22,156 +22,34 @@ if (!(window.ORION_STANDBY && window.ORION_STANDBY.active())) {
 /* Endereço do backend (Render). Se um dia mudar, troque aqui (sem barra no final). */
 const ORION_CONFIG = { API_URL: 'https://orion-backend-9qk5.onrender.com' };
 
-/* ═══ i18n.js — textos da interface (en = padrão · pt = opção) ═══
-   O idioma da INTERFACE é separado do idioma da CONVERSA (voz): ver prefs.ui e prefs.lang.
-   Marcas (ORION AI, ORION Core, ORION Voice) nunca são traduzidas. */
+/* ═══ i18n — textos da interface (6 idiomas, definidos em js/i18n.js) ═══
+   O idioma é UM só: interface, reconhecimento de fala e prévia de voz. Marcas (ORION AI, ORION Core, Hey ORION) nunca são traduzidas. */
 const I18N = (() => {
-  const D = {
-    en: {
-      'boot.init': 'initializing', 'boot.core': 'connecting to core', 'boot.online': 'systems online',
-      'online': 'ORION ONLINE', 'version': 'VERSION V5.0',
-      'status.listening': 'Listening…', 'status.processing': 'Processing…', 'status.responding': 'Responding…', 'status.unheard': 'I didn’t understand. Please try again.',
-      'hint.base': 'tap the orb to speak · or use the chat button',
-      'hint.wake': 'say “hey orion” · tap the orb · or use the chat button',
-      'ask.ph': 'Ask or give ORION a command', 'ask.aria': 'Question for ORION',
-      'mic.aria': 'Speak', 'send.aria': 'Send', 'chat.aria': 'Ask ORION', 'gear.aria': 'Settings',
-      'err.mic_unavailable': 'Microphone unavailable.', 'err.stt_unavailable': 'Speech recognition isn’t available in this browser.',
-      'err.model_unavailable': 'I couldn’t reach the model.', 'err.timeout': 'The response took too long.',
-      'err.api_error': 'Couldn’t reach the service.', 'err.invalid_response': 'I received an invalid response.',
-      'err.tool_unavailable': 'That tool isn’t available yet.', 'err.offline': 'No internet connection.',
-      'err.tts_unavailable': 'I can’t speak the answer right now.', 'err.unexpected_input': 'I didn’t understand. Please try again.',
-      'err.forbidden': 'This account doesn’t have access to ORION.', 'err.rate_limited': 'Too many requests. Please wait a moment.',
-      'err.quota_exceeded': 'You’ve reached your question limit. Upgrade to keep using the AI soon.',
-      'err.core_unavailable': 'I couldn’t reach the ORION core.', 'err.voice_disabled': 'Voice is turned off in settings.',
-      'err.voice_unavailable': 'That voice isn’t available.', 'err.unknown': 'I couldn’t process that.',
-      'wiki.read': 'Read on Wikipedia ↗', 'wiki.search': 'Search Wikipedia ↗', 'wiki.title': 'Search “{q}” on Wikipedia',
-      'set.title': 'Settings', 'set.sub': 'Personalize your experience', 'set.modelD': 'Choose the AI model for your conversations.', 'set.voiceD': 'Set up ORION’s voice and speech.', 'set.soundD': 'Turn interface sounds on or off.', 'set.themeD': 'Choose the visual theme.', 'set.uiD': 'Set the interface language.', 'set.account': 'Account', 'set.model': 'Model', 'set.voice': 'Voice & Speech', 'set.open': 'Open',
-      'set.sound': 'Sounds', 'set.calm': 'Reduce motion', 'set.ui': 'Language', 'set.wake': 'Hey ORION', 'set.history': 'History', 'set.clear': 'Clear',
-      'set.cleared': 'Cleared', 'set.failed': 'Failed',
-      'set.photo': 'Profile photo', 'set.photoPick': 'Choose', 'set.photoDel': 'Remove',
-      'set.photoNote': 'Your photo stays on this device only.', 'set.photoType': 'Use a JPG, PNG or WebP image.',
-      'set.photoBig': 'That image is too large (max 8 MB).', 'set.photoSave': 'Couldn’t save the photo.', 'set.plan': 'Plan',
-      'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'You’ll be able to upgrade soon.',
-      'code.aria': 'ORION CODE and ORION API', 'code.title': 'ORION CODE · ORION API', 'code.soon': 'Coming soon',
-      'code.codeDesc': 'A programming assistant: it reads your project, proposes changes and only applies what you approve.',
-      'code.apiDesc': 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.',
-      'code.planned': 'Planned: {v}', 'code.note': 'Not available yet. Versions and dates may change.', 'code.close': 'Close',
-      'set.theme': 'Theme', 'theme.indigo': 'Cosmic Indigo', 'theme.midnight': 'Midnight Blue', 'theme.purple': 'Deep Purple', 'vs.voiceN': 'Voice {n}',
-      'attach.aria': 'Attach an image or file', 'attach.default': 'Describe this attachment.', 'attach.remove': 'Remove attachment',
-      'attach.errType': 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'attach.errSize': 'That file is too large.',
-      'attach.errRead': 'I couldn’t read that file.', 'err.attachment_invalid': 'I couldn’t use that attachment.',
-      'set.core': 'Core', 'set.signout': 'Sign out', 'set.none': 'Not signed in',
-      'on': 'On', 'off': 'Off', 'set.nomodel': 'No model', 'set.unavail': 'Unavailable', 'toast.model': 'Model: {m}',
-      'core.none': 'Backend not configured', 'core.connecting': 'Connecting…', 'core.ok': 'Connected', 'core.nomodel': 'No model key on the server',
-      'core.forbidden': 'E-mail without access', 'core.timeout': 'Server took too long', 'core.unreach': 'Server not responding',
-      'core.err': 'Server error', 'core.down': 'Server unavailable',
-      'lang.en': 'English (US)', 'lang.pt': 'Português (Brasil)',
-      'vs.title': 'Voice & Speech', 'vs.back': 'Back to settings', 'vs.voice': 'Voice', 'vs.language': 'Language', 'vs.pace': 'Pace',
-      'vs.expr': 'Expressivity', 'vs.slow': 'Slower', 'vs.fast': 'Faster', 'vs.calm': 'Calm', 'vs.expressive': 'Expressive',
-      'vs.preview': 'Preview voice', 'vs.loading': 'Loading…', 'vs.stop': 'Stop', 'vs.orbAria': 'Preview voice',
-      'vs.speak': 'Speak replies', 'vs.wake': 'Wake word — “Hey ORION”',
-      'vs.wakeInfo': 'Off by default. It listens only while this tab is open and visible. While it’s on, your browser’s speech recognition runs (in Chrome, audio is sent to Google’s speech service). ORION doesn’t store audio or transcripts.',
-      'vs.mic': 'Microphone on', 'vs.eleven': 'ElevenLabs', 'vs.browser': 'Browser voice', 'vs.checking': 'Checking…',
-      'vs.test': 'Test voice', 'vs.run': 'Run', 'vs.testing': 'Testing…', 'vs.testOk': 'OK ✓', 'vs.testNoKey': 'No key/ID', 'vs.testErr': 'Error {n}', 'vs.testFail': 'Failed',
-      'vs.noVoices': 'Server voices aren’t available — the browser voice is used instead.',
-      'vs.exprNote': 'Expressivity only applies to ElevenLabs voices.',
-      'vs.previewFail': 'Preview failed. Check your connection or try another voice.', 'vs.limit': 'Daily voice limit reached.',
-      'pv.quota': 'ElevenLabs credits ran out.', 'pv.plan': 'This voice needs a paid ElevenLabs plan.',
-      'pv.voice': 'Voice {n} doesn’t exist in the ElevenLabs account (check its ID).', 'pv.key': 'The ElevenLabs API key was rejected.', 'pv.perm': 'The ElevenLabs key has no Text to Speech permission.',
-      'pv.auth': 'ElevenLabs refused access (error {s}{k}). Check the key and its permissions.',
-      'pv.unusual': 'ElevenLabs blocked the free plan from this server.', 'pv.busy': 'ElevenLabs is limiting usage right now. Try again in a moment.',
-      'pv.eleven': 'ElevenLabs refused the request (error {s}).', 'pv.timeout': 'The server took too long (it may be waking up). Try again.',
-      'pv.core': 'No response from the server.', 'pv.audio': 'The browser couldn’t play the audio.', 'pv.off': 'The server voice is turned off.',
-      'vs.slotOff': 'Voice {n} isn’t configured on the server.', 'vs.apply': 'Changes apply to the next spoken reply.',
-      'vs.unavailWake': 'Unavailable', 'vs.wakeMic': 'No microphone', 'vs.wakeNeed': 'Turn on Speak replies',
-      'wake.say': 'Say “Hey ORION” to talk', 'wake.mic': 'Microphone blocked: wake word turned off', 'wake.unstable': 'Wake word unstable: turned off',
-    },
-    pt: {
-      'boot.init': 'inicializando', 'boot.core': 'conectando ao núcleo', 'boot.online': 'sistemas online',
-      'online': 'ORION ONLINE', 'version': 'VERSÃO V5.0',
-      'status.listening': 'Ouvindo…', 'status.processing': 'Processando…', 'status.responding': 'Respondendo…', 'status.unheard': 'Não entendi. Tente de novo.',
-      'hint.base': 'toque na orb para falar · ou use o botão de chat',
-      'hint.wake': 'diga “hey orion” · toque na orb · ou use o botão de chat',
-      'ask.ph': 'Pergunte ou dê um comando ao ORION', 'ask.aria': 'Pergunta ao ORION',
-      'mic.aria': 'Falar', 'send.aria': 'Enviar', 'chat.aria': 'Perguntar ao ORION', 'gear.aria': 'Configurações',
-      'err.mic_unavailable': 'Microfone indisponível.', 'err.stt_unavailable': 'Reconhecimento de voz indisponível neste navegador.',
-      'err.model_unavailable': 'Não consegui acessar o modelo.', 'err.timeout': 'A resposta demorou demais.',
-      'err.api_error': 'Falha ao comunicar com o serviço.', 'err.invalid_response': 'Recebi uma resposta inválida.',
-      'err.tool_unavailable': 'Essa ferramenta ainda não está disponível.', 'err.offline': 'Sem conexão com a internet.',
-      'err.tts_unavailable': 'Não consigo falar a resposta agora.', 'err.unexpected_input': 'Não entendi. Tente de novo.',
-      'err.forbidden': 'Esta conta não tem acesso ao ORION.', 'err.rate_limited': 'Muitas solicitações. Aguarde um instante.',
-      'err.quota_exceeded': 'Você atingiu o limite de perguntas. Faça upgrade para continuar usando a IA em breve.',
-      'err.core_unavailable': 'Não consegui falar com o núcleo do ORION.', 'err.voice_disabled': 'Voz desativada nas configurações.',
-      'err.voice_unavailable': 'Essa voz não está disponível.', 'err.unknown': 'Não consegui processar.',
-      'wiki.read': 'Ler na Wikipédia ↗', 'wiki.search': 'Pesquisar na Wikipédia ↗', 'wiki.title': 'Pesquisar “{q}” na Wikipédia',
-      'set.title': 'Configurações', 'set.sub': 'Personalize sua experiência', 'set.modelD': 'Escolha o modelo de IA para suas conversas.', 'set.voiceD': 'Configure a voz e a fala do ORION.', 'set.soundD': 'Ative ou desative os sons da interface.', 'set.themeD': 'Escolha o tema visual da interface.', 'set.uiD': 'Defina o idioma da interface.', 'set.account': 'Conta', 'set.model': 'Modelo', 'set.voice': 'Voice & Speech', 'set.open': 'Abrir',
-      'set.sound': 'Sons', 'set.calm': 'Reduzir movimento', 'set.ui': 'Idioma', 'set.wake': 'Hey ORION', 'set.history': 'Histórico', 'set.clear': 'Limpar',
-      'set.cleared': 'Limpo', 'set.failed': 'Falhou',
-      'set.photo': 'Foto de perfil', 'set.photoPick': 'Escolher', 'set.photoDel': 'Remover',
-      'set.photoNote': 'Sua foto fica só neste aparelho.', 'set.photoType': 'Use uma imagem JPG, PNG ou WebP.',
-      'set.photoBig': 'Essa imagem é grande demais (máx. 8 MB).', 'set.photoSave': 'Não consegui salvar a foto.', 'set.plan': 'Plano',
-      'set.upgrade': 'Upgrade', 'set.upgradeSoon': 'Em breve você poderá fazer upgrade.',
-      'code.aria': 'ORION CODE e ORION API', 'code.title': 'ORION CODE · ORION API', 'code.soon': 'Em breve',
-      'code.codeDesc': 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.',
-      'code.apiDesc': 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.',
-      'code.planned': 'Previsto: {v}', 'code.note': 'Ainda não está disponível. Versões e datas podem mudar.', 'code.close': 'Fechar',
-      'set.theme': 'Tema', 'theme.indigo': 'Cosmic Indigo', 'theme.midnight': 'Midnight Blue', 'theme.purple': 'Deep Purple', 'vs.voiceN': 'Voz {n}',
-      'attach.aria': 'Anexar imagem ou arquivo', 'attach.default': 'Descreva este anexo.', 'attach.remove': 'Remover anexo',
-      'attach.errType': 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'attach.errSize': 'Esse arquivo é grande demais.',
-      'attach.errRead': 'Não consegui ler esse arquivo.', 'err.attachment_invalid': 'Não consegui usar esse anexo.',
-      'set.core': 'Núcleo', 'set.signout': 'Sair da conta', 'set.none': 'Não conectada',
-      'on': 'Ativado', 'off': 'Desativado', 'set.nomodel': 'Sem modelo', 'set.unavail': 'Indisponível', 'toast.model': 'Modelo: {m}',
-      'core.none': 'Backend não configurado', 'core.connecting': 'Conectando…', 'core.ok': 'Conectado', 'core.nomodel': 'Sem chave de modelo no servidor',
-      'core.forbidden': 'E-mail sem acesso', 'core.timeout': 'Servidor demorou a responder', 'core.unreach': 'Sem resposta do servidor',
-      'core.err': 'Erro no servidor', 'core.down': 'Servidor indisponível',
-      'lang.en': 'English (US)', 'lang.pt': 'Português (Brasil)',
-      'vs.title': 'Voice & Speech', 'vs.back': 'Voltar às configurações', 'vs.voice': 'Voz', 'vs.language': 'Idioma', 'vs.pace': 'Ritmo',
-      'vs.expr': 'Expressividade', 'vs.slow': 'Mais lenta', 'vs.fast': 'Mais rápida', 'vs.calm': 'Calma', 'vs.expressive': 'Expressiva',
-      'vs.preview': 'Ouvir prévia', 'vs.loading': 'Carregando…', 'vs.stop': 'Parar', 'vs.orbAria': 'Ouvir prévia da voz',
-      'vs.speak': 'Falar as respostas', 'vs.wake': 'Palavra de ativação — “Hey ORION”',
-      'vs.wakeInfo': 'Desativada por padrão. Só escuta com esta aba aberta e visível. Enquanto estiver ligada, o reconhecimento de fala do navegador funciona (no Chrome, o áudio vai para o serviço de fala do Google). O ORION não guarda áudio nem transcrições.',
-      'vs.mic': 'Microfone ligado', 'vs.eleven': 'ElevenLabs', 'vs.browser': 'Voz do navegador', 'vs.checking': 'Verificando…',
-      'vs.test': 'Testar voz', 'vs.run': 'Executar', 'vs.testing': 'Testando…', 'vs.testOk': 'OK ✓', 'vs.testNoKey': 'Sem chave/ID', 'vs.testErr': 'Erro {n}', 'vs.testFail': 'Falhou',
-      'vs.noVoices': 'As vozes do servidor não estão disponíveis — usando a voz do navegador.',
-      'vs.exprNote': 'A expressividade só vale para as vozes da ElevenLabs.',
-      'vs.previewFail': 'A prévia falhou. Verifique a conexão ou tente outra voz.', 'vs.limit': 'Limite diário de voz atingido.',
-      'pv.quota': 'Os créditos da ElevenLabs acabaram.', 'pv.plan': 'Essa voz exige plano pago da ElevenLabs.',
-      'pv.voice': 'A voz {n} não existe na conta da ElevenLabs (confira o ID).', 'pv.key': 'A chave da ElevenLabs foi recusada.', 'pv.perm': 'A chave da ElevenLabs não tem permissão de Text to Speech.',
-      'pv.auth': 'A ElevenLabs recusou o acesso (erro {s}{k}). Confira a chave e as permissões.',
-      'pv.unusual': 'A ElevenLabs bloqueou o plano gratuito neste servidor.', 'pv.busy': 'A ElevenLabs está limitando o uso agora. Tente em instantes.',
-      'pv.eleven': 'A ElevenLabs recusou o pedido (erro {s}).', 'pv.timeout': 'O servidor demorou demais (pode estar acordando). Tente de novo.',
-      'pv.core': 'Sem resposta do servidor.', 'pv.audio': 'O navegador não conseguiu tocar o áudio.', 'pv.off': 'A voz do servidor está desligada.',
-      'vs.slotOff': 'A Voz {n} não está configurada no servidor.', 'vs.apply': 'As mudanças valem para a próxima resposta falada.',
-      'vs.unavailWake': 'Indisponível', 'vs.wakeMic': 'Sem microfone', 'vs.wakeNeed': 'Ative Falar as respostas',
-      'wake.say': 'Diga “Hey ORION” para falar', 'wake.mic': 'Microfone bloqueado: “Hey ORION” desligado', 'wake.unstable': '“Hey ORION” instável: desligado',
-    },
-  };
+  const D = window.ORION_I18N || {};
+  const LANGS = D.langs || ['pt', 'en'];
+  const LOCALES = D.locales || { pt: 'pt-BR', en: 'en-US' };
   let cur = 'pt';
   const t = (k, v) => {
-    let s = (D[cur] && D[cur][k]) || D.en[k] || k;
-    if (v) for (const x in v) s = s.replace('{' + x + '}', v[x]);
+    let s = (D[cur] && D[cur][k]) || (D.en && D.en[k]) || k;
+    if (v) for (const x in v) s = s.split('{' + x + '}').join(v[x]);
     return s;
   };
   function apply() {
-    document.documentElement.lang = cur === 'pt' ? 'pt-BR' : 'en-US';
+    document.documentElement.lang = LOCALES[cur];
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
     document.querySelectorAll('[data-i18n-label]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nLabel)); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { const s = t(el.dataset.i18nAria); el.setAttribute('aria-label', s); if (el.tagName === 'BUTTON') el.title = s; });
   }
-  return { t, apply, get: () => cur, set: l => { cur = l === 'pt' ? 'pt' : 'en'; } };
+  return { t, apply, langs: LANGS, get: () => cur, locale: () => LOCALES[cur], set: l => { cur = LANGS.includes(l) ? l : 'pt'; } };
 })();
 const t = I18N.t;
 
 /* ═══ visual-state.js — máquina de estados visuais da Orb ═══
-   Mesma Orb de sempre; o roxo virou azul escuro.
-   STANDBY (azul escuro) → LISTENING (azul mais claro) → PROCESSING (azul escuro, mais atividade) → SPEAKING (verde + pulsação do áudio) → STANDBY
-   (qualquer) → ERROR (vermelho: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
+   STANDBY (cor do tema) → LISTENING (branco escuro) → PROCESSING (cor do tema, mais atividade) → SPEAKING (cor do tema, mais intensa) → STANDBY
+   (qualquer) → ERROR (cinza muito escuro: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
 const VISUAL_STATE = (() => {
-  /* Cor-base de cada tema. A Orb é sempre preta; a nebulosa por dentro muda conforme o estado real:
-       normal (idle) → cor do tema · ouvindo → branco escuro (cinza-claro contido, com leve reflexo do tema)
-       processando → cor do tema · respondendo (áudio tocando) → cor do tema, um pouco mais intensa, ainda escura
-       não entendi / erro → cinza muito escuro, quase preto.
+  /* Cor-base de cada tema. A Orb é sempre preta; a nebulosa por dentro muda conforme o estado real.
      "color" é a nebulosa desenhada dentro da Orb; "ring" é a cor do arco, do contorno e do halo (a forma original não muda). */
   const THEME_ORB = {
     indigo:   { a: '#3A3678', b: '#1C1A40', c: '#6A63B0' },
@@ -181,7 +59,6 @@ const VISUAL_STATE = (() => {
   const hx = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
   const toHex = v => '#' + v.map(n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('');
   const lighter = (hex, k) => toHex(hx(hex).map(n => n + (255 - n) * k));
-  const darker = (hex, k) => toHex(hx(hex).map(n => n * (1 - k)));
   const pal = (f, p) => ({ a: f(p.a), b: f(p.b), c: f(p.c) });
   let BASE = THEME_ORB.indigo;
   const CFG = {
@@ -256,10 +133,15 @@ const ERROR_HANDLER = (() => {
 
 /* ═══ audio.js (analisador) — nível REAL do áudio da fala, para a Orb pulsar com a voz ═══
    Só o áudio do ElevenLabs passa por um AnalyserNode. A voz do navegador (speechSynthesis) não expõe dados de
-   áudio: nesse caso a pulsação é SIMULADA (e só enquanto a fala acontece). */
+   áudio: nesse caso a pulsação da Orb é SIMULADA (e só enquanto a fala acontece) e os arcos da tela Voz e Fala ficam parados.
+   Métricas REAIS (expostas em window.ORION_AUDIO para os arcos):
+     level()  → intensidade da voz agora (0–1)
+     rate()   → ritmo da fala: início de sílabas/palavras por segundo nos últimos 2,5 s, normalizado (0–1; 7/s = 1)
+     real()   → true só quando as duas vêm do áudio de verdade (analisador ligado e tocando) */
 const AUDIO = (() => {
   const el = new Audio();            // único <audio> da fala (reaproveitado)
-  let ctx = null, an = null, buf = null, ok = false, sim = false;
+  let ctx = null, an = null, buf = null, ok = false, sim = false, real = false, envUp = false;
+  const onsets = [];
   function ensure() {                // chamar dentro de um gesto do usuário (toque/tecla)
     try {
       if (!ctx) {
@@ -277,17 +159,31 @@ const AUDIO = (() => {
     return ok;
   }
   const wave = () => { const n = performance.now(); return 0.30 + 0.32 * Math.abs(Math.sin(n / 140)) * (0.65 + 0.35 * Math.sin(n / 410)); };
+  function track(v) {                // detecta o início de cada sílaba/palavra (subida do volume) para medir o ritmo
+    const now = performance.now();
+    if (!envUp && v > 0.2) { envUp = true; onsets.push(now); }
+    else if (envUp && v < 0.1) envUp = false;
+    while (onsets.length && onsets[0] < now - 2500) onsets.shift();
+  }
   function level() {
     const playing = !el.paused && !el.ended && el.currentTime > 0;
-    if (sim) return wave();
-    if (!playing) return 0;
-    if (!ok || !an) return wave();   // sem analisador: pulsação simulada, só durante a reprodução real
+    if (sim) { real = false; return wave(); }
+    if (!playing) { real = false; return 0; }
+    if (!ok || !an) { real = false; return wave(); }   // sem analisador: pulsação simulada, só durante a reprodução real
     an.getByteTimeDomainData(buf);
     let s = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; s += v * v; }
-    return Math.min(1, Math.sqrt(s / buf.length) * 4);
+    const v = Math.min(1, Math.sqrt(s / buf.length) * 4);
+    real = true; track(v);
+    return v;
   }
-  return { el, ensure, level, setSim: v => { sim = !!v; } };
+  function rate() {
+    const now = performance.now();
+    while (onsets.length && onsets[0] < now - 2500) onsets.shift();
+    return Math.min(1, (onsets.length / 2.5) / 7);
+  }
+  return { el, ensure, level, rate, real: () => real, setSim: v => { sim = !!v; } };
 })();
+window.ORION_AUDIO = { level: () => AUDIO.level(), rate: () => AUDIO.rate(), real: () => AUDIO.real() };
 
 /* ═══ orb.js — motor visual: blobs de luz na Orb + dois arcos orbitais + anéis ondulados e partículas ═══
    Cor interpolada quadro a quadro; brilho e anéis reagem ao nível real do áudio durante a fala.
@@ -297,7 +193,7 @@ const ORB = (() => {
   const canvas = $('orbCanvas'), ctx = canvas.getContext('2d');
   const orbEl = $('orb'), haloEl = $('halo'), halo2El = $('halo2');
   const root = document.documentElement;
-  let vs = null;   // elementos da Orb da tela Voice & Speech (réplica da Orb principal)
+  let vs = null;   // elementos da Orb da tela Voz e Fala (réplica da Orb principal)
   const orbZone = $('orbZone');
 
   const TILT2 = -24, SQUASH2 = 0.8;   // inclinação (graus) e achatamento do segundo arco
@@ -344,7 +240,7 @@ const ORB = (() => {
     return els.map(el => ({ el, age: -1, str: 1 }));
   }
   const STATE_CLASSES = ['st-listening', 'st-thinking', 'st-speaking', 'st-error'];
-  // aplica o estado atual às duas Orbs (principal e a da tela Voice & Speech): classe, arcos rápidos e anéis de energia
+  // aplica o estado atual às duas Orbs (principal e a da tela Voz e Fala): classe, arcos rápidos e anéis de energia
   function decorate() {
     const cur = VISUAL_STATE.get(), cls = VISUAL_STATE.config(cur).cls;
     fastHalo = ['listening', 'speaking', 'processing'].includes(cur);
@@ -473,7 +369,7 @@ const ORB = (() => {
     haloEl.style.transform = rot;
     if (halo2El) halo2El.style.transform = rot2;
 
-    if (vs) {                                             // tela Voice & Speech aberta: só a Orb dela é desenhada
+    if (vs) {                                             // tela Voz e Fala aberta: só a Orb dela é desenhada
       vs.halo.style.transform = rot;
       if (vs.halo2) vs.halo2.style.transform = rot2;
       vs.zone.style.setProperty('--vs-a', rgbToHex(ringNow.a));
@@ -533,7 +429,7 @@ const SOUND = (() => {
 })();
 
 /* ═══ voice.js — SpeechRecognition + SpeechSynthesis nativos do navegador ═══
-   O idioma do reconhecimento/da voz de reserva é o da CONVERSA (prefs.lang), não o da interface. */
+   O idioma do reconhecimento/da voz de reserva é o idioma escolhido nas configurações (pt-BR, en-US, es-ES, fr-FR, de-DE, it-IT). */
 const VOICE = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
@@ -608,14 +504,15 @@ const VOICE = (() => {
 })();
 
 /* ═══ wake.js — ativação por voz ("Hey ORION"): reconhecimento contínuo do navegador ═══
-   Só funciona com a página aberta e visível. Fica desligado até a pessoa ativar em Voice & Speech.
+   Só funciona com a página aberta e visível. Fica desligado até a pessoa ativar nas Configurações.
    A detecção é do próprio navegador (Web Speech API) — não tem relação com a ElevenLabs. */
 const WAKE = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   // normaliza SEM mudar o tamanho do texto: assim a posição achada vale no texto original
   const flat = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ');
-  // "hey orion", "hi orion", "olá orion", "oi orion", "ei orion", "e aí orion" (e variações que o reconhecedor costuma escrever)
-  const RE = /\b(?:hey|hei|hay|hi|ola|oi|ei|e ai)\s+(?:o\s+)?(?:horion|orion|oriom|orian|oryon|oreon|orio)\b/;
+  // "hey orion", "hi orion", "olá orion", "oi orion", "ei orion", "e aí orion", "hola orion", "salut orion", "hallo orion", "ciao orion"
+  // (e variações que o reconhecedor costuma escrever)
+  const RE = /\b(?:hey|hei|hay|hi|ola|oi|ei|e ai|hola|salut|bonjour|hallo|ciao)\s+(?:o\s+)?(?:horion|orion|oriom|orian|oryon|oreon|orio)\b/;
   const DEBUG = () => { try { return localStorage.getItem('orion_wake_debug') === '1'; } catch (_) { return false; } };
 
   let rec = null, wanted = false, state = 'idle', want = 'pt-BR';   // idle | starting | running
@@ -812,7 +709,7 @@ const API = (() => {
   return {
     configured: () => !!base(),
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
-    ask: (text, model, lang, att) => call('/ask', { method: 'POST', body: Object.assign({ text, model, lang }, att || {}) }),   // lang: idioma da conversa · att: {image} ou {file}
+    ask: (text, model, lang, att) => call('/ask', { method: 'POST', body: Object.assign({ text, model, lang }, att || {}) }),   // lang: 'pt' ou 'en' · att: {image} ou {file}
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
     speak: (text, o) => call('/speak', { method: 'POST', body: { text, voice: o.voice, pace: o.pace, expressivity: o.expressivity }, timeoutMs: 20000, blob: true }),
     preview: o => call('/speak/preview', { method: 'POST', body: { voice: o.voice, pace: o.pace, expressivity: o.expressivity, lang: o.lang }, timeoutMs: 20000, blob: true }),
@@ -820,10 +717,10 @@ const API = (() => {
   };
 })();
 
-/* ═══ interação — V5.0.1 ═══
-   Fluxo: botão de chat (ou voz) → a própria Orb cresce e vira o painel → API → ORION Core → resposta DENTRO do painel.
+/* ═══ interação — V5.0 ═══
+   Fluxo: botão de chat (ou voz) → ORION Core → resposta.
    Estados da Orb (todos disparados por eventos reais: reconhecimento de fala, resposta da API, início/fim do áudio, erros):
-   idle (preto/azul escuro) · listening (azul escuro) · processing/speaking (verde; speaking pulsa com o áudio) · error (vermelho). */
+   idle · listening · processing · speaking · error. */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -835,14 +732,14 @@ const API = (() => {
   const prefs = Object.assign({
     voice: true,            // falar as respostas
     sound: true, wake: true, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0
-    ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): 'pt' (padrão) ou 'en'
+    ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): pt · en · es · fr · de · it
     slot: 1, pace: 1, expr: 0.5,
   }, stored);
   if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
   if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
   prefs.v = 3;
   delete prefs.lang;
-  prefs.ui = prefs.ui === 'en' ? 'en' : 'pt';
+  prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'pt';
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
   delete prefs.calm;
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
@@ -879,8 +776,8 @@ const API = (() => {
   if (mq.addEventListener) mq.addEventListener('change', applyCalm);
   applyCalm();
 
-  /* ── temas (V5.0): PRETO (padrão) e NEBULOSA (o mesmo preto, com estrelas e nuvens azul-escuras ao fundo) ──
-     A Orb e as cores da interface são idênticas nos dois. A escolha fica salva neste navegador. */
+  /* ── temas (só em orion.html): Cosmic Indigo (padrão) · Dark Blue · Deep Purple ──
+     O tema muda as cores de destaque da interface (e a cor da Orb); a estrutura visual é a mesma. Fica salvo neste navegador. */
   const THEMES = ['indigo', 'midnight', 'purple'];
   function applyTheme(animate) {
     const next = prefs.theme, root = document.documentElement;
@@ -891,12 +788,11 @@ const API = (() => {
   }
   applyTheme(false);
 
-
-  /* ── idioma da conversa: reconhecimento de fala (e voz de reserva) ── */
-  const speechLang = () => (prefs.ui === 'pt' ? 'pt' : 'en');
-  function applyLang() { const l = prefs.ui === 'pt' ? 'pt-BR' : 'en-US'; VOICE.setLang(l); WAKE.setLang(l); }
+  /* ── idioma: reconhecimento de fala (e voz de reserva) usam o idioma escolhido; o backend hoje conhece 'pt' e 'en' ── */
+  const convLang = () => (prefs.ui === 'pt' ? 'pt' : 'en');   // enviado ao /ask e ao /speak/preview
+  function applyLang() { const l = I18N.locale(); VOICE.setLang(l); WAKE.setLang(l); }
   const voiceOpts = () => ({ voice: prefs.slot, pace: prefs.pace, expressivity: prefs.expr });
-  const previewOpts = () => Object.assign(voiceOpts(), { lang: speechLang() });
+  const previewOpts = () => Object.assign(voiceOpts(), { lang: convLang() });
 
   /* ── boot (V4.5.5: mais rápido, sem textos de status) ── */
   setTimeout(() => {
@@ -999,7 +895,7 @@ const API = (() => {
       if (p && p.catch) p.catch(e => { console.warn('[ORION] The browser blocked the audio:', e && e.name); failed({ code: 'tts_unavailable' }); });
     }).catch(err => {                                    // limite de créditos, chave inválida, sem rede...: plano B
       if (err && err.code === 'model_unavailable') ttsOn = false;   // 503: servidor sem voz configurada
-      console.warn('[ORION] ElevenLabs failed. Reason:', err && (err.code || err.message), '— run "Test voice" in Voice & Speech for the exact error.');
+      console.warn('[ORION] ElevenLabs failed. Reason:', err && (err.code || err.message), err && err.tts ? err.tts : '');
       failed(err);
     });
   }
@@ -1057,8 +953,8 @@ const API = (() => {
   // tema para a busca na Wikipédia: tira o início da pergunta e a pontuação final (en e pt)
   function topicOf(q) {
     const t0 = String(q || '').trim().replace(/[?!.…\s]+$/, '')
-      .replace(/^(who\s+(is|was|were|are)|what\s+(is|are|was|were|does)|when\s+(was|did|is)|where\s+(is|was|are)|how\s+(does|did|do)|tell\s+me\s+about|explain|quem\s+(foi|é|era|são)|o\s+que\s+(é|são|foi|significa)|qual\s+(é|foi|era)|quais\s+(são|foram)|quando\s+(foi|nasceu|morreu)|onde\s+(fica|é|nasceu)|como\s+(funciona|surgiu)|me\s+(fale|conte|explique)\s+(sobre|de|do|da))\s+/i, '')
-      .replace(/^(the|an?|o|a|os|as|um|uma)\s+/i, '').trim();
+      .replace(/^(who\s+(is|was|were|are)|what\s+(is|are|was|were|does)|when\s+(was|did|is)|where\s+(is|was|are)|how\s+(does|did|do)|tell\s+me\s+about|explain|quem\s+(foi|é|era|são)|o\s+que\s+(é|são|foi|significa)|qual\s+(é|foi|era)|quais\s+(são|foram)|quando\s+(foi|nasceu|morreu)|onde\s+(fica|é|nasceu)|como\s+(funciona|surgiu)|me\s+(fale|conte|explique)\s+(sobre|de|do|da)|qui[eé]n\s+(es|fue)|qu[eé]\s+es|qui\s+(est|était)|qu[’']est-ce\s+que|wer\s+(ist|war)|was\s+ist|chi\s+(è|era)|che\s+cos[’']è)\s+/i, '')
+      .replace(/^(the|an?|o|a|os|as|um|uma|el|la|los|las|le|les|der|die|das|il|lo)\s+/i, '').trim();
     return (t0 || String(q || '').trim()).slice(0, 200);
   }
 
@@ -1086,7 +982,7 @@ const API = (() => {
     const topic = topicOf(query);
     if (src && src.href) { answerSrc.href = src.href; answerSrc.title = src.title; answerSrc.textContent = t('wiki.read'); answerSrc.hidden = false; }
     else if (!error && topic) {
-      answerSrc.href = 'https://' + speechLang() + '.wikipedia.org/w/index.php?search=' + encodeURIComponent(topic);
+      answerSrc.href = 'https://' + prefs.ui + '.wikipedia.org/w/index.php?search=' + encodeURIComponent(topic);
       answerSrc.title = t('wiki.title', { q: topic });
       answerSrc.textContent = t('wiki.search');
       answerSrc.hidden = false;
@@ -1128,8 +1024,8 @@ const API = (() => {
     }
   }
 
-  /* ── ciclo principal: pergunta → Responding (verde, enquanto o servidor gera) → resposta ──
-     Escrita no chat → a Orb vira o painel.  Por voz → a Orb responde sozinha (verde pulsando com o áudio). */
+  /* ── ciclo principal: pergunta → Processing (enquanto o servidor gera) → resposta ──
+     Escrita no chat → a Orb vira o painel (orion-v5.js).  Por voz → a Orb responde sozinha, falando. */
   async function submit(text, source) {
     text = (text || '').trim();
     const att = source === 'text' ? pending : null;   // só perguntas escritas levam anexo
@@ -1142,7 +1038,7 @@ const API = (() => {
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model, attach: att ? att.kind : null });   // nunca registra o texto
     try {
-      const data = await API.ask(text, prefs.model, speechLang(), att && att.payload);
+      const data = await API.ask(text, prefs.model, convLang(), att && att.payload);
       const reply = data && typeof data.reply === 'string' ? data.reply.trim() : '';
       if (!reply) { const e = new Error('Empty response.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
@@ -1164,8 +1060,8 @@ const API = (() => {
     if (source === 'text' && chatOpen && finePointer()) askInput.focus();
   }
 
-  // A resposta SEMPRE aparece escrita no painel (vindo do chat ou da voz) e também é falada.
-  // Enquanto o servidor gera: azul (processing). Quando a resposta chega: verde (speaking) até a fala terminar. "Não entendi": vermelho.
+  // A resposta é escrita no painel e também falada. (Em pergunta por voz, orion-v5.js esconde o texto: o ORION só fala.)
+  // Enquanto o servidor gera: processing. Quando a resposta chega: speaking até a fala terminar. "Não entendi": error.
   function respondInPanel(reply, understood, sources, query, byVoice) {
     const willSpeak = canSpeak() && (understood || byVoice);
     const waitAudio = understood && willSpeak;   // com voz: continua em "processando" até o áudio começar de verdade
@@ -1203,7 +1099,7 @@ const API = (() => {
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
 
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #gearBtn, #settingsPanel, #codePanel, #voiceScreen')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #taskBtn, #gearBtn, #settingsPanel, #codePanel, #taskPanel, #voiceScreen')) closePanel();
   });
   orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
   orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && hasAnswer) scheduleHold(5000); });
@@ -1249,7 +1145,7 @@ const API = (() => {
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     if (vs.isOpen()) return;
-    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open');
+    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open, #taskPanel.open');
     if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
@@ -1276,92 +1172,48 @@ const API = (() => {
     loading = false; settings.sync();
   }
 
-  /* ── Voice & Speech (tela dedicada) ── */
+  /* ── Voz e Fala (tela dedicada) ──
+     Composição: a Orb original, dois arcos concêntricos (interno = intensidade da voz, externo = ritmo da fala; desenhados por
+     orion-v5.js a partir do áudio real) e o dock com as 4 vozes. Nada mais: sem textos, sem sliders, sem outros controles.
+     Se a prévia falhar, a Orb entra por um instante no estado "erro" (sem mensagens escritas). */
   const vs = (() => {
     const el = $('voiceScreen');
     const dots = [...el.querySelectorAll('.vs-voice')];
-    const pace = $('vsPace'), expr = $('vsExpr'), paceVal = $('vsPaceVal'), exprVal = $('vsExprVal');
-    const msgEl = $('vsMsg'), engine = $('vsEngine'), wakeBtn = $('vsWake'), exprNote = $('vsExprNote'), wakeSec = $('vsWakeSec');
-    let open = false, previewing = false, transient = false;
+    const dock = $('vsDots');
+    let open = false, previewing = false;
 
-    const fill = inp => inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min) * 100) + '%');
-    function msg(text, isErr) { transient = !!text; msgEl.textContent = text || ''; msgEl.classList.toggle('err', !!isErr); }
-
-    function paintSliders() {
-      fill(pace); fill(expr);
-      paceVal.textContent = prefs.pace.toFixed(2) + '×';
-      exprVal.textContent = Math.round(prefs.expr * 100) + '%';
-    }
     function sync() {
       const eleven = ttsOn === true;
       dots.forEach(d => {
         const s = +d.dataset.slot, v = voices.find(x => x.slot === s);
-        const name = v ? v.label : t('vs.voiceN', { n: s });   // nome vindo do servidor; nada inventado
+        const name = t('vs.voiceN', { n: s });                 // "Voz 1" … "Voz 4": sem descrições das vozes
         d.querySelector('.vs-vname').textContent = name;
         d.disabled = !(eleven && v);
         d.setAttribute('aria-checked', String(prefs.slot === s));
         d.setAttribute('aria-label', name);
       });
-      pace.value = prefs.pace; expr.value = prefs.expr; paintSliders();
-      expr.disabled = !eleven; exprNote.hidden = eleven;   // expressividade só vale nas vozes da ElevenLabs
-      wakeSec.hidden = !VOICE.isAvailable;                 // Hey ORION só aparece se o navegador suporta
-      // botão do Hey ORION: azul ativo quando ligado, cinza quando desligado (verde e vermelho são reservados aos estados da Orb)
-      const wakeOn = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault;
-      wakeBtn.setAttribute('aria-checked', String(wakeOn));
-      wakeBtn.disabled = !VOICE.isAvailable;
-      wakeBtn.title = !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : '';
-      engine.textContent = ttsOn === true ? t('vs.eleven') : ttsOn === false ? t('vs.browser') : t('vs.checking');
-      if (!transient) {
-        msgEl.textContent = ttsOn === false ? t('vs.noVoices') : '';
-        msgEl.classList.remove('err');
-      }
-    }
-
-    // por que a prévia falhou? mensagem específica (motivo vem do servidor / do navegador)
-    function previewMsg(err) {
-      const c = err && err.code, x = err && err.tts, n = prefs.slot;
-      if (x) {
-        if (x.kw === 'detected_unusual_activity') return t('pv.unusual');
-        if (x.kw === 'quota_exceeded') return t('pv.quota');
-        if (x.kw === 'paid_plan_required') return t('pv.plan');
-        if (x.kw === 'voice_not_found' || x.status === 404) return t('pv.voice', { n });
-        if (x.kw === 'missing_permissions') return t('pv.perm');
-        if (x.kw === 'invalid_api_key') return t('pv.key');
-        if (x.status === 401) return t('pv.auth', { s: x.status, k: x.kw ? ' · ' + x.kw : '' });
-        if (x.status === 429) return t('pv.busy');
-        return t('pv.eleven', { s: x.status || '?' });
-      }
-      if (c === 'rate_limited') return t('vs.limit');
-      if (c === 'timeout') return t('pv.timeout');
-      if (c === 'core_unavailable') return t('pv.core');
-      if (c === 'tts_unavailable') return t('pv.audio');
-      if (c === 'voice_unavailable') return t('vs.slotOff', { n });
-      if (c === 'model_unavailable') return t('pv.off');
-      if (c === 'forbidden') return t('err.forbidden');
-      return t('vs.previewFail');
+      dock.style.setProperty('--sel', String(prefs.slot - 1));   // o indicador índigo desliza até a voz ativa
     }
 
     function preview() {
-      if (previewing) { stopSpeech(); return; }                 // o botão vira "Stop" enquanto toca
+      if (previewing) { stopSpeech(); return; }                 // clicar de novo interrompe a prévia
       if (processing) return;
-      if (ttsOn !== true || !voices.some(v => v.slot === prefs.slot)) {
-        msg(ttsOn === true ? t('vs.slotOff', { n: prefs.slot }) : t('vs.noVoices'), true);
-        return;
-      }
+      const err = () => { const gen = setState('error', ''); setTimeout(() => { if (stateGen === gen && curState === 'error') setState('standby'); }, 1400); };
+      if (ttsOn !== true || !voices.some(v => v.slot === prefs.slot)) { err(); return; }
       stopSpeech();
-      previewing = true; msg('');
+      previewing = true;
       startSpeech('', () => { previewing = false; if (curState === 'speaking') setState('standby'); }, {
         preview: true,
         onStart: () => setState('speaking', ''),
         onCancel: () => { previewing = false; },
-        fail: err => msg(previewMsg(err), true),
+        fail: () => err(),
       });
     }
 
     function show() {
       open = true; el.classList.add('open'); el.setAttribute('aria-hidden', 'false');
       ORB.setVoiceScreen({ zone: $('vsOrb'), orb: $('vsSphere'), halo: $('vsHalo'), halo2: $('vsHalo2'), disc: $('vsDisc') });
-      transient = false; sync();
+      sync();
       if (ttsOn === null && !loading) loadModels();
       setTimeout(() => $('vsBack').focus(), 60);
     }
@@ -1374,25 +1226,16 @@ const API = (() => {
 
     dots.forEach(d => d.addEventListener('click', () => {
       if (d.disabled) return;
-      prefs.slot = +d.dataset.slot; savePrefs(); transient = false; sync();
+      prefs.slot = +d.dataset.slot; savePrefs(); sync();
       if (previewing) stopSpeech();
       preview();                                                // tocar numa voz toca uma prévia
     }));
-    pace.addEventListener('input', () => { prefs.pace = Math.round(clamp(+pace.value, 0.8, 1.2) * 100) / 100; if (transient) msg(''); paintSliders(); });
-    expr.addEventListener('input', () => { prefs.expr = Math.round(clamp(+expr.value, 0, 1) * 100) / 100; if (transient) msg(''); paintSliders(); });
-    [pace, expr].forEach(i => i.addEventListener('change', savePrefs));
     $('vsOrb').addEventListener('click', preview);
     $('vsOrb').addEventListener('mouseenter', () => { try { ORB.setHover(true); } catch (_) {} });
     $('vsOrb').addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
-    wakeBtn.addEventListener('click', () => {
-      if (!VOICE.isAvailable) return;
-      prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
-      syncWake(); settings.sync();   // o clique é o que permite o navegador pedir o microfone
-      if (prefs.wake) flash(t('wake.say'), 3200);
-    });
     $('vsOrb').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); preview(); } });
     $('vsBack').addEventListener('click', back);
-    $('vsDots').addEventListener('keydown', e => {   // setas movem o foco entre as vozes
+    dock.addEventListener('keydown', e => {   // setas movem o foco entre as vozes
       const k = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!k) return;
       const on = dots.filter(d => !d.disabled), i = on.indexOf(document.activeElement);
       if (on.length) { e.preventDefault(); on[(i + k + on.length) % on.length].focus(); }
@@ -1474,6 +1317,8 @@ const API = (() => {
       if (online) return models.length ? t('core.ok') : t('core.nomodel');
       return t(({ forbidden: 'core.forbidden', timeout: 'core.timeout', core_unavailable: 'core.unreach', api_error: 'core.err' })[coreErr] || 'core.down');
     }
+    // "Hey ORION" reflete o estado REAL: ligado só se a pessoa quer, o navegador suporta e o microfone não falhou
+    const wakeOn = () => !!(prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault);
     function sync() {
       vs.sync();
       if (!panel) return;
@@ -1487,8 +1332,11 @@ const API = (() => {
       else avBtn.textContent = (((user && (user.displayName || user.email)) || '?').trim().charAt(0) || '?').toUpperCase();
       panel.querySelector('#avatarDel').hidden = !av;
       panel.querySelector('#setPlan').textContent = quota ? quota.plan.toUpperCase() + ' · ' + quota.used + '/' + quota.limit : '—';
-      const ts = panel.querySelector('#toggleSound');
-      ts.textContent = prefs.sound ? t('on') : t('off'); ts.classList.toggle('on', !!prefs.sound); ts.setAttribute('aria-pressed', String(!!prefs.sound));
+      panel.querySelector('#toggleSound').setAttribute('aria-checked', String(!!prefs.sound));
+      const tw = panel.querySelector('#toggleWake');
+      tw.setAttribute('aria-checked', String(wakeOn()));
+      tw.disabled = !VOICE.isAvailable;
+      tw.title = !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : '';
       panel.querySelector('#setName').textContent = (user && (user.displayName || (user.email || '').split('@')[0])) || '—';
       panel.querySelectorAll('#themeSwatches .sw').forEach(b => b.setAttribute('aria-checked', String(b.dataset.k === prefs.theme)));
       const sel = panel.querySelector('#modelSelect');
@@ -1533,9 +1381,10 @@ const API = (() => {
             <div class="set-list">
               <div class="set-row"><span class="ico">${IC.model}</span><div><h3>${t('set.model')}</h3><p>${t('set.modelD')}</p></div><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
               <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
-              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-btn toggle" type="button" aria-pressed="true"></button></div>
+              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}">${I18N.langs.map(l => `<option value="${l}">${t('lang.' + l)}</option>`).join('')}</select></div>
+              <div class="set-row"><span class="ico"><img src="../assets/orion_ai_logo.png" alt=""></span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
               <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
-              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}"><option value="pt">${t('lang.pt')}</option><option value="en">${t('lang.en')}</option></select></div>
             </div>
           </div>
           <div class="set-foot">
@@ -1560,16 +1409,23 @@ const API = (() => {
       });
       panel.querySelector('#avatarDel').addEventListener('click', () => { AVATAR.clear(); aMsg.hidden = true; sync(); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
-      panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); });
+      panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); if (prefs.sound) sfx('activate'); });
+      panel.querySelector('#toggleWake').addEventListener('click', () => {
+        if (!VOICE.isAvailable) return;
+        prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
+        syncWake(); sync();   // o clique é o que permite o navegador pedir o microfone
+        if (prefs.wake) flash(t('wake.say'), 3200);
+      });
       panel.querySelector('#themeSwatches').addEventListener('click', e => {
         const b = e.target.closest('.sw'); if (!b) return;
         prefs.theme = THEMES.includes(b.dataset.k) ? b.dataset.k : 'indigo'; savePrefs(); applyTheme(true); sync();
       });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
-        prefs.ui = e.target.value === 'en' ? 'en' : 'pt'; savePrefs();
+        prefs.ui = I18N.langs.includes(e.target.value) ? e.target.value : 'pt'; savePrefs();
         I18N.set(prefs.ui); I18N.apply(); applyLang(); vs.sync();
         panel.remove(); panel = null; build(); panel.classList.add('open'); sync();   // reconstrói o painel no novo idioma
         syncWake();
+        panel.querySelector('#uiSelect').focus();
       });
       panel.querySelector('#modelSelect').addEventListener('change', e => {
         prefs.model = e.target.value; savePrefs();
