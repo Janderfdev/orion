@@ -191,7 +191,7 @@ window.ORION_AUDIO = { level: () => AUDIO.level(), rate: () => AUDIO.rate(), rea
 const ORB = (() => {
   const $ = id => document.getElementById(id);
   const canvas = $('orbCanvas'), ctx = canvas.getContext('2d');
-  const orbEl = $('orb'), haloEl = $('halo'), halo2El = $('halo2');
+  const orbEl = $('orb'), haloEl = $('halo'), halo2El = $('haloOuter');
   const root = document.documentElement;
   let vs = null;   // elementos da Orb da tela Voz e Fala (réplica da Orb principal)
   const orbZone = $('orbZone');
@@ -303,11 +303,6 @@ const ORB = (() => {
     vig.addColorStop(1, 'rgba(0,0,0,0.82)');
     c.fillStyle = vig;
     c.beginPath(); c.arc(R, R, R - 1, 0, Math.PI * 2); c.fill();
-    // luz de borda sutil (definição sem excesso de brilho)
-    c.globalCompositeOperation = 'lighter';
-    const rim = c.createRadialGradient(R, R, R * 0.86, R, R, R);
-    rim.addColorStop(0, rgba(col.c, 0)); rim.addColorStop(0.82, rgba(col.c, 0.16 * b)); rim.addColorStop(1, rgba(col.c, 0));
-    c.fillStyle = rim; c.fillRect(0, 0, S, S);
     c.restore();
   }
 
@@ -342,14 +337,11 @@ const ORB = (() => {
 
     // movimento da própria Orb (respiração, flutuação, pulso do áudio, toque) — igual ao de sempre, mas contínuo entre estados
     const live = calm ? 0 : 1, inPanel = orbEl.classList.contains('panel');
-    const sT = inPanel ? 1 : 1 + live * (0.035 * (0.5 - 0.5 * Math.cos(breathT)) + 0.09 * lvl + 0.08 * press);
-    const yT = (inPanel || vs) ? 0 : -14 * live * (0.5 - 0.5 * Math.cos(floatT));   // na tela Voz e Fala a Orb não sobe nem desce: só vai para frente e para trás (escala)
+    const sT = inPanel ? 1 : 1 + live * (0.05 * (0.5 - 0.5 * Math.cos(breathT)) + 0.09 * lvl + 0.08 * press);
+    const yT = 0;   // a Orb nunca sobe nem desce: só vai para frente e para trás (escala). Os arcos não acompanham esse movimento.
     orbS += (sT - orbS) * k(16); orbY += (yT - orbY) * k(10);
     root.style.setProperty('--orb-s', orbS.toFixed(4));
     root.style.setProperty('--orb-y', orbY.toFixed(2) + 'px');
-    const hlx = (Math.sin(flow * 0.23) * 2.2).toFixed(2) + '%', hly = (Math.cos(flow * 0.19) * 1.6).toFixed(2) + '%';   // o reflexo "respira" de leve com a luz da Orb
-    orbEl.style.setProperty('--hl-x', hlx); orbEl.style.setProperty('--hl-y', hly);
-    if (vs) { vs.orb.style.setProperty('--hl-x', hlx); vs.orb.style.setProperty('--hl-y', hly); }
     // ondas de energia: nascem nas batidas do áudio e seguem até o fim mesmo depois que a voz para
     clock += dt;
     if (!calm && target > 0.16 && ((target - prevTarget > 0.07 && clock - lastSpawn > 0.30) || clock - lastSpawn > 0.9)) {
@@ -496,7 +488,8 @@ const VOICE = (() => {
     const u = new SpeechSynthesisUtterance(text);
     if (!vReady) refreshCache();
     if (cachedV) { u.voice = cachedV; u.lang = cachedV.lang; } else u.lang = want;
-    u.rate = 1.08 * pace; u.pitch = 0.55; u.volume = 1.0;   // Pace também vale para a voz do navegador
+    pace = Math.max(0.3, Math.min(1.5, pace || 1));
+    u.rate = 1.08 * pace; u.pitch = 0.55; u.volume = 1.0;   // Pace também vale para a voz do navegador (faixa toda, mínimo 0.3×)
     // o Chrome às vezes não dispara onend em falas longas: um limite de tempo garante que a Orb não fique presa
     let finished = false, guard = null;
     const finish = () => { if (finished) return; finished = true; clearTimeout(guard); if (onEnd) onEnd(); };
@@ -750,7 +743,7 @@ const API = (() => {
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
   delete prefs.calm;
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
-  prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0.8, 1.2);
+  prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0, 1.5);   // Ritmo: 0.0× a 1.50×
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
   prefs.theme = ['indigo', 'midnight', 'purple'].includes(prefs.theme) ? prefs.theme : 'indigo';   // 'preto'/'nebulosa' antigos viram índigo
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
@@ -798,7 +791,7 @@ const API = (() => {
   /* ── idioma: reconhecimento de fala (e voz de reserva) usam o idioma escolhido; o backend hoje conhece 'pt' e 'en' ── */
   const convLang = () => (prefs.ui === 'pt' ? 'pt' : 'en');   // enviado ao /ask e ao /speak/preview
   function applyLang() { const l = I18N.locale(); VOICE.setLang(l); WAKE.setLang(l); }
-  const voiceOpts = () => ({ voice: prefs.slot, pace: prefs.pace, expressivity: prefs.expr });
+  const voiceOpts = () => ({ voice: prefs.slot, pace: clamp(prefs.pace, 0.8, 1.2), expressivity: prefs.expr });   // a ElevenLabs só aceita ritmo de 0.8× a 1.2×
   const previewOpts = () => Object.assign(voiceOpts(), { lang: convLang() });
 
   /* ── boot (V4.5.5: mais rápido, sem textos de status) ── */
@@ -1252,6 +1245,18 @@ const API = (() => {
     return { show, hide, sync, isOpen: () => open };
   })();
 
+  /* Ritmo (0.0× a 1.50×) e Expressividade (0% a 100%): valores reais da voz, ajustados pelos arcos e barras da tela Voz e Fala.
+     A Expressividade só vale para as vozes da ElevenLabs; o ritmo, na ElevenLabs, é limitado a 0.8×–1.2× pelo próprio serviço. */
+  window.ORION_VOICE = {
+    get: () => ({ pace: prefs.pace, expr: prefs.expr }),
+    set: (k, v) => {
+      if (k === 'pace') prefs.pace = Math.round(clamp(+v, 0, 1.5) * 100) / 100;
+      else if (k === 'expr') prefs.expr = Math.round(clamp(+v, 0, 1) * 100) / 100;
+    },
+    save: savePrefs,
+    exprEnabled: () => ttsOn === true,
+  };
+
   /* ── botão </> : aviso sobre ORION CODE e ORION API (ainda não existem); mesmo tamanho do painel de configurações ── */
   const codeInfo = (() => {
     let panel = null, open = false;
@@ -1390,7 +1395,7 @@ const API = (() => {
               <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
               <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
               <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}">${I18N.langs.map(l => `<option value="${l}">${t('lang.' + l)}</option>`).join('')}</select></div>
-              <div class="set-row"><span class="ico"><img src="../assets/orion_ai_logo.png" alt=""></span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
+              <div class="set-row"><span class="ico ico-orbit"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="1.6"/><circle cx="19.6" cy="6.1" r="2.5" fill="currentColor"/></svg></span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
               <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
             </div>
           </div>
