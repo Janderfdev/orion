@@ -397,7 +397,8 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 .sw-indigo{ background:radial-gradient(circle at 30% 28%, #3A3678, #000 72%); }
 .sw-midnight{ background:radial-gradient(circle at 30% 28%, #1E3A6E, #000 72%); }
 .sw-purple{ background:radial-gradient(circle at 30% 28%, #4A2E7A, #000 72%); }
-.set-row .ico img{ width:22px; height:auto; display:block; }
+.set-row .ico svg{ display:block; }
+.set-row .ico-orbit{ color:var(--accent); }
 .pill-btn.toggle{ padding:0 6px 0 14px; gap:12px; min-width:112px; justify-content:space-between; }
 .pill-btn.toggle::after{ content:''; width:24px; height:24px; border-radius:50%; background:var(--fg2); transition:background .2s ease; }
 .pill-btn.toggle.on{ background:var(--active); }
@@ -547,7 +548,11 @@ body.voice-answer .cap{ opacity:0 !important; visibility:hidden !important; poin
 .vs-rings{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .vs-rings .track{ fill:none; stroke:rgba(var(--w),.08); stroke-width:2.5; }
 .vs-rings .prog{ fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linecap:round; }
-.vs-rings .tip{ fill:#A9A6C9; stroke:#000; stroke-width:1.5; }
+.vs-rings .tip{ fill:var(--accent); stroke:#000; stroke-width:1.5; transition:r .15s ease; }
+.vs-rings .hit{ fill:none; stroke:transparent; stroke-width:16; pointer-events:stroke; cursor:pointer; touch-action:none; }
+.vs-rings g:hover .tip{ r:6; }
+.vs-rings g.off{ opacity:.35; }
+.vs-rings g.off .hit{ pointer-events:none; cursor:default; }
 .vs-zone .orb{ transform:scale(var(--orb-s,1)); }   /* a Orb daqui só vai para frente e para trás (escala): nunca sobe nem desce */
 @media (max-width:420px){ .vs-stage{ transform:scale(.84); margin:-30px 0; } }
 /* medidores reais acima do dock: Ritmo (0.0× a 1.50×) à esquerda e Expressividade (0% a 100%) à direita */
@@ -555,8 +560,13 @@ body.voice-answer .cap{ opacity:0 !important; visibility:hidden !important; poin
 .vs-meter{ display:flex; flex-direction:column; gap:6px; min-width:0; }
 .vs-meter-top{ display:flex; justify-content:space-between; align-items:baseline; gap:6px; font:600 10.5px var(--font); letter-spacing:.14em; text-transform:uppercase; color:rgba(var(--w),.72); }
 .vs-meter-top output{ font:500 12px var(--font-mono); letter-spacing:.04em; color:var(--accent-soft); }
-.vs-bar{ height:4px; border-radius:4px; background:rgba(var(--w),.08); overflow:hidden; }
-.vs-bar i{ display:block; height:100%; width:0; border-radius:4px; background:var(--accent); }
+.vs-bar{ position:relative; height:4px; margin:6px 0; border-radius:4px; background:rgba(var(--w),.1); cursor:pointer; touch-action:none; outline:none; }
+.vs-bar::before{ content:""; position:absolute; inset:-12px 0; }   /* área de toque maior */
+.vs-bar i{ position:absolute; left:0; top:0; height:100%; width:0; border-radius:4px; background:var(--accent); }
+.vs-bar b{ position:absolute; top:50%; left:0; width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px #000; transform:translate(-50%,-50%); transition:transform .15s ease; }
+.vs-bar:hover b, .vs-bar:focus-visible b{ transform:translate(-50%,-50%) scale(1.25); }
+.vs-bar:focus-visible{ box-shadow:0 0 0 3px rgba(var(--act-hi),.9); }
+.vs-bar.off{ opacity:.35; cursor:default; pointer-events:none; }
 .vs-meter-ends{ display:flex; justify-content:space-between; font:500 9px var(--font-mono); letter-spacing:.1em; color:rgba(var(--w),.4); }
 @media (max-width:420px){ .vs-meter-top{ font-size:9px; letter-spacing:.06em; } }
 /* dock das 4 vozes: botões iguais, indicador índigo que desliza */
@@ -671,7 +681,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 
 </div>
 
-<!-- V5.0 — Voz e Fala: título, Orb original com dois arcos (interno = Ritmo, externo = Expressividade), medidores reais e o dock das 4 vozes -->
+<!-- V5.0 — Voz e Fala: título, Orb original com dois arcos (interno = Ritmo 0.0×–1.50×, externo = Expressividade 0%–100%), as mesmas barras acima do dock e as 4 vozes. Arcos e barras se arrastam. -->
 <section class="vscreen" id="voiceScreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vsTitle">
   <header class="vs-top">
     <button class="vs-back" id="vsBack" aria-label="Voltar às configurações" title="Voltar" data-i18n-aria="vs.back">
@@ -693,13 +703,13 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
     </div>
     <div class="vs-meters" id="vsMeters">
       <div class="vs-meter">
-        <div class="vs-meter-top"><span data-i18n="vs.pace">Ritmo</span><output id="vsPaceVal">0.00×</output></div>
-        <div class="vs-bar"><i id="vsPaceBar"></i></div>
+        <div class="vs-meter-top"><span id="vsPaceName" data-i18n="vs.pace">Ritmo</span><output id="vsPaceVal">1.00×</output></div>
+        <div class="vs-bar" id="vsPaceTrack" role="slider" tabindex="0" aria-labelledby="vsPaceName"><i id="vsPaceBar"></i><b id="vsPaceThumb"></b></div>
         <div class="vs-meter-ends"><span>0.0×</span><span>1.50×</span></div>
       </div>
       <div class="vs-meter">
-        <div class="vs-meter-top"><span data-i18n="vs.expr">Expressividade</span><output id="vsExprVal">0%</output></div>
-        <div class="vs-bar"><i id="vsExprBar"></i></div>
+        <div class="vs-meter-top"><span id="vsExprName" data-i18n="vs.expr">Expressividade</span><output id="vsExprVal">50%</output></div>
+        <div class="vs-bar" id="vsExprTrack" role="slider" tabindex="0" aria-labelledby="vsExprName"><i id="vsExprBar"></i><b id="vsExprThumb"></b></div>
         <div class="vs-meter-ends"><span>0%</span><span>100%</span></div>
       </div>
     </div>
@@ -766,9 +776,9 @@ window.ORION_SIGNOUT = async () => {
   leave();
 };
 </script>
-<script src="js/i18n.js?c=4"></script>
-<script src="js/orb-frame.js?c=4"></script>
-<script defer src="js/app.js?c=4"></script>
-<script defer src="js/orion-v5.js?c=4"></script>
+<script src="js/i18n.js?c=5"></script>
+<script src="js/orb-frame.js?c=5"></script>
+<script defer src="js/app.js?c=5"></script>
+<script defer src="js/orion-v5.js?c=5"></script>
 </body>
 </html>
