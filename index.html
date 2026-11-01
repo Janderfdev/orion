@@ -297,7 +297,7 @@ function setLang(l, persist) {
 }
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
 const saved = read().ui;
-setLang(saved === 'en' || saved === 'pt' ? saved : (/^en/i.test(navigator.language || '') ? 'en' : 'pt'), true);
+setLang(saved === 'en' || saved === 'pt' ? saved : (/^en/i.test(navigator.language || '') ? 'en' : 'pt'), !saved || saved === 'en' || saved === 'pt');   // a landing só fala pt/en; não apaga es/fr/de/it escolhidos no app
 </script>
 
 </body>
