@@ -738,6 +738,7 @@ const API = (() => {
   if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
   if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
   prefs.v = 3;
+  prefs.used = !!prefs.used;   // já respondeu alguma pergunta neste navegador? (troca a frase embaixo da Orb)
   delete prefs.lang;
   prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'pt';
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
@@ -1063,6 +1064,7 @@ const API = (() => {
   // A resposta é escrita no painel e também falada. (Em pergunta por voz, orion-v5.js esconde o texto: o ORION só fala.)
   // Enquanto o servidor gera: processing. Quando a resposta chega: speaking até a fala terminar. "Não entendi": error.
   function respondInPanel(reply, understood, sources, query, byVoice) {
+    if (!prefs.used) { prefs.used = true; savePrefs(); }   // primeiro uso concluído: a frase embaixo da Orb muda
     const willSpeak = canSpeak() && (understood || byVoice);
     const waitAudio = understood && willSpeak;   // com voz: continua em "processando" até o áudio começar de verdade
     const gen = setState(waitAudio ? 'processing' : (understood ? 'speaking' : 'error'), '');
@@ -1481,8 +1483,10 @@ const API = (() => {
   }
   function syncWake() {
     if (wakeShouldRun()) WAKE.start(); else WAKE.stop();
-    const txt = prefs.wake && prefs.voice && VOICE.isAvailable && !wakeFault ? t('hint.wake') : t('hint.base');
-    if (hintEl && hintEl.textContent !== txt) hintEl.textContent = txt;
+    // frase embaixo da Orb: a primeira vez "Olá! Como posso ajudar?"; depois de um uso, "Qual é o próximo projeto?"
+    // (não muda enquanto uma resposta está aberta)
+    const txt = prefs.used ? t('hint.next') : t('hint.first');
+    if (hintEl && !panelOpen && hintEl.textContent !== txt) hintEl.textContent = txt;
   }
   let wakeRetried = false;
   try {
