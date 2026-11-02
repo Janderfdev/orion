@@ -71,14 +71,13 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 #app.on{ opacity:1; }
 
 /* canto superior esquerdo: logo + wordmark */
-.header{ position:absolute; top:0; left:0; display:flex; align-items:center; gap:12px; padding:clamp(16px,3vh,26px) clamp(10px,2vw,22px); pointer-events:none; user-select:none; z-index:3; }
+.header{ position:absolute; top:0; left:0; display:flex; align-items:center; gap:11px; padding:16px;   /* mesma margem no topo e à esquerda: logo + wordmark centralizados no canto */ pointer-events:none; user-select:none; z-index:3; }
 .header-mark{ width:clamp(36px,5.8vmin,46px); height:auto; flex:none; }
 .header-logo{ width:clamp(150px,21vmin,205px); height:auto; }
 /* Desktop: o painel começa em max(232px,17vw) (arco 12px antes dele). A logo ocupa só o que sobra à esquerda, com folga de 9px. */
 @media (min-width:1100px){
-  .header{ padding-left:6px; }
   .header-mark{ width:40px; }
-  .header-logo{ width:min(calc(max(232px, 17vw) - 79px), 235px); }
+  .header-logo{ width:min(calc(max(232px, 17vw) - 88px), 235px); }
 }
 
 /* ═══════ STAGE / ORB (desenho original) ═══════ */
@@ -676,7 +675,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
   </form>
 
   <div class="hint">
-    <span class="hint-text" id="hintText" data-i18n="hint.base">Olá! Como posso ajudar?</span>
+    <span class="hint-text" id="hintText">Olá! Como posso ajudar?</span>
   </div>
 
 </div>
@@ -776,9 +775,9 @@ window.ORION_SIGNOUT = async () => {
   leave();
 };
 </script>
-<script src="js/i18n.js?c=5"></script>
-<script src="js/orb-frame.js?c=5"></script>
-<script defer src="js/app.js?c=5"></script>
-<script defer src="js/orion-v5.js?c=5"></script>
+<script src="js/i18n.js?c=6"></script>
+<script src="js/orb-frame.js?c=6"></script>
+<script defer src="js/app.js?c=6"></script>
+<script defer src="js/orion-v5.js?c=6"></script>
 </body>
 </html>
