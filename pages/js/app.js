@@ -738,7 +738,7 @@ const API = (() => {
   if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
   if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
   prefs.v = 3;
-  prefs.used = !!prefs.used;   // já respondeu alguma pergunta neste navegador? (troca a frase embaixo da Orb)
+  delete prefs.used;
   delete prefs.lang;
   prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'pt';
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
@@ -766,6 +766,11 @@ const API = (() => {
   // ttsOn: null = ainda não sei (servidor acordando) · true = ElevenLabs ligado · false = servidor sem voz
   let models = [], voices = [], online = false, loading = false, coreErr = null, ttsOn = null;
   let quota = null;   // {used, limit, plan} do último /ask
+
+  // "um login" = usuário + horário do último login do Firebase: sair e entrar de novo muda isso e reinicia a frase
+  const sessionMark = () => { const u = window.ORION_USER; return u ? u.uid + '|' + ((u.metadata && u.metadata.lastSignInTime) || '') : null; };
+  const usedNow = () => { try { const m = sessionMark(); return !!m && localStorage.getItem('orion_used') === m; } catch (_) { return false; } };
+  const markUsed = () => { try { const m = sessionMark(); if (m) localStorage.setItem('orion_used', m); } catch (_) {} };
 
   const sfx = name => { if (prefs.sound) { try { SOUND[name](); } catch (_) {} } };
   const finePointer = () => matchMedia('(pointer: fine)').matches;
@@ -875,7 +880,8 @@ const API = (() => {
       wakeBlockUntil = Date.now() + 1200;                // não escuta o eco do final da fala
       my.done();
     };
-    const started = () => { if (my.over || my.started) return; my.started = true; if (o.onStart) o.onStart(); };
+    const tSpeech = performance.now();
+    const started = () => { if (my.over || my.started) return; my.started = true; LOGGER.info('speech_timing', { ms: Math.round(performance.now() - tSpeech) }); if (o.onStart) o.onStart(); };
     const browserVoice = () => { if (my.over) return; AUDIO.setSim(true); VOICE.speak(text, started, my.end, prefs.pace); };
     const failed = err => {
       if (my.over) return;
@@ -971,7 +977,7 @@ const API = (() => {
     capBox.classList.toggle('answer-error', error);
     respText.textContent = '';
     const words = text.split(/\s+/).filter(Boolean);
-    const step = Math.min(18, 700 / Math.max(words.length, 1));
+    const step = Math.min(9, 350 / Math.max(words.length, 1));   // a resposta aparece em até ~0,35 s (antes ~0,7 s)
     words.forEach((w, i) => {
       const sp = document.createElement('span');
       sp.className = 'w'; sp.textContent = w;
@@ -1038,8 +1044,10 @@ const API = (() => {
     askInput.value = text;
     setState('processing');
     LOGGER.info('ask_started', { source, model: prefs.model, attach: att ? att.kind : null });   // nunca registra o texto
+    const tAsk = performance.now();
     try {
       const data = await API.ask(text, prefs.model, convLang(), att && att.payload);
+      LOGGER.info('ask_timing', { ms: Math.round(performance.now() - tAsk) });   // tempo do servidor (modelo + ferramentas)
       const reply = data && typeof data.reply === 'string' ? data.reply.trim() : '';
       if (!reply) { const e = new Error('Empty response.'); e.code = 'invalid_response'; throw e; }
       processing = false; lock(false);
@@ -1064,7 +1072,7 @@ const API = (() => {
   // A resposta é escrita no painel e também falada. (Em pergunta por voz, orion-v5.js esconde o texto: o ORION só fala.)
   // Enquanto o servidor gera: processing. Quando a resposta chega: speaking até a fala terminar. "Não entendi": error.
   function respondInPanel(reply, understood, sources, query, byVoice) {
-    if (!prefs.used) { prefs.used = true; savePrefs(); }   // primeiro uso concluído: a frase embaixo da Orb muda
+    markUsed();   // primeira pergunta respondida neste login: a frase embaixo da Orb muda
     const willSpeak = canSpeak() && (understood || byVoice);
     const waitAudio = understood && willSpeak;   // com voz: continua em "processando" até o áudio começar de verdade
     const gen = setState(waitAudio ? 'processing' : (understood ? 'speaking' : 'error'), '');
@@ -1152,6 +1160,19 @@ const API = (() => {
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
   });
+
+  /* ── aquecimento: o servidor gratuito (Render) dorme e o token do Firebase pode precisar renovar. Ao primeiro sinal de uso
+     (toque, tecla, voltar à aba) acordamos os dois, para a pergunta não esperar por isso. No máximo 1 vez a cada 20 s. ── */
+  let lastWarm = 0;
+  function warm() {
+    const now = Date.now();
+    if (now - lastWarm < 20000 || !API.configured() || document.hidden) return;
+    lastWarm = now;
+    try { fetch(ORION_CONFIG.API_URL.replace(/\/$/, '') + '/health', { mode: 'no-cors' }).catch(() => {}); } catch (_) {}
+    try { if (window.ORION_GET_TOKEN) window.ORION_GET_TOKEN().catch(() => {}); } catch (_) {}
+  }
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, warm, { passive: true }));
+  document.addEventListener('visibilitychange', warm);
 
   /* ── modelos e vozes (a lista vem do backend; o site só guarda o id do modelo e o número da voz) ── */
   async function loadModels(retry = 0) {
@@ -1316,6 +1337,7 @@ const API = (() => {
       x: ic('<path d="M6 6l12 12M18 6L6 18"/>'),
       model: ic('<path d="M12 5a3 3 0 1 0-6 .1 4 4 0 0 0-2.5 5.7 4 4 0 0 0 .6 6.6A4 4 0 1 0 12 18z"/><path d="M12 5a3 3 0 1 1 6 .1 4 4 0 0 1 2.5 5.7 4 4 0 0 1-.6 6.6A4 4 0 1 1 12 18z"/><path d="M12 5v13"/>'),
       voice: ic('<path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/>'),
+      wake: ic('<circle cx="12" cy="12" r="9.5"/><path d="M8 10.5v3M10.7 8v8M13.3 9.5v5M16 10.5v3"/>'),
       sound: ic('<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>'),
       theme: ic('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" fill-opacity=".35"/>'),
       globe: ic('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>'),
@@ -1397,7 +1419,7 @@ const API = (() => {
               <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
               <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
               <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}">${I18N.langs.map(l => `<option value="${l}">${t('lang.' + l)}</option>`).join('')}</select></div>
-              <div class="set-row"><span class="ico ico-orbit"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="1.6"/><circle cx="19.6" cy="6.1" r="2.5" fill="currentColor"/></svg></span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
+              <div class="set-row"><span class="ico">${IC.wake}</span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
               <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
             </div>
           </div>
@@ -1483,10 +1505,12 @@ const API = (() => {
   }
   function syncWake() {
     if (wakeShouldRun()) WAKE.start(); else WAKE.stop();
-    // frase embaixo da Orb: a primeira vez "Olá! Como posso ajudar?"; depois de um uso, "Qual é o próximo projeto?"
-    // (não muda enquanto uma resposta está aberta)
-    const txt = prefs.used ? t('hint.next') : t('hint.first');
-    if (hintEl && !panelOpen && hintEl.textContent !== txt) hintEl.textContent = txt;
+    // frase embaixo da Orb: em cada login começa com "Olá! Como posso ajudar?"; depois da primeira pergunta respondida, "Qual é o próximo projeto?"
+    // (não muda enquanto uma resposta está aberta; só aparece quando o login já foi confirmado)
+    if (hintEl && !panelOpen && sessionMark()) {
+      const txt = usedNow() ? t('hint.next') : t('hint.first');
+      if (hintEl.textContent !== txt) hintEl.textContent = txt;
+    }
   }
   let wakeRetried = false;
   try {
