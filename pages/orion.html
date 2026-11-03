@@ -11,6 +11,7 @@
 try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.documentElement.dataset.theme=['indigo','midnight','purple'].indexOf(s.theme)>-1?s.theme:'indigo'}catch(e){document.documentElement.dataset.theme='indigo'}
 </script>
 <link rel="icon" href="../favicon.png">
+<link rel="preconnect" href="https://orion-backend-9qk5.onrender.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -306,8 +307,8 @@ body.module-open .ask, body.module-open .cap{ opacity:0 !important; pointer-even
 @media (min-width:1100px){
   :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:28px; --mod-r:36px; --arc-gap:12px; }
 }
-body.chat-answer{ --mod-b:92px; }
-@media (max-width:760px){ body.chat-answer{ --mod-b:140px; } }
+body:is(.chat-answer,.cap-fade){ --mod-b:92px; }
+@media (max-width:760px){ body:is(.chat-answer,.cap-fade){ --mod-b:140px; } }
 .stage{ transition:padding .6s cubic-bezier(.16,.9,.24,1); }
 body.chat-answer .stage{ padding-bottom:calc(var(--mod-b) - var(--mod-t)); }   /* a Orb sobe para ficar centrada no painel */
 body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é ativado dentro dos módulos */
@@ -397,7 +398,6 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 .sw-midnight{ background:radial-gradient(circle at 30% 28%, #1E3A6E, #000 72%); }
 .sw-purple{ background:radial-gradient(circle at 30% 28%, #4A2E7A, #000 72%); }
 .set-row .ico svg{ display:block; }
-.set-row .ico-orbit{ color:var(--accent); }
 .pill-btn.toggle{ padding:0 6px 0 14px; gap:12px; min-width:112px; justify-content:space-between; }
 .pill-btn.toggle::after{ content:''; width:24px; height:24px; border-radius:50%; background:var(--fg2); transition:background .2s ease; }
 .pill-btn.toggle.on{ background:var(--active); }
@@ -507,26 +507,26 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 
 /* ═══════ Resposta escrita: a Orb vira painel com a resposta e as imagens ═══════ */
 body.chat-answer .hint-text, body.chat-answer .status-text{ opacity:0 !important; }
-body.chat-answer .cap, body.chat-answer .cap.show{
+body:is(.chat-answer,.cap-fade) .cap, body:is(.chat-answer,.cap-fade) .cap.show{
   left:var(--mod-s); right:var(--mod-s); top:var(--mod-t); bottom:var(--mod-b); width:auto; max-height:none; transform:none;
   align-items:stretch; text-align:left; padding:clamp(22px,4vh,38px) clamp(22px,3.2vw,44px) 22px;
 }
-body.chat-answer .cap.show{ transition:opacity .35s ease .35s, visibility 0s; }
-body.chat-answer .answer-scroll{ display:grid; grid-template-columns:1fr; gap:26px; align-content:start; text-align:left; padding:0 6px 10px 0; }
-body.chat-answer .answer-scroll:has(.answer-gallery:not([hidden])){ grid-template-columns:minmax(200px,33%) minmax(0,1fr); }
-body.chat-answer .answer-gallery{ display:flex; flex-direction:column; gap:12px; margin:0; }
-body.chat-answer .answer-gallery img{
+body:is(.chat-answer,.cap-fade) .cap.show{ transition:opacity .35s ease .35s, visibility 0s; }
+body:is(.chat-answer,.cap-fade) .answer-scroll{ display:grid; grid-template-columns:1fr; gap:26px; align-content:start; text-align:left; padding:0 6px 10px 0; }
+body:is(.chat-answer,.cap-fade) .answer-scroll:has(.answer-gallery:not([hidden])){ grid-template-columns:minmax(200px,33%) minmax(0,1fr); }
+body:is(.chat-answer,.cap-fade) .answer-gallery{ display:flex; flex-direction:column; gap:12px; margin:0; }
+body:is(.chat-answer,.cap-fade) .answer-gallery img{
   flex:none; width:100%; height:auto; aspect-ratio:3/2; object-fit:cover; object-position:center 30%;
   border-radius:20px; border:1px solid var(--line); background:var(--surface); box-shadow:0 14px 36px rgba(0,0,0,.55);
 }
-body.chat-answer .answer-gallery img:only-child{ aspect-ratio:auto; max-height:min(46vh,380px); object-fit:contain; background:#000; }
-body.chat-answer .response-text{ font-size:clamp(15px,1.9vmin,18px); font-weight:500; line-height:1.85; letter-spacing:.01em; text-shadow:none; color:rgba(var(--w),.92); }
-body.chat-answer .cap.answer-error .response-text{ font-size:14px; }
-body.chat-answer .answer-source{ align-self:flex-start; margin:14px 0 0; }
+body:is(.chat-answer,.cap-fade) .answer-gallery img:only-child{ aspect-ratio:auto; max-height:min(46vh,380px); object-fit:contain; background:#000; }
+body:is(.chat-answer,.cap-fade) .response-text{ font-size:clamp(15px,1.9vmin,18px); font-weight:500; line-height:1.85; letter-spacing:.01em; text-shadow:none; color:rgba(var(--w),.92); }
+body:is(.chat-answer,.cap-fade) .cap.answer-error .response-text{ font-size:14px; }
+body:is(.chat-answer,.cap-fade) .answer-source{ align-self:flex-start; margin:14px 0 0; }
 @media (max-width:760px){
-  body.chat-answer .answer-scroll:has(.answer-gallery:not([hidden])){ grid-template-columns:1fr; }
-  body.chat-answer .answer-gallery{ flex-direction:row; }
-  body.chat-answer .answer-gallery img{ min-width:0; flex:1 1 0; }
+  body:is(.chat-answer,.cap-fade) .answer-scroll:has(.answer-gallery:not([hidden])){ grid-template-columns:1fr; }
+  body:is(.chat-answer,.cap-fade) .answer-gallery{ flex-direction:row; }
+  body:is(.chat-answer,.cap-fade) .answer-gallery img{ min-width:0; flex:1 1 0; }
 }
 /* resposta por VOZ: a Orb responde falando; nada de texto nem imagem na tela */
 body.voice-answer .cap{ opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
@@ -675,7 +675,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
   </form>
 
   <div class="hint">
-    <span class="hint-text" id="hintText">Olá! Como posso ajudar?</span>
+    <span class="hint-text" id="hintText"></span>
   </div>
 
 </div>
@@ -771,13 +771,14 @@ window.ORION_GET_TOKEN = async () => {
   return auth.currentUser ? auth.currentUser.getIdToken() : '';
 };
 window.ORION_SIGNOUT = async () => {
+  try { localStorage.removeItem('orion_used'); } catch (_) {}   // ao sair, a frase de boas-vindas volta na próxima entrada
   try { await signOut(auth); } catch (_) {}
   leave();
 };
 </script>
-<script src="js/i18n.js?c=6"></script>
-<script src="js/orb-frame.js?c=6"></script>
-<script defer src="js/app.js?c=6"></script>
-<script defer src="js/orion-v5.js?c=6"></script>
+<script src="js/i18n.js?c=7"></script>
+<script src="js/orb-frame.js?c=7"></script>
+<script defer src="js/app.js?c=7"></script>
+<script defer src="js/orion-v5.js?c=7"></script>
 </body>
 </html>
