@@ -50,16 +50,23 @@
   form.addEventListener('submit', () => {
     if ($('askInput').value.trim() || !$('attachChip').hidden) src = 'text';
   }, true);
+  let fadeTimer = 0;
   new MutationObserver(() => {
     const on = cap.classList.contains('show');
     if (on && !capOn) {
       capOn = true;
+      clearTimeout(fadeTimer); body.classList.remove('cap-fade');
       textMode = src === 'text';
       body.classList.toggle('voice-answer', !textMode);
       src = 'voice';
     } else if (!on && capOn) {
-      capOn = false; textMode = false;
+      capOn = false;
+      const wasText = textMode; textMode = false;
       body.classList.remove('voice-answer');
+      if (wasText) {   // a resposta e as imagens somem NO LUGAR do painel (não caem para baixo da Orb enquanto ela volta a ser esfera)
+        body.classList.add('cap-fade');
+        clearTimeout(fadeTimer); fadeTimer = setTimeout(() => body.classList.remove('cap-fade'), 500);
+      }
     }
     sync();
   }).observe(cap, { attributes: true, attributeFilter: ['class'] });
