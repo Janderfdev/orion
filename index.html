@@ -29,13 +29,21 @@ a{color:inherit;}
 .wrap{width:min(1120px,100% - 40px);margin:0 auto;}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05);}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;height:68px;}
-.top img{height:28px;width:auto;display:block;}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none;}
+.brand-mark{height:32px;width:auto;display:block;}
+.brand-word{height:24px;width:auto;display:block;}
 .nav{display:flex;align-items:center;gap:6px;}
-.nav a.txt{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 14px;border-radius:999px;transition:color .2s ease,background .2s ease;}
+.nav a.txt{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 12px;border-radius:999px;transition:color .2s ease,background .2s ease;}
 .nav a.txt:hover{color:#fff;background:rgba(255,255,255,.05);}
-@media (max-width:760px){.nav a.txt{display:none;}.top img{height:24px;}}
+@media (max-width:1180px){.nav a.txt{display:none;}}
+@media (max-width:640px){
+  .top{height:auto;flex-wrap:wrap;padding:10px 0;row-gap:8px;}
+  .brand-mark{height:26px;}.brand-word{height:18px;}
+  .nav{width:100%;justify-content:space-between;}
+  html{scroll-padding-top:110px;}
+}
 .lang{display:flex;gap:2px;padding:3px;margin:0 6px;border-radius:999px;border:1px solid var(--line);background:rgba(13,16,32,.7);}
-.lang button{height:28px;min-width:36px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:background .2s ease,color .2s ease;}
+.lang button{height:28px;min-width:30px;padding:0 7px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:background .2s ease,color .2s ease;}
 .lang button:hover{color:#fff;}
 .lang button[aria-pressed="true"]{background:var(--active);color:#E4E2EE;}
 .lang button:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
@@ -99,14 +107,18 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align
 <div class="bg-arcs" aria-hidden="true"></div>
 
 <header class="topbar"><div class="wrap top">
-  <img src="assets/orion_ai_wordmark.png" alt="ORION AI">
+  <a class="brand" href="index.html" aria-label="ORION AI"><img class="brand-mark" src="assets/orion_ai_logo.png" alt=""><img class="brand-word" src="assets/orion_ai_wordmark.png" alt="ORION AI"></a>
   <nav class="nav" aria-label="ORION AI">
     <a class="txt" href="#agora" data-t="n1">O que faz</a>
     <a class="txt" href="#breve" data-t="n2">Em desenvolvimento</a>
     <a class="txt" href="#privacidade" data-t="n3">Privacidade</a>
     <div class="lang" role="group" aria-label="Idioma / Language">
-      <button type="button" data-lang="pt" aria-pressed="true">PT</button>
-      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="pt" aria-pressed="true" title="Português">PT</button>
+      <button type="button" data-lang="en" aria-pressed="false" title="English">EN</button>
+      <button type="button" data-lang="es" aria-pressed="false" title="Español">ES</button>
+      <button type="button" data-lang="fr" aria-pressed="false" title="Français">FR</button>
+      <button type="button" data-lang="de" aria-pressed="false" title="Deutsch">DE</button>
+      <button type="button" data-lang="it" aria-pressed="false" title="Italiano">IT</button>
     </div>
     <a class="btn small" href="login.html" data-t="in">Entrar</a>
   </nav>
@@ -184,10 +196,10 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c2h">Ferramentas</h3><p data-t="c2p">Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. O ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c3h">Imagens nas respostas</h3><p data-t="c3p">Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c4h">Voz</h3><p data-t="c4p">Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
-        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c5h">“Hey ORION”</h3><p data-t="c5p">Ative o ORION dizendo o nome dele, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
-        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c6h">A Orb</h3><p data-t="c6p">Uma esfera escura com dois arcos orbitais que muda de cor e de movimento conforme o estado: em espera (preto e índigo), ouvindo (azul), respondendo (verde) ou sem entender (vermelho).</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c5h">“Hey ORION”</h3><p data-t="c5p">Ative o ORION dizendo o nome dele, com a aba aberta e visível. Pode ser desligado em Configurações.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c6h">A Orb</h3><p data-t="c6p">Uma esfera escura com dois arcos orbitais que muda de cor e de movimento conforme o estado: em espera (preto e índigo), ouvindo (branco escuro), respondendo (índigo mais forte) ou sem entender (preto e branco escuro).</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c7h">Continuidade da conversa</h3><p data-t="c7p">A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
-        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c8h">Português e inglês</h3><p data-t="c8p">Interface e voz nos dois idiomas, com a escolha salva no seu navegador.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c8h">Seis idiomas</h3><p data-t="c8p">Interface e microfone em Português, English, Español, Français, Deutsch e Italiano, com a escolha salva no seu navegador.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c9h">Conta</h3><p data-t="c9p">Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
       </div>
     </div>
@@ -239,65 +251,229 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align
 <footer data-t="foot">ORION AI · beta V5.0 · Lançamento oficial sem data prevista · O futuro começa com a curiosidade.</footer>
 
 <script>
-/* Idioma da landing: o texto em português é o padrão do HTML; aqui só existe o inglês.
-   A escolha é salva em orion_settings.ui, a MESMA chave que o app (pages/js/app.js) lê. */
-const EN = {
-  n1:'What it does', n2:'In development', n3:'Privacy', in:'Sign in', up:'Create account',
-  eyebrow:'An intelligent digital presence', h1a:'The future begins with ', h1b:'curiosity.',
-  lead:'ORION AI is an artificial intelligence project with its own identity, inspired by the Orion constellation. It chats, uses tools, shows images and speaks with you. Below is an honest look at what it does today and what is still being built.',
-  ver:'Beta V5.0 · official launch planned for 2027',
-  pr:'The idea behind it', pm:'The model', pmp:'Provides the intelligence: it understands the question and writes the answer.',
-  po:'ORION', pop:'Is the system around it: identity, context, tools, voice, rules and interaction.',
-  ah:'What ORION does today', ap:'Everything in this list exists in the project’s current code. ORION is in beta: there may be bugs and changes.',
-  bok:'Available',
-  c1h:'Conversation with AI', c1p:'Ask questions, request explanations, get help with programming, math and concepts. You choose among the Gemini and Claude models the server has active.',
-  c2h:'Tools', c2p:'Exact calculator, date and time, current weather for a city and Wikipedia summaries. ORION decides on its own when to use each one. All of them only read information.',
-  c3h:'Images in answers', c3p:'Photos from Wikipedia and Wikimedia Commons appear next to the answer, with a link to the article when there is one.',
-  c4h:'Voice', c4p:'Speak into the microphone and hear the answers. There are 4 ElevenLabs voices with pace and expressivity controls, and the browser voice as a fallback.',
-  c5h:'“Hey ORION”', c5p:'Activate ORION by saying its name, with the tab open and visible. It can be turned off in Voice & Speech.',
-  c6h:'The Orb', c6p:'A dark sphere with two orbital arcs that changes color and motion with the state: idle (black and indigo), listening (blue), responding (green) or not understood (red).',
-  c7h:'Conversation continuity', c7p:'ORION keeps the last 20 exchanges of your account to maintain context. You can erase everything anytime in Settings. This is conversation history, not a full memory.',
-  c8h:'Portuguese and English', c8p:'Interface and voice in both languages, with your choice saved in your browser.',
-  c9h:'Account', c9p:'Sign in with email and password or with Google. There is password recovery by email and a daily question limit.',
-  bh:'In development', bp:'Nothing in this list is available yet. It goes live only after being tested.',
-  bdev:'In development', bplan:'Planned', bon:'Ongoing',
-  d1h:'Agent Engine', d1p:'Solve multi-step tasks, such as comparing data from two places and calculating the difference, with authorized tools and limits on time and steps.',
-  d2h:'Memory you control', d2p:'Remember what you ask it to keep, with viewing, editing and deletion under your control.',
-  d3h:'Vision', d3p:'Interpret images and documents you send.',
-  d4h:'Security and testing', d4p:'Ongoing review of server protections, permissions and automated tests, across all versions.',
-  bnote:'Dates and order may change. The project prioritizes working well and safely before growing in number of features.',
-  vh:'Privacy and limits',
-  v1b:'ORION can make mistakes.', v1t:' Check important information in reliable sources. It only reaches the internet through the tools listed above and does not access your files.',
-  v2b:'Short answers.', v2t:' It is designed to answer briefly and naturally, also so answers can be spoken aloud.',
-  v3b:'Your history', v3t:' is saved in your account (Firestore, in ORION’s Firebase project). Each person accesses only their own history, and you can clear it in settings.',
-  v4b:'Voice and “Hey ORION”:', v4t:' speech recognition is done by your browser. In Chrome, audio is sent to Google’s speech service. ORION does not store audio or transcripts.',
-  v5b:'Answer voice:', v5t:' the answer text is sent to ElevenLabs to generate the audio. If that fails, the browser speaks instead.',
-  v6b:'Keys and passwords', v6t:' for the services stay only on the server, never on the site.',
-  v7b:'Access and limits:', v7t:' there is a daily limit of questions and voice per account, and access may be restricted to authorized accounts.',
-  fh:'Ready to talk to ORION?', fp:'Sign in or create your account in seconds.',
-  foot:'ORION AI · beta V5.0 · The future begins with curiosity.',
-  title:'ORION AI — The future begins with curiosity',
-  desc:'ORION AI: an intelligent digital presence. See what it does today and what is in development.'
-};
+/* Idioma da landing: o texto em português é o padrão do HTML; aqui ficam English, Español, Français, Deutsch e Italiano.
+   A escolha é salva em orion_settings.ui, a MESMA chave que o app (pages/js/app.js) lê. Chaves que faltam caem para o inglês. */
+const LANGS = ['pt', 'en', 'es', 'fr', 'de', 'it'];
+const HTML_LANG = { pt: 'pt-BR', en: 'en', es: 'es', fr: 'fr', de: 'de', it: 'it' };
+const TR = { en: {}, es: {}, fr: {}, de: {}, it: {} };
+const A = (k, en, es, fr, de, it) => { TR.en[k] = en; TR.es[k] = es; TR.fr[k] = fr; TR.de[k] = de; TR.it[k] = it; };
+
+A('n1', 'What it does', 'Qué hace', 'Ce qu’il fait', 'Was er kann', 'Cosa fa');
+A('n2', 'In development', 'En desarrollo', 'En développement', 'In Entwicklung', 'In sviluppo');
+A('n3', 'Privacy', 'Privacidad', 'Confidentialité', 'Datenschutz', 'Privacy');
+A('in', 'Sign in', 'Entrar', 'Se connecter', 'Anmelden', 'Accedi');
+A('up', 'Create account', 'Crear cuenta', 'Créer un compte', 'Konto erstellen', 'Crea account');
+A('eyebrow', 'An intelligent digital presence', 'Una presencia digital inteligente', 'Une présence numérique intelligente', 'Eine intelligente digitale Präsenz', 'Una presenza digitale intelligente');
+A('h1a', 'The future begins with ', 'El futuro empieza con la ', 'L’avenir commence par la ', 'Die Zukunft beginnt mit ', 'Il futuro inizia con la ');
+A('h1b', 'curiosity.', 'curiosidad.', 'curiosité.', 'Neugier.', 'curiosità.');
+A('lead',
+  'ORION AI is an artificial intelligence project with its own identity, inspired by the Orion constellation. It chats, uses tools, shows images and speaks with you. Below is an honest look at what it does today and what is still being built.',
+  'ORION AI es un proyecto de inteligencia artificial con identidad propia, inspirado en la constelación de Orión. Conversa, usa herramientas, muestra imágenes y habla contigo. Abajo tienes, con honestidad, lo que hace hoy y lo que aún se está construyendo.',
+  'ORION AI est un projet d’intelligence artificielle à l’identité propre, inspiré de la constellation d’Orion. Il discute, utilise des outils, montre des images et vous parle. Voici, en toute honnêteté, ce qu’il fait aujourd’hui et ce qui est encore en construction.',
+  'ORION AI ist ein KI-Projekt mit eigener Identität, inspiriert vom Sternbild Orion. Es unterhält sich, nutzt Werkzeuge, zeigt Bilder und spricht mit dir. Unten steht ehrlich, was es heute kann und was noch entsteht.',
+  'ORION AI è un progetto di intelligenza artificiale con una propria identità, ispirato alla costellazione di Orione. Conversa, usa strumenti, mostra immagini e parla con te. Qui sotto trovi, con onestà, cosa fa oggi e cosa è ancora in costruzione.');
+A('ver', 'Beta V5.0 · official launch date not set', 'Versión beta V5.0 · lanzamiento oficial sin fecha prevista', 'Version bêta V5.0 · lancement officiel sans date prévue', 'Beta-Version V5.0 · offizieller Start ohne festen Termin', 'Versione beta V5.0 · lancio ufficiale senza data prevista');
+A('pr', 'The idea behind it', 'La idea detrás', 'L’idée derrière', 'Die Idee dahinter', 'L’idea alla base');
+A('pm', 'The model', 'El modelo', 'Le modèle', 'Das Modell', 'Il modello');
+A('pmp', 'Provides the intelligence: it understands the question and writes the answer.', 'Aporta la inteligencia: entiende la pregunta y escribe la respuesta.', 'Apporte l’intelligence : il comprend la question et rédige la réponse.', 'Liefert die Intelligenz: Es versteht die Frage und schreibt die Antwort.', 'Fornisce l’intelligenza: capisce la domanda e scrive la risposta.');
+A('po', 'ORION', 'ORION', 'ORION', 'ORION', 'ORION');
+A('pop', 'Is the system around it: identity, context, tools, voice, rules and interaction.', 'Es el sistema que lo rodea: identidad, contexto, herramientas, voz, reglas e interacción.', 'C’est le système autour : identité, contexte, outils, voix, règles et interaction.', 'Ist das System drumherum: Identität, Kontext, Werkzeuge, Stimme, Regeln und Interaktion.', 'È il sistema che lo circonda: identità, contesto, strumenti, voce, regole e interazione.');
+A('ah', 'What ORION does today', 'Lo que ORION hace hoy', 'Ce qu’ORION fait aujourd’hui', 'Was ORION heute kann', 'Cosa fa ORION oggi');
+A('ap',
+  'Everything in this list exists in the project’s current code. ORION is in beta: there may be bugs and changes.',
+  'Todo lo de esta lista existe en el código actual del proyecto. ORION está en fase beta: puede haber fallos y cambios.',
+  'Tout ce qui figure dans cette liste existe dans le code actuel du projet. ORION est en phase bêta : des défauts et des changements sont possibles.',
+  'Alles in dieser Liste existiert im aktuellen Code des Projekts. ORION ist in der Beta-Phase: Fehler und Änderungen sind möglich.',
+  'Tutto ciò che è in questo elenco esiste nel codice attuale del progetto. ORION è in fase beta: possono esserci errori e cambiamenti.');
+A('bok', 'Available', 'Disponible', 'Disponible', 'Verfügbar', 'Disponibile');
+A('c1h', 'Conversation with AI', 'Conversación con IA', 'Conversation avec l’IA', 'Gespräch mit KI', 'Conversazione con l’IA');
+A('c1p',
+  'Ask questions, request explanations, get help with programming, math and concepts. You choose among the Gemini and Claude models the server has active.',
+  'Haz preguntas, pide explicaciones, ayuda con programación, matemáticas y conceptos. Eliges entre los modelos Gemini y Claude que el servidor tenga activos.',
+  'Posez des questions, demandez des explications, de l’aide en programmation, en mathématiques et sur des concepts. Vous choisissez parmi les modèles Gemini et Claude actifs sur le serveur.',
+  'Stelle Fragen, bitte um Erklärungen oder Hilfe bei Programmierung, Mathematik und Begriffen. Du wählst unter den Gemini- und Claude-Modellen, die der Server aktiviert hat.',
+  'Fai domande, chiedi spiegazioni, aiuto con programmazione, matematica e concetti. Scegli tra i modelli Gemini e Claude attivi sul server.');
+A('c2h', 'Tools', 'Herramientas', 'Outils', 'Werkzeuge', 'Strumenti');
+A('c2p',
+  'Exact calculator, date and time, current weather for a city and Wikipedia summaries. ORION decides on its own when to use each one. All of them only read information.',
+  'Calculadora exacta, fecha y hora, clima actual de una ciudad y resúmenes de Wikipedia. ORION decide por sí solo cuándo usar cada una. Todas solo leen información.',
+  'Calculatrice exacte, date et heure, météo actuelle d’une ville et résumés Wikipédia. ORION décide seul quand utiliser chacun. Tous se contentent de lire des informations.',
+  'Exakter Taschenrechner, Datum und Uhrzeit, aktuelles Wetter einer Stadt und Wikipedia-Zusammenfassungen. ORION entscheidet selbst, wann er welches nutzt. Alle lesen nur Informationen.',
+  'Calcolatrice esatta, data e ora, meteo attuale di una città e riassunti di Wikipedia. ORION decide da solo quando usarli. Tutti leggono soltanto informazioni.');
+A('c3h', 'Images in answers', 'Imágenes en las respuestas', 'Images dans les réponses', 'Bilder in den Antworten', 'Immagini nelle risposte');
+A('c3p',
+  'Photos from Wikipedia and Wikimedia Commons appear next to the answer, with a link to the article when there is one.',
+  'Fotos de Wikipedia y Wikimedia Commons aparecen junto a la respuesta, con enlace al artículo cuando lo hay.',
+  'Des photos de Wikipédia et de Wikimedia Commons apparaissent avec la réponse, avec un lien vers l’article s’il y en a un.',
+  'Fotos von Wikipedia und Wikimedia Commons erscheinen neben der Antwort, mit Link zum Artikel, falls vorhanden.',
+  'Foto di Wikipedia e Wikimedia Commons compaiono accanto alla risposta, con il link all’articolo quando disponibile.');
+A('c4h', 'Voice', 'Voz', 'Voix', 'Stimme', 'Voce');
+A('c4p',
+  'Speak into the microphone and hear the answers. There are 4 ElevenLabs voices with pace and expressivity controls, and the browser voice as a fallback.',
+  'Habla por el micrófono y escucha las respuestas. Hay 4 voces de ElevenLabs con ajuste de ritmo y expresividad, y la voz del navegador como reserva.',
+  'Parlez au microphone et écoutez les réponses. Il y a 4 voix ElevenLabs avec réglage du rythme et de l’expressivité, et la voix du navigateur en secours.',
+  'Sprich ins Mikrofon und höre die Antworten. Es gibt 4 ElevenLabs-Stimmen mit Einstellung von Tempo und Ausdruck sowie die Browserstimme als Reserve.',
+  'Parla al microfono e ascolta le risposte. Ci sono 4 voci ElevenLabs con regolazione di ritmo ed espressività, e la voce del browser come riserva.');
+A('c5h', '“Hey ORION”', '«Hey ORION»', '« Hey ORION »', '„Hey ORION“', '“Hey ORION”');
+A('c5p',
+  'Activate ORION by saying its name, with the tab open and visible. It can be turned off in Settings.',
+  'Activa a ORION diciendo su nombre, con la pestaña abierta y visible. Se puede desactivar en Configuración.',
+  'Activez ORION en prononçant son nom, avec l’onglet ouvert et visible. On peut le désactiver dans les Réglages.',
+  'Aktiviere ORION, indem du seinen Namen sagst – bei geöffnetem, sichtbarem Tab. Lässt sich in den Einstellungen ausschalten.',
+  'Attiva ORION dicendo il suo nome, con la scheda aperta e visibile. Si può disattivare nelle Impostazioni.');
+A('c6h', 'The Orb', 'La Orb', 'L’Orb', 'Die Orb', 'L’Orb');
+A('c6p',
+  'A dark sphere with two orbital arcs that changes color and motion with the state: idle (black and indigo), listening (dark white), responding (stronger indigo) or not understood (black and dark white).',
+  'Una esfera oscura con dos arcos orbitales que cambia de color y de movimiento según el estado: en espera (negro e índigo), escuchando (blanco oscuro), respondiendo (índigo más intenso) o sin entender (negro y blanco oscuro).',
+  'Une sphère sombre avec deux arcs orbitaux qui change de couleur et de mouvement selon l’état : en veille (noir et indigo), à l’écoute (blanc sombre), en réponse (indigo plus intense) ou sans comprendre (noir et blanc sombre).',
+  'Eine dunkle Kugel mit zwei Orbitalbögen, die je nach Zustand Farbe und Bewegung ändert: bereit (Schwarz und Indigo), zuhörend (dunkles Weiß), antwortend (kräftigeres Indigo) oder nicht verstanden (Schwarz und dunkles Weiß).',
+  'Una sfera scura con due archi orbitali che cambia colore e movimento secondo lo stato: a riposo (nero e indaco), in ascolto (bianco scuro), in risposta (indaco più intenso) o senza aver capito (nero e bianco scuro).');
+A('c7h', 'Conversation continuity', 'Continuidad de la conversación', 'Continuité de la conversation', 'Gesprächskontinuität', 'Continuità della conversazione');
+A('c7p',
+  'ORION keeps the last 20 exchanges of your account to maintain context. You can erase everything anytime in Settings. This is conversation history, not a full memory.',
+  'ORION guarda los últimos 20 intercambios de tu cuenta para mantener el contexto. Puedes borrarlo todo cuando quieras, en Configuración. Es historial de conversación, no una memoria completa.',
+  'ORION conserve les 20 derniers échanges de votre compte pour garder le contexte. Vous pouvez tout effacer quand vous voulez, dans les Réglages. C’est un historique de conversation, pas une mémoire complète.',
+  'ORION speichert die letzten 20 Wortwechsel deines Kontos, um den Zusammenhang zu halten. Du kannst alles jederzeit in den Einstellungen löschen. Das ist ein Gesprächsverlauf, kein vollständiges Gedächtnis.',
+  'ORION conserva gli ultimi 20 scambi del tuo account per mantenere il contesto. Puoi cancellare tutto quando vuoi, nelle Impostazioni. È una cronologia di conversazione, non una memoria completa.');
+A('c8h', 'Six languages', 'Seis idiomas', 'Six langues', 'Sechs Sprachen', 'Sei lingue');
+A('c8p',
+  'Interface and microphone in Português, English, Español, Français, Deutsch and Italiano, with your choice saved in your browser.',
+  'Interfaz y micrófono en Português, English, Español, Français, Deutsch e Italiano, con tu elección guardada en el navegador.',
+  'Interface et micro en Português, English, Español, Français, Deutsch et Italiano, avec votre choix enregistré dans le navigateur.',
+  'Oberfläche und Mikrofon auf Português, English, Español, Français, Deutsch und Italiano; deine Wahl wird im Browser gespeichert.',
+  'Interfaccia e microfono in Português, English, Español, Français, Deutsch e Italiano, con la scelta salvata nel browser.');
+A('c9h', 'Account', 'Cuenta', 'Compte', 'Konto', 'Account');
+A('c9p',
+  'Sign in with email and password or with Google. There is password recovery by email and a daily question limit.',
+  'Entra con correo y contraseña o con Google. Hay recuperación de contraseña por correo y un límite diario de preguntas.',
+  'Connectez-vous avec e-mail et mot de passe ou avec Google. La récupération du mot de passe par e-mail est disponible, ainsi qu’une limite quotidienne de questions.',
+  'Melde dich mit E-Mail und Passwort oder mit Google an. Es gibt Passwort-Wiederherstellung per E-Mail und ein tägliches Fragenlimit.',
+  'Accedi con e-mail e password o con Google. C’è il recupero della password via e-mail e un limite giornaliero di domande.');
+A('bh', 'In development', 'En desarrollo', 'En développement', 'In Entwicklung', 'In sviluppo');
+A('bp',
+  'Nothing in this list is available yet. It goes live only after being tested.',
+  'Nada de esta lista está disponible todavía. Solo se publica después de probarlo.',
+  'Rien de cette liste n’est encore disponible. Cela n’est mis en ligne qu’après les tests.',
+  'Nichts aus dieser Liste ist bisher nutzbar. Es geht erst nach dem Testen online.',
+  'Nulla di questo elenco è ancora disponibile. Va online solo dopo i test.');
+A('bdev', 'In development', 'En desarrollo', 'En développement', 'In Entwicklung', 'In sviluppo');
+A('bplan', 'Planned', 'Planificado', 'Prévu', 'Geplant', 'Pianificato');
+A('bon', 'Ongoing', 'Continuo', 'Continu', 'Laufend', 'Continuo');
+A('d1h', 'Agent Engine', 'Agent Engine', 'Agent Engine', 'Agent Engine', 'Agent Engine');
+A('d1p',
+  'Solve multi-step tasks, such as comparing data from two places and calculating the difference, with authorized tools and limits on time and steps.',
+  'Resolver tareas de varios pasos, como comparar datos de dos lugares y calcular la diferencia, con herramientas autorizadas y límites de tiempo y de pasos.',
+  'Résoudre des tâches en plusieurs étapes, comme comparer des données de deux lieux et calculer la différence, avec des outils autorisés et des limites de temps et d’étapes.',
+  'Mehrstufige Aufgaben lösen, etwa Daten zweier Orte vergleichen und die Differenz berechnen – mit freigegebenen Werkzeugen und Grenzen für Zeit und Schritte.',
+  'Risolvere attività in più passaggi, come confrontare i dati di due luoghi e calcolare la differenza, con strumenti autorizzati e limiti di tempo e di passaggi.');
+A('d2h', 'Memory you control', 'Memoria que tú controlas', 'Une mémoire que vous contrôlez', 'Gedächtnis unter deiner Kontrolle', 'Memoria controllata da te');
+A('d2p',
+  'Remember what you ask it to keep, with viewing, editing and deletion under your control.',
+  'Recordar lo que le pidas guardar, con consulta, edición y eliminación bajo tu control.',
+  'Se souvenir de ce que vous lui demandez de garder, avec consultation, modification et suppression sous votre contrôle.',
+  'Sich merken, was du speichern lässt – mit Ansehen, Bearbeiten und Löschen unter deiner Kontrolle.',
+  'Ricordare ciò che chiedi di conservare, con consultazione, modifica ed eliminazione sotto il tuo controllo.');
+A('d3h', 'Vision', 'Visión', 'Vision', 'Sehen', 'Visione');
+A('d3p', 'Interpret images and documents you send.', 'Interpretar imágenes y documentos que envíes.', 'Interpréter les images et documents que vous envoyez.', 'Bilder und Dokumente interpretieren, die du sendest.', 'Interpretare immagini e documenti che invii.');
+A('d4h', 'Security and testing', 'Seguridad y pruebas', 'Sécurité et tests', 'Sicherheit und Tests', 'Sicurezza e test');
+A('d4p',
+  'Ongoing review of server protections, permissions and automated tests, across all versions.',
+  'Revisión de las protecciones del servidor, de los permisos y de las pruebas automatizadas, a lo largo de todas las versiones.',
+  'Revue des protections du serveur, des permissions et des tests automatisés, tout au long des versions.',
+  'Laufende Überprüfung der Serverschutzmaßnahmen, der Berechtigungen und der automatisierten Tests über alle Versionen hinweg.',
+  'Revisione delle protezioni del server, dei permessi e dei test automatici, durante tutte le versioni.');
+A('bnote',
+  'Dates and order may change. The project prioritizes working well and safely before growing in number of features.',
+  'Las fechas y el orden pueden cambiar. El proyecto prioriza funcionar bien y con seguridad antes de crecer en cantidad de funciones.',
+  'Les dates et l’ordre peuvent changer. Le projet privilégie un fonctionnement fiable et sûr avant d’augmenter le nombre de fonctionnalités.',
+  'Termine und Reihenfolge können sich ändern. Das Projekt legt Wert darauf, gut und sicher zu funktionieren, bevor es um weitere Funktionen wächst.',
+  'Date e ordine possono cambiare. Il progetto dà priorità al funzionare bene e in sicurezza prima di crescere in numero di funzioni.');
+A('vh', 'Privacy and limits', 'Privacidad y límites', 'Confidentialité et limites', 'Datenschutz und Grenzen', 'Privacy e limiti');
+A('v1b', 'ORION can make mistakes.', 'ORION puede equivocarse.', 'ORION peut se tromper.', 'ORION kann Fehler machen.', 'ORION può sbagliare.');
+A('v1t',
+  ' Check important information in reliable sources. It only reaches the internet through the tools listed above and does not access your files.',
+  ' Comprueba la información importante en fuentes fiables. Solo consulta internet mediante las herramientas indicadas arriba y no accede a tus archivos.',
+  ' Vérifiez les informations importantes auprès de sources fiables. Il ne consulte Internet que via les outils listés ci-dessus et n’accède pas à vos fichiers.',
+  ' Prüfe wichtige Informationen in verlässlichen Quellen. Es greift nur über die oben genannten Werkzeuge auf das Internet zu und hat keinen Zugriff auf deine Dateien.',
+  ' Verifica le informazioni importanti su fonti affidabili. Consulta internet solo tramite gli strumenti elencati sopra e non accede ai tuoi file.');
+A('v2b', 'Short answers.', 'Respuestas cortas.', 'Réponses courtes.', 'Kurze Antworten.', 'Risposte brevi.');
+A('v2t',
+  ' It is designed to answer briefly and naturally, also so answers can be spoken aloud.',
+  ' Está diseñado para responder de forma breve y natural, también para que se puedan decir en voz alta.',
+  ' Il est conçu pour répondre de façon brève et naturelle, aussi pour que les réponses puissent être dites à voix haute.',
+  ' Es ist darauf ausgelegt, kurz und natürlich zu antworten – auch damit die Antworten laut gesprochen werden können.',
+  ' È progettato per rispondere in modo breve e naturale, anche perché le risposte possano essere dette ad alta voce.');
+A('v3b', 'Your history', 'Tu historial', 'Votre historique', 'Dein Verlauf', 'La tua cronologia');
+A('v3t',
+  ' is saved in your account (Firestore, in ORION’s Firebase project). Each person accesses only their own history, and you can clear it in settings.',
+  ' se guarda en tu cuenta (Firestore, del proyecto Firebase de ORION). Cada persona accede solo a su propio historial, y puedes borrarlo en la configuración.',
+  ' est enregistré dans votre compte (Firestore, du projet Firebase d’ORION). Chaque personne n’accède qu’à son propre historique, et vous pouvez l’effacer dans les réglages.',
+  ' wird in deinem Konto gespeichert (Firestore, im Firebase-Projekt von ORION). Jede Person sieht nur den eigenen Verlauf, und du kannst ihn in den Einstellungen löschen.',
+  ' è salvata nel tuo account (Firestore, nel progetto Firebase di ORION). Ognuno accede solo alla propria cronologia e puoi cancellarla nelle impostazioni.');
+A('v4b', 'Voice and “Hey ORION”:', 'Voz y «Hey ORION»:', 'Voix et « Hey ORION » :', 'Stimme und „Hey ORION“:', 'Voce e “Hey ORION”:');
+A('v4t',
+  ' speech recognition is done by your browser. In Chrome, audio is sent to Google’s speech service. ORION does not store audio or transcripts.',
+  ' el reconocimiento de voz lo hace tu navegador. En Chrome, el audio se envía al servicio de voz de Google. ORION no guarda audio ni transcripciones.',
+  ' la reconnaissance vocale est assurée par votre navigateur. Dans Chrome, l’audio est envoyé au service vocal de Google. ORION ne conserve ni audio ni transcriptions.',
+  ' die Spracherkennung übernimmt dein Browser. In Chrome wird das Audio an den Sprachdienst von Google gesendet. ORION speichert weder Audio noch Transkripte.',
+  ' il riconoscimento vocale è del tuo browser. In Chrome, l’audio viene inviato al servizio vocale di Google. ORION non conserva audio né trascrizioni.');
+A('v5b', 'Answer voice:', 'Voz de las respuestas:', 'Voix des réponses :', 'Stimme der Antworten:', 'Voce delle risposte:');
+A('v5t',
+  ' the answer text is sent to ElevenLabs to generate the audio. If that fails, the browser speaks instead.',
+  ' el texto de la respuesta se envía a ElevenLabs para generar el audio. Si falla, el navegador habla en su lugar.',
+  ' le texte de la réponse est envoyé à ElevenLabs pour générer l’audio. En cas d’échec, le navigateur parle à sa place.',
+  ' der Text der Antwort wird an ElevenLabs gesendet, um das Audio zu erzeugen. Schlägt das fehl, spricht stattdessen der Browser.',
+  ' il testo della risposta viene inviato a ElevenLabs per generare l’audio. Se non funziona, parla il browser al suo posto.');
+A('v6b', 'Keys and passwords', 'Claves y contraseñas', 'Clés et mots de passe', 'Schlüssel und Passwörter', 'Chiavi e password');
+A('v6t',
+  ' for the services stay only on the server, never on the site.',
+  ' de los servicios están solo en el servidor, nunca en el sitio.',
+  ' des services restent uniquement sur le serveur, jamais sur le site.',
+  ' der Dienste liegen nur auf dem Server, nie auf der Website.',
+  ' dei servizi restano solo sul server, mai sul sito.');
+A('v7b', 'Access and limits:', 'Acceso y límites:', 'Accès et limites :', 'Zugriff und Grenzen:', 'Accesso e limiti:');
+A('v7t',
+  ' there is a daily limit of questions and voice per account, and access may be restricted to authorized accounts.',
+  ' hay un límite diario de preguntas y de voz por cuenta, y el acceso puede limitarse a cuentas autorizadas.',
+  ' il existe une limite quotidienne de questions et de voix par compte, et l’accès peut être restreint aux comptes autorisés.',
+  ' es gibt ein tägliches Limit für Fragen und Stimme pro Konto, und der Zugriff kann auf autorisierte Konten beschränkt sein.',
+  ' c’è un limite giornaliero di domande e di voce per account, e l’accesso può essere limitato agli account autorizzati.');
+A('fh', 'Ready to talk to ORION?', '¿Listo para hablar con ORION?', 'Prêt à discuter avec ORION ?', 'Bereit, mit ORION zu sprechen?', 'Pronto a parlare con ORION?');
+A('fp', 'Sign in or create your account in seconds.', 'Entra o crea tu cuenta en unos segundos.', 'Connectez-vous ou créez votre compte en quelques secondes.', 'Melde dich an oder erstelle in wenigen Sekunden dein Konto.', 'Accedi o crea il tuo account in pochi secondi.');
+A('foot',
+  'ORION AI · beta V5.0 · Official launch date not set · The future begins with curiosity.',
+  'ORION AI · beta V5.0 · Lanzamiento oficial sin fecha prevista · El futuro empieza con la curiosidad.',
+  'ORION AI · bêta V5.0 · Lancement officiel sans date prévue · L’avenir commence par la curiosité.',
+  'ORION AI · Beta V5.0 · Offizieller Start ohne festen Termin · Die Zukunft beginnt mit Neugier.',
+  'ORION AI · beta V5.0 · Lancio ufficiale senza data prevista · Il futuro inizia con la curiosità.');
+A('title', 'ORION AI — The future begins with curiosity', 'ORION AI — El futuro empieza con la curiosidad', 'ORION AI — L’avenir commence par la curiosité', 'ORION AI — Die Zukunft beginnt mit Neugier', 'ORION AI — Il futuro inizia con la curiosità');
+A('desc',
+  'ORION AI: an intelligent digital presence. See what it does today and what is in development.',
+  'ORION AI: una presencia digital inteligente. Descubre lo que hace hoy y lo que está en desarrollo.',
+  'ORION AI : une présence numérique intelligente. Découvrez ce qu’il fait aujourd’hui et ce qui est en développement.',
+  'ORION AI: eine intelligente digitale Präsenz. Erfahre, was es heute kann und was in Entwicklung ist.',
+  'ORION AI: una presenza digitale intelligente. Scopri cosa fa oggi e cosa è in sviluppo.');
+
 const KEY = 'orion_settings';
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } };
 const save = l => { try { const s = read(); s.ui = l; if (s.v !== 2 && s.v !== 3) s.v = 3; localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {} };
 const PT_TITLE = document.title, metaDesc = document.querySelector('meta[name="description"]'), PT_DESC = metaDesc.content;
+const tr = (l, k) => (TR[l] && TR[l][k]) || TR.en[k];
 
 function setLang(l, persist) {
-  document.documentElement.lang = l === 'en' ? 'en' : 'pt-BR';
+  document.documentElement.lang = HTML_LANG[l];
   document.querySelectorAll('[data-t]').forEach(el => {
     if (el.dataset.pt === undefined) el.dataset.pt = el.textContent;
-    el.textContent = l === 'en' ? (EN[el.dataset.t] || el.dataset.pt) : el.dataset.pt;
+    el.textContent = l === 'pt' ? el.dataset.pt : (tr(l, el.dataset.t) || el.dataset.pt);
   });
-  document.title = l === 'en' ? EN.title : PT_TITLE;
-  metaDesc.content = l === 'en' ? EN.desc : PT_DESC;
+  document.title = l === 'pt' ? PT_TITLE : tr(l, 'title');
+  metaDesc.content = l === 'pt' ? PT_DESC : tr(l, 'desc');
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   if (persist) save(l);
 }
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
-const saved = read().ui;
-setLang(saved === 'en' || saved === 'pt' ? saved : (/^en/i.test(navigator.language || '') ? 'en' : 'pt'), !saved || saved === 'en' || saved === 'pt');   // a landing só fala pt/en; não apaga es/fr/de/it escolhidos no app
+const saved = read().ui, nav2 = ((navigator.language || '').slice(0, 2) || '').toLowerCase();
+setLang(LANGS.includes(saved) ? saved : (LANGS.includes(nav2) ? nav2 : 'pt'), true);
 </script>
 
 </body>
