@@ -29,23 +29,22 @@ a{color:inherit;}
 .wrap{width:min(1120px,100% - 40px);margin:0 auto;}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05);}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;height:68px;}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none;}
-.brand-mark{height:32px;width:auto;display:block;}
-.brand-word{height:24px;width:auto;display:block;}
+.top img{height:28px;width:auto;display:block;}
 .nav{display:flex;align-items:center;gap:6px;}
-.nav a.txt{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 12px;border-radius:999px;transition:color .2s ease,background .2s ease;}
+.nav a.txt{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 14px;border-radius:999px;transition:color .2s ease,background .2s ease;}
 .nav a.txt:hover{color:#fff;background:rgba(255,255,255,.05);}
-@media (max-width:1180px){.nav a.txt{display:none;}}
-@media (max-width:640px){
-  .top{height:auto;flex-wrap:wrap;padding:10px 0;row-gap:8px;}
-  .brand-mark{height:26px;}.brand-word{height:18px;}
-  .nav{width:100%;justify-content:space-between;}
-  html{scroll-padding-top:110px;}
-}
-.lang{display:flex;gap:2px;padding:3px;margin:0 6px;border-radius:999px;border:1px solid var(--line);background:rgba(13,16,32,.7);}
-.lang button{height:28px;min-width:30px;padding:0 7px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:background .2s ease,color .2s ease;}
-.lang button:hover{color:#fff;}
-.lang button[aria-pressed="true"]{background:var(--active);color:#E4E2EE;}
+@media (max-width:760px){.nav a.txt{display:none;}.top img{height:24px;}}
+.lang{position:relative;margin:0 6px;}
+.lang-btn{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 14px;border-radius:999px;border:1px solid var(--line);background:rgba(13,16,32,.7);color:var(--text);font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer;transition:border-color .2s ease,background .2s ease;}
+.lang-btn:hover{border-color:rgba(78,72,150,.5);background:var(--blue-dark);}
+.lang-btn svg{width:10px;height:10px;transition:transform .2s ease;}
+.lang-btn[aria-expanded="true"] svg{transform:rotate(180deg);}
+.lang-list{position:absolute;right:0;top:calc(100% + 8px);min-width:176px;margin:0;padding:6px;list-style:none;border:1px solid var(--line);border-radius:16px;background:rgba(8,9,18,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 18px 50px rgba(0,0,0,.6);z-index:30;}
+.lang-list li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font:500 13px var(--font);color:var(--muted);cursor:pointer;outline:none;transition:background .15s ease,color .15s ease;}
+.lang-list li b{font:600 11px var(--mono);letter-spacing:.12em;color:var(--accent-soft);min-width:22px;}
+.lang-list li:hover,.lang-list li:focus-visible{background:rgba(23,21,58,.8);color:#fff;}
+.lang-list li[aria-selected="true"]{background:var(--active);color:#fff;}
+.lang-list li:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
 .lang button:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
 .btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 28px;border-radius:999px;text-decoration:none;font:600 12px var(--font);letter-spacing:.16em;text-transform:uppercase;color:#E4E2EE;background:var(--active);border:1px solid rgba(78,72,150,.4);transition:background .2s ease,border-color .2s ease,transform .2s ease;}
 .btn:hover{background:var(--active-hover);border-color:rgba(78,72,150,.65);transform:translateY(-1px);}
@@ -100,25 +99,28 @@ section{padding:80px 0;border-top:1px solid rgba(255,255,255,.06);}
 .final p{margin:14px auto 0;color:var(--muted);max-width:50ch;}
 .final .cta{justify-content:center;}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align:center;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
-@media (prefers-reduced-motion:reduce){body{animation:none;}.sky .star{animation:none;}html{scroll-behavior:auto;}.btn,.lang button,.card{transition:none;}}
+@media (prefers-reduced-motion:reduce){body{animation:none;}.sky .star{animation:none;}html{scroll-behavior:auto;}.btn,.lang-btn,.lang-list li,.card{transition:none;}}
 </style>
 </head>
 <body>
 <div class="bg-arcs" aria-hidden="true"></div>
 
 <header class="topbar"><div class="wrap top">
-  <a class="brand" href="index.html" aria-label="ORION AI"><img class="brand-mark" src="assets/orion_ai_logo.png" alt=""><img class="brand-word" src="assets/orion_ai_wordmark.png" alt="ORION AI"></a>
+  <img src="assets/orion_ai_wordmark.png" alt="ORION AI">
   <nav class="nav" aria-label="ORION AI">
     <a class="txt" href="#agora" data-t="n1">O que faz</a>
     <a class="txt" href="#breve" data-t="n2">Em desenvolvimento</a>
     <a class="txt" href="#privacidade" data-t="n3">Privacidade</a>
-    <div class="lang" role="group" aria-label="Idioma / Language">
-      <button type="button" data-lang="pt" aria-pressed="true" title="Português">PT</button>
-      <button type="button" data-lang="en" aria-pressed="false" title="English">EN</button>
-      <button type="button" data-lang="es" aria-pressed="false" title="Español">ES</button>
-      <button type="button" data-lang="fr" aria-pressed="false" title="Français">FR</button>
-      <button type="button" data-lang="de" aria-pressed="false" title="Deutsch">DE</button>
-      <button type="button" data-lang="it" aria-pressed="false" title="Italiano">IT</button>
+    <div class="lang" id="langMenu">
+      <button type="button" class="lang-btn" id="langBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="langList" aria-label="Idioma / Language"><span id="langCode">PT</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <ul class="lang-list" id="langList" role="listbox" aria-label="Idioma / Language" hidden>
+        <li role="option" tabindex="-1" data-lang="pt" aria-selected="true"><b>PT</b>Português</li>
+        <li role="option" tabindex="-1" data-lang="en" aria-selected="false"><b>EN</b>English</li>
+        <li role="option" tabindex="-1" data-lang="es" aria-selected="false"><b>ES</b>Español</li>
+        <li role="option" tabindex="-1" data-lang="fr" aria-selected="false"><b>FR</b>Français</li>
+        <li role="option" tabindex="-1" data-lang="de" aria-selected="false"><b>DE</b>Deutsch</li>
+        <li role="option" tabindex="-1" data-lang="it" aria-selected="false"><b>IT</b>Italiano</li>
+      </ul>
     </div>
     <a class="btn small" href="login.html" data-t="in">Entrar</a>
   </nav>
@@ -196,8 +198,8 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c2h">Ferramentas</h3><p data-t="c2p">Calculadora exata, data e hora, clima atual de uma cidade e resumos da Wikipédia. O ORION decide sozinha quando usar cada uma. Todas só leem informação.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c3h">Imagens nas respostas</h3><p data-t="c3p">Fotos da Wikipédia e do Wikimedia Commons aparecem junto da resposta, com link para o artigo quando houver.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c4h">Voz</h3><p data-t="c4p">Fale pelo microfone e ouça as respostas. Há 4 vozes da ElevenLabs com ajuste de ritmo e expressividade, e a voz do navegador como reserva.</p></article>
-        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c5h">“Hey ORION”</h3><p data-t="c5p">Ative o ORION dizendo o nome dele, com a aba aberta e visível. Pode ser desligado em Configurações.</p></article>
-        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c6h">A Orb</h3><p data-t="c6p">Uma esfera escura com dois arcos orbitais que muda de cor e de movimento conforme o estado: em espera (preto e índigo), ouvindo (branco escuro), respondendo (índigo mais forte) ou sem entender (preto e branco escuro).</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c5h">“Hey ORION”</h3><p data-t="c5p">Ative o ORION dizendo o nome dele, com a aba aberta e visível. Pode ser desligado em Voice &amp; Speech.</p></article>
+        <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c6h">A Orb</h3><p data-t="c6p">Uma esfera escura com dois arcos orbitais que muda de cor e de movimento conforme o estado: em espera (preto e índigo), ouvindo (azul), respondendo (verde) ou sem entender (vermelho).</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c7h">Continuidade da conversa</h3><p data-t="c7p">A ORION guarda as últimas 20 trocas da sua conta para manter o contexto. Você apaga tudo quando quiser, em Configurações. Isso é histórico de conversa, não uma memória completa.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c8h">Seis idiomas</h3><p data-t="c8p">Interface e microfone em Português, English, Español, Français, Deutsch e Italiano, com a escolha salva no seu navegador.</p></article>
         <article class="card"><span class="badge ok" data-t="bok">Disponível</span><h3 data-t="c9h">Conta</h3><p data-t="c9p">Entre com e-mail e senha ou com Google. Há recuperação de senha por e-mail e um limite diário de perguntas.</p></article>
@@ -316,18 +318,18 @@ A('c4p',
   'Parla al microfono e ascolta le risposte. Ci sono 4 voci ElevenLabs con regolazione di ritmo ed espressività, e la voce del browser come riserva.');
 A('c5h', '“Hey ORION”', '«Hey ORION»', '« Hey ORION »', '„Hey ORION“', '“Hey ORION”');
 A('c5p',
-  'Activate ORION by saying its name, with the tab open and visible. It can be turned off in Settings.',
-  'Activa a ORION diciendo su nombre, con la pestaña abierta y visible. Se puede desactivar en Configuración.',
-  'Activez ORION en prononçant son nom, avec l’onglet ouvert et visible. On peut le désactiver dans les Réglages.',
-  'Aktiviere ORION, indem du seinen Namen sagst – bei geöffnetem, sichtbarem Tab. Lässt sich in den Einstellungen ausschalten.',
-  'Attiva ORION dicendo il suo nome, con la scheda aperta e visibile. Si può disattivare nelle Impostazioni.');
+  'Activate ORION by saying its name, with the tab open and visible. It can be turned off in Voice & Speech.',
+  'Activa a ORION diciendo su nombre, con la pestaña abierta y visible. Se puede desactivar en Voice & Speech.',
+  'Activez ORION en prononçant son nom, avec l’onglet ouvert et visible. On peut le désactiver dans Voice & Speech.',
+  'Aktiviere ORION, indem du seinen Namen sagst – bei geöffnetem, sichtbarem Tab. Lässt sich in Voice & Speech ausschalten.',
+  'Attiva ORION dicendo il suo nome, con la scheda aperta e visibile. Si può disattivare in Voice & Speech.');
 A('c6h', 'The Orb', 'La Orb', 'L’Orb', 'Die Orb', 'L’Orb');
 A('c6p',
-  'A dark sphere with two orbital arcs that changes color and motion with the state: idle (black and indigo), listening (dark white), responding (stronger indigo) or not understood (black and dark white).',
-  'Una esfera oscura con dos arcos orbitales que cambia de color y de movimiento según el estado: en espera (negro e índigo), escuchando (blanco oscuro), respondiendo (índigo más intenso) o sin entender (negro y blanco oscuro).',
-  'Une sphère sombre avec deux arcs orbitaux qui change de couleur et de mouvement selon l’état : en veille (noir et indigo), à l’écoute (blanc sombre), en réponse (indigo plus intense) ou sans comprendre (noir et blanc sombre).',
-  'Eine dunkle Kugel mit zwei Orbitalbögen, die je nach Zustand Farbe und Bewegung ändert: bereit (Schwarz und Indigo), zuhörend (dunkles Weiß), antwortend (kräftigeres Indigo) oder nicht verstanden (Schwarz und dunkles Weiß).',
-  'Una sfera scura con due archi orbitali che cambia colore e movimento secondo lo stato: a riposo (nero e indaco), in ascolto (bianco scuro), in risposta (indaco più intenso) o senza aver capito (nero e bianco scuro).');
+  'A dark sphere with two orbital arcs that changes color and motion with the state: idle (black and indigo), listening (blue), responding (green) or not understood (red).',
+  'Una esfera oscura con dos arcos orbitales que cambia de color y de movimiento según el estado: en espera (negro e índigo), escuchando (azul), respondiendo (verde) o sin entender (rojo).',
+  'Une sphère sombre avec deux arcs orbitaux qui change de couleur et de mouvement selon l’état : en veille (noir et indigo), à l’écoute (bleu), en réponse (vert) ou sans comprendre (rouge).',
+  'Eine dunkle Kugel mit zwei Orbitalbögen, die je nach Zustand Farbe und Bewegung ändert: bereit (Schwarz und Indigo), zuhörend (Blau), antwortend (Grün) oder nicht verstanden (Rot).',
+  'Una sfera scura con due archi orbitali che cambia colore e movimento secondo lo stato: a riposo (nero e indaco), in ascolto (blu), in risposta (verde) o senza aver capito (rosso).');
 A('c7h', 'Conversation continuity', 'Continuidad de la conversación', 'Continuité de la conversation', 'Gesprächskontinuität', 'Continuità della conversazione');
 A('c7p',
   'ORION keeps the last 20 exchanges of your account to maintain context. You can erase everything anytime in Settings. This is conversation history, not a full memory.',
@@ -468,10 +470,28 @@ function setLang(l, persist) {
   });
   document.title = l === 'pt' ? PT_TITLE : tr(l, 'title');
   metaDesc.content = l === 'pt' ? PT_DESC : tr(l, 'desc');
-  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  document.getElementById('langCode').textContent = l.toUpperCase();
+  document.querySelectorAll('#langList li').forEach(li => li.setAttribute('aria-selected', String(li.dataset.lang === l)));
   if (persist) save(l);
 }
-document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
+const langBtn = document.getElementById('langBtn'), langList = document.getElementById('langList');
+const langItems = () => [...langList.querySelectorAll('li')];
+function openLang() { langList.hidden = false; langBtn.setAttribute('aria-expanded', 'true'); (langList.querySelector('[aria-selected="true"]') || langItems()[0]).focus(); }
+function closeLang(back) { langList.hidden = true; langBtn.setAttribute('aria-expanded', 'false'); if (back) langBtn.focus(); }
+langBtn.addEventListener('click', () => (langList.hidden ? openLang() : closeLang(false)));
+langBtn.addEventListener('keydown', e => { if (['ArrowDown', 'ArrowUp'].includes(e.key) && langList.hidden) { e.preventDefault(); openLang(); } });
+langList.addEventListener('click', e => { const li = e.target.closest('li'); if (!li) return; setLang(li.dataset.lang, true); closeLang(true); });
+langList.addEventListener('keydown', e => {
+  const items = langItems(), i = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+  else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+  else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (i >= 0) { setLang(items[i].dataset.lang, true); closeLang(true); } }
+  else if (e.key === 'Escape') { e.preventDefault(); closeLang(true); }
+  else if (e.key === 'Tab') closeLang(false);
+});
+document.addEventListener('pointerdown', e => { if (!langList.hidden && !e.target.closest('#langMenu')) closeLang(false); });
 const saved = read().ui, nav2 = ((navigator.language || '').slice(0, 2) || '').toLowerCase();
 setLang(LANGS.includes(saved) ? saved : (LANGS.includes(nav2) ? nav2 : 'pt'), true);
 </script>
