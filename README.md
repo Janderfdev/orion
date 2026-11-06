@@ -95,9 +95,9 @@ The vision is ambitious, but the priority is to build a system that works reliab
 
 ---
 
-# 🚀 Public Launch — 2027
+# 🚀 Public Launch — Coming Soon
 
-**ORION AI is targeting a public launch in May 2027.**
+**ORION AI is targeting a public launch.**
 
 The objective is to move from a developing Beta project toward a more stable, documented and accessible AI experience.
 
@@ -333,6 +333,6 @@ See [`LICENSE`](LICENSE) for the applicable terms.
 
 *“The future begins with curiosity.”*
 
-**Beta development · Target public launch: May 2027**
+**Beta development · Target public launch: Coming Soon**
 
 </div>
