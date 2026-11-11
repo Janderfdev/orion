@@ -12,6 +12,7 @@ V5.0 (S7): perguntas do MESMO usuário rodam uma de cada vez (senão duas pergun
 histórico e uma apaga a outra), e as gravações levam número de versão (ver memory/store.py).
 V5.0 (anexos): a pergunta pode trazer UMA imagem e/ou UM arquivo de texto (core/attachments.py); eles são DADOS,
 não são gravados e, quando existem, o Agent Engine não assume a pergunta.
+V5.2.0: ask_stateless() atende o ORION API (sem memória).
 V5.0 (fase C): o resultado traz "agent": {state, steps, degraded} quando o Agent respondeu (senão None),
 para o site refletir o que realmente aconteceu.
 """
@@ -110,6 +111,14 @@ class Orchestrator:
             history = (history + [{"user": attachments.history_text(text, image, file)[:2000], "reply": reply[:MAX_REPLY_CHARS]}])[-STORED_TURNS:]
             self._persist_later(uid, token, history)
             return {"reply": reply, "sources": sources, "understood": not is_fallback(reply), "agent": agent_info}
+
+    async def ask_stateless(self, text: str, provider) -> dict:
+        """V5.2.0 (ORION API): uma pergunta ISOLADA. Mesmo ORION (identidade, ferramentas, orquestração), mas sem memória:
+        não lê nem grava o histórico de ninguém, não aceita anexos e não passa pelo Agent Engine."""
+        sources = tools.collect_sources()
+        reply = await provider.generate(SYSTEM_PROMPT, self._messages(text, []), tools.specs(), tools.execute)
+        reply = (reply or "").strip() or FALLBACK
+        return {"reply": reply, "sources": sources, "understood": not is_fallback(reply)}
 
     async def clear(self, uid: str, token: str) -> None:
         async with self._lock(uid):
