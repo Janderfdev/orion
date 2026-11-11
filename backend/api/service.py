@@ -1,168 +1,216 @@
-"""Resumo do Dia (V5.2.0): busca os feeds RSS de news/sources.py, junta as notícias repetidas e organiza por categoria.
+"""ORION API (V5.2.0) — regras: chaves, autenticação, limite por minuto e cota mensal. Sem HTTP aqui.
 
-O que é e o que NÃO é:
-  - Todo título, trecho, data e link vem do próprio feed da fonte. O ORION não escreve nem "resume com IA": nada é inventado.
-  - Item sem data, sem título ou sem link http(s) é descartado. Só entram notícias das últimas ORION_NEWS_MAX_AGE_H horas (48).
-  - Deduplicação: títulos muito parecidos (ou o mesmo link) viram UMA notícia com várias fontes.
-  - Status (é uma regra simples, NÃO uma checagem de fatos):
-      confirmed   2 ou mais veículos diferentes publicaram a mesma notícia
-      developing  só uma fonte, mas o título/trecho indica acontecimento em curso ("ao vivo", "urgente", "breaking"…)
-                  ou foi publicada há menos de 2 horas
-      single      uma única fonte
-  - Se um feed falha, ele vai em "unavailable" e o resto segue. Se TODOS falham e não há cache, levanta NewsUnavailable.
+Quem pode usar: planos com o recurso "api" (PLUS e PRO). O plano é lido NO SERVIDOR a cada uso (cache curto): se a pessoa
+sair do plano, as chaves dela deixam de funcionar na hora, sem precisar apagá-las.
 
-Cache em memória por 15 min. "Atualizar" pode forçar nova busca, no máximo uma a cada 2 min por servidor (protege as fontes).
+  create_key / list_keys / revoke / rotate   gerenciamento (chamado com o login do Firebase)
+  authenticate(chave)                        chave de API → {uid, key_id}   (confere o HASH; a chave nunca é guardada)
+  begin(uid, key_id) / refund(uid)           gasta / devolve 1 requisição (limite por minuto + cota do mês)
+  usage(uid)                                 consumo e limites
+
+Estado em memória (por processo): janela de 1 minuto por chave e cache de autenticação (30 s). A cota mensal é PERSISTIDA
+no Firestore (api_usage/{uid}); se o servidor reiniciar, o limite por minuto recomeça, o do mês não.
 """
-import datetime as dt, logging, os, re, threading, time, unicodedata
-from concurrent.futures import ThreadPoolExecutor
+import datetime as dt, logging, re, secrets, threading, time
+from collections import deque
 
-import requests
+from api import keys as keylib
+from api.errors import ApiError
+from billing import plans
 
-from news import sources as S
-from news.parse import parse_feed
+log = logging.getLogger("orion.api")
 
-log = logging.getLogger("orion.news")
-
-MAX_AGE_H = int(os.getenv("ORION_NEWS_MAX_AGE_H", "48"))
-CACHE_TTL = 900
-MIN_REFRESH = 120
-MAX_BYTES = 2_000_000
-FETCH_TIMEOUT = 6
-PER_CATEGORY = 6
-SIMILARITY = 0.55
-HEADERS = {"User-Agent": "ORION-AI/5.2 (https://janderfdev.github.io/orion)", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml"}
-
-_STOP = frozenset("""a o as os um uma uns umas de do da dos das em no na nos nas por para com sem sobre entre e ou que se ao aos
-the an of in on at to for from with by and or is are was were be as its it this that after over into about says say said new""".split())
-_LIVE = re.compile(r"\b(ao vivo|última hora|ultima hora|urgente|live|breaking|developing|em andamento)\b", re.I)
-_AI_RE = re.compile(S.AI_WORD_RE)
+MAX_KEYS = 5
+CACHE_TTL = 30            # segundos que uma chave válida fica em cache (revogar leva até isso em OUTRO processo; neste, é na hora)
+CACHE_MAX = 2000
+WINDOW_MAX_KEYS = 5000    # limite de chaves com janela em memória antes de limpar
+_CTRL = re.compile(r"[\x00-\x1f\x7f]")
 
 
-class NewsUnavailable(Exception):
-    pass
+def _br_today() -> dt.date:
+    return dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).date()   # Brasília/Fortaleza
 
 
-def tokens(title: str) -> frozenset:
-    t = unicodedata.normalize("NFKD", title.lower())
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return frozenset(w for w in re.findall(r"[a-z0-9]+", t) if len(w) >= 3 and w not in _STOP)
+def clean_name(name) -> str:
+    s = _CTRL.sub("", str(name or "")).strip()
+    return re.sub(r"\s+", " ", s)[:40]
 
 
-def similar(a: frozenset, b: frozenset) -> bool:
-    inter = len(a & b)
-    return inter >= 2 and inter / len(a | b) >= SIMILARITY
+def _public(k: dict) -> dict:
+    return {f: k.get(f) for f in ("id", "name", "prefix", "last4", "created")}
 
 
-def _norm_url(u: str) -> str:
-    return re.sub(r"[?#].*$", "", u).rstrip("/").lower()
+class ApiService:
+    def __init__(self, store, plan_of, *, today=_br_today, now=time.time, pepper: str | None = None, bg=None):
+        self.store, self._plan_of, self._today, self._now, self._pepper = store, plan_of, today, now, pepper
+        self._bg = bg or (lambda fn, *a: threading.Thread(target=fn, args=a, daemon=True).start())
+        self._guard = threading.Lock()
+        self._locks: dict[str, threading.Lock] = {}
+        self._cache: dict[str, tuple] = {}
+        self._win: dict[str, deque] = {}
+        self._usage: dict[str, dict] = {}
 
+    # ── utilidades ──
+    @property
+    def configured(self) -> bool:
+        return bool(self.store.enabled)
 
-def is_ai(item: dict) -> bool:
-    text = (item["title"] + " " + item["summary"]).lower()
-    return any(w in text for w in S.AI_WORDS) or bool(_AI_RE.search(text))
+    def _need(self) -> None:
+        if not self.configured:
+            raise ApiError(503, "api_unavailable", "O ORION API não está disponível agora.")
 
+    def _lock(self, uid: str) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(uid, threading.Lock())
 
-def cluster(items: list) -> list:
-    """Agrupa itens da mesma notícia. Cada grupo é uma lista de itens (mais recentes primeiro)."""
-    groups: list = []
-    for it in sorted(items, key=lambda x: x["published"], reverse=True):
-        tok = tokens(it["title"])
-        for g in groups:
-            if _norm_url(g[0]["url"]) == _norm_url(it["url"]) or similar(g[0]["_tok"], tok):
-                g.append(it); break
-        else:
-            it["_tok"] = tok
-            groups.append([it])
-    return groups
+    def _need_plan(self, uid: str) -> str:
+        plan = self._plan_of(uid)
+        if not plans.can(plan, "api"):
+            raise ApiError(403, "plan_required", "O ORION API está disponível a partir do plano ORION PLUS.")
+        return plan
 
+    def _month(self) -> str:
+        return self._today().strftime("%Y-%m")
 
-def _iso(d: dt.datetime) -> str:
-    return d.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # ── gerenciamento de chaves ──
+    def list_keys(self, uid: str) -> list:
+        self._need()
+        return [_public(k) for k in self.store.get_keys(uid)]
 
+    def _new_item(self, name: str):
+        key = keylib.generate()
+        item = {"id": secrets.token_hex(4), "name": name, "created": self._today().isoformat(),
+                "hash": keylib.digest(key, self._pepper), **keylib.hint(key)}
+        return key, item
 
-def make_item(group: list, now: dt.datetime) -> dict:
-    rep = max(group, key=lambda x: (len(x["summary"]), x["published"]))
-    names, srcs = [], []
-    for g in group:
-        if g["source"] not in names:
-            names.append(g["source"]); srcs.append({"name": g["source"], "url": g["url"]})
-    published = max(g["published"] for g in group)
-    n = len(names)
-    live = bool(_LIVE.search(rep["title"] + " " + rep["summary"])) or (now - published) < dt.timedelta(hours=2)
-    status = "confirmed" if n >= 2 else ("developing" if live else "single")
-    return {"title": rep["title"], "summary": rep["summary"], "url": rep["url"], "source": rep["source"], "lang": rep["lang"],
-            "published": _iso(published), "status": status, "n_sources": n, "sources": srcs}
+    def create_key(self, uid: str, name: str) -> dict:
+        self._need()
+        self._need_plan(uid)
+        with self._lock(uid):
+            ks = self.store.get_keys(uid)
+            if len(ks) >= MAX_KEYS:
+                raise ApiError(409, "key_limit", f"Limite de {MAX_KEYS} chaves. Revogue uma para criar outra.")
+            key, item = self._new_item(clean_name(name) or "Minha chave")
+            ks.append(item)
+            self.store.set_keys(uid, ks)
+            self.store.set_hash(item["hash"], {"uid": uid, "key_id": item["id"]})
+        return {"key": key, **_public(item)}        # a chave inteira aparece SÓ aqui
 
+    def revoke(self, uid: str, key_id: str) -> dict:
+        self._need()
+        with self._lock(uid):
+            ks = self.store.get_keys(uid)
+            hit = next((k for k in ks if k.get("id") == key_id), None)
+            if not hit:
+                raise ApiError(404, "key_not_found", "Chave não encontrada.")
+            self.store.delete_hash(hit["hash"])      # 1º corta o acesso; se a gravação da lista falhar, a chave já está morta
+            self._cache.pop(hit["hash"], None)
+            self.store.set_keys(uid, [k for k in ks if k.get("id") != key_id])
+        return {"ok": True}
 
-def default_fetch(feed_id: str) -> list:
-    name, url, lang = S.FEEDS[feed_id]
-    r = requests.get(url, headers=HEADERS, timeout=FETCH_TIMEOUT, stream=True)
-    try:
-        if r.status_code != 200:
-            raise ValueError(f"http {r.status_code}")
-        raw, size = [], 0
-        for chunk in r.iter_content(65536):
-            size += len(chunk)
-            if size > MAX_BYTES:
-                raise ValueError("feed grande demais")
-            raw.append(chunk)
-    finally:
-        r.close()
-    return parse_feed(b"".join(raw))
+    def rotate(self, uid: str, key_id: str) -> dict:
+        self._need()
+        self._need_plan(uid)
+        with self._lock(uid):
+            ks = self.store.get_keys(uid)
+            old = next((k for k in ks if k.get("id") == key_id), None)
+            if not old:
+                raise ApiError(404, "key_not_found", "Chave não encontrada.")
+            key, item = self._new_item(old.get("name") or "Minha chave")
+            self.store.set_keys(uid, [item if k.get("id") == key_id else k for k in ks])
+            self.store.set_hash(item["hash"], {"uid": uid, "key_id": item["id"]})
+            self.store.delete_hash(old["hash"])      # a chave antiga morre quando a nova já existe
+            self._cache.pop(old["hash"], None)
+        return {"key": key, **_public(item)}
 
+    # ── uso da chave ──
+    def authenticate(self, raw_key: str) -> dict:
+        self._need()
+        if not keylib.well_formed(raw_key):
+            raise ApiError(401, "invalid_api_key", "Chave de API inválida.")
+        h = keylib.digest(raw_key, self._pepper)
+        hit = self._cache.get(h)
+        if hit and hit[0] > self._now():
+            return hit[1]
+        try:
+            doc = self.store.get_hash(h)
+        except Exception:
+            log.exception("api: falha ao consultar a chave")
+            raise ApiError(503, "api_unavailable", "O ORION API não está disponível agora.")
+        if not doc or not doc.get("uid"):
+            raise ApiError(401, "invalid_api_key", "Chave de API inválida.")
+        who = {"uid": doc["uid"], "key_id": doc.get("key_id", "")}
+        if len(self._cache) >= CACHE_MAX:
+            self._cache.clear()
+        self._cache[h] = (self._now() + CACHE_TTL, who)
+        return who
 
-class NewsService:
-    def __init__(self, fetch=default_fetch, now=time.time):
-        self._fetch, self._now = fetch, now
-        self._lock = threading.Lock()
-        self._data, self._at = None, 0.0
-
-    def _build(self) -> dict:
-        now_ts = self._now()
-        now = dt.datetime.fromtimestamp(now_ts, dt.timezone.utc)
-        oldest, newest = now - dt.timedelta(hours=MAX_AGE_H), now + dt.timedelta(hours=1)
-        wanted = sorted({f for _, _, feeds, _ in S.CATEGORIES for f in feeds})
-        raw: dict = {}
-        failed: list = []                                   # [{"source", "feed"}]: quais feeds não responderam
-
-        def job(fid):
+    def _load_usage(self, uid: str, month: str) -> dict:
+        st = self._usage.get(uid)
+        if st is None:
+            count = 0
             try:
-                return fid, self._fetch(fid)
-            except Exception as e:
-                log.warning("news: feed %s indisponível (%s)", fid, type(e).__name__)
-                return fid, None
-
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            for fid, items in ex.map(job, wanted):
-                if items is None:
-                    failed.append({"source": S.FEEDS[fid][0], "feed": fid})
-                    raw[fid] = []
+                d = self.store.get_usage(uid)
+                if d and d.get("month") == month:
+                    count = int(d.get("count") or 0)
                 else:
-                    raw[fid] = [dict(i, source=S.FEEDS[fid][0], lang=S.FEEDS[fid][2]) for i in items if oldest <= i["published"] <= newest]
-        if not any(raw.values()):
-            raise NewsUnavailable("nenhum feed respondeu com notícias recentes")
-        cats = []
-        for cid, label, feeds, kw in S.CATEGORIES:
-            items = [dict(i) for f in feeds for i in raw[f]]
-            if kw == "ai":
-                items = [i for i in items if is_ai(i)]
-            groups = cluster(items)
-            built = [make_item(g, now) for g in groups]
-            built.sort(key=lambda x: (min(x["n_sources"], 3), x["published"]), reverse=True)
-            cats.append({"id": cid, "label": label, "items": built[:PER_CATEGORY]})
-        br = now.astimezone(dt.timezone(dt.timedelta(hours=-3)))
-        return {"generated_at": _iso(now), "date": br.date().isoformat(), "categories": cats, "unavailable": failed,
-                "note": "Títulos, trechos e datas vêm das próprias fontes. 'Confirmado' = mais de um veículo publicou; não é checagem de fatos."}
+                    self.store.set_usage(uid, month, 0)       # garante o documento e o mês certo
+            except Exception:
+                log.exception("api: não consegui ler a cota do mês; começando do zero na memória")
+            st = self._usage[uid] = {"month": month, "count": count}
+        elif st["month"] != month:                            # virou o mês
+            st["month"], st["count"] = month, 0
+            self._bg(self._safe, self.store.set_usage, uid, month, 0)
+        return st
 
-    def get(self, refresh: bool = False) -> dict:
-        with self._lock:
-            age = self._now() - self._at
-            if self._data is not None and (age < MIN_REFRESH or (age < CACHE_TTL and not refresh)):
-                return dict(self._data, cached=True, stale=False)
-            try:
-                self._data, self._at = self._build(), self._now()
-                return dict(self._data, cached=False, stale=False)
-            except NewsUnavailable:
-                if self._data is not None:                      # sem rede agora: devolve o último resumo, dizendo que é antigo
-                    return dict(self._data, cached=True, stale=True)
-                raise
+    @staticmethod
+    def _safe(fn, *a):
+        try:
+            fn(*a)
+        except Exception:
+            log.warning("api: falha ao gravar a cota (vale só na memória até o próximo ajuste)")
+
+    def begin(self, uid: str, key_id: str) -> dict:
+        """Gasta 1 requisição. Levanta plan_required / rate_limited / quota_exceeded."""
+        self._need()
+        p = plans.get(self._need_plan(uid))
+        now = self._now()
+        with self._lock(uid):
+            win = self._win.setdefault(key_id, deque())
+            while win and win[0] <= now - 60:
+                win.popleft()
+            if len(win) >= p.api_per_minute:
+                wait = max(1, int(60 - (now - win[0])) + 1)
+                raise ApiError(429, "rate_limited", f"Limite de {p.api_per_minute} requisições por minuto.", retry_after=wait)
+            st = self._load_usage(uid, self._month())
+            if st["count"] >= p.api_monthly:
+                raise ApiError(429, "quota_exceeded", "A cota mensal do seu plano acabou.")
+            st["count"] += 1
+            win.append(now)
+            self._bg(self._safe, self.store.bump_usage, uid, 1)
+            if len(self._win) > WINDOW_MAX_KEYS:
+                self._win = {k: v for k, v in self._win.items() if v and v[-1] > now - 60}
+            return {"used": st["count"], "limit": p.api_monthly}
+
+    def refund(self, uid: str, key_id: str = "") -> None:
+        """Devolve 1 requisição (o modelo falhou: não se cobra resposta que não existiu)."""
+        with self._lock(uid):
+            st = self._usage.get(uid)
+            if st and st["count"] > 0:
+                st["count"] -= 1
+                self._bg(self._safe, self.store.bump_usage, uid, -1)
+            win = self._win.get(key_id)
+            if win:
+                win.pop()
+
+    def usage(self, uid: str) -> dict:
+        self._need()
+        plan_id = self._plan_of(uid)
+        p, ok = plans.get(plan_id), plans.can(plan_id, "api")
+        today = self._today()
+        with self._lock(uid):
+            used = self._load_usage(uid, self._month())["count"] if ok else 0
+        nxt = (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
+        return {"plan": p.id, "plan_name": p.name, "api": ok, "month": self._month(),
+                "used": used, "limit": p.api_monthly if ok else 0, "per_minute": p.api_per_minute if ok else 0,
+                "resets_on": nxt.isoformat(), "max_keys": MAX_KEYS}
