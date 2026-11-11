@@ -15,10 +15,20 @@
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const T = (k, v) => (typeof I18N !== 'undefined' ? I18N.t(k, v) : k);
-  const LOCALE = () => (typeof I18N !== 'undefined' ? I18N.locale() : 'pt-BR');
-  const LANG = () => (typeof I18N !== 'undefined' ? I18N.get() : 'pt');
-  const BASE = () => ((typeof ORION_CONFIG !== 'undefined' && ORION_CONFIG.API_URL) || '').replace(/\/$/, '');
+  /* O app.js roda dentro de um bloco (standby): I18N e ORION_CONFIG não são globais. Ele expõe window.ORION_APP (ponte) e é só por ela
+     que este módulo lê idioma, textos e o endereço do servidor. Sem a ponte, cai para os textos em português de window.ORION_I18N. */
+  const APP = () => window.ORION_APP || null;
+  const T = (k, v) => {
+    const a = APP();
+    if (a) return a.t(k, v);
+    const D = window.ORION_I18N || {};
+    let s = (D.pt && D.pt[k]) || (D.en && D.en[k]) || k;
+    if (v) for (const x in v) s = s.split('{' + x + '}').join(v[x]);
+    return s;
+  };
+  const LOCALE = () => (APP() ? APP().locale() : 'pt-BR');
+  const LANG = () => (APP() ? APP().lang() : 'pt');
+  const BASE = () => ((APP() && APP().apiUrl()) || '').replace(/\/$/, '');
   const DOCS_URL = 'https://github.com/Janderfdev/orion/blob/main/docs/API.md';
 
   /* ── pequenos utilitários ── */
