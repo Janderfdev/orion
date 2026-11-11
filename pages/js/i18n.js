@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ORION AI V5.0 — Textos da interface em 6 idiomas (pages/js/i18n.js)
+   ORION AI V5.2.0 — Textos da interface em 6 idiomas (pages/js/i18n.js)
    Ordem em cada linha: Português · English · Español · Français · Deutsch · Italiano
    Carregar ANTES do app.js. Marcas (ORION AI, ORION Core, Hey ORION) nunca são traduzidas.
    Chaves que faltam em um idioma caem para o inglês.
@@ -11,7 +11,7 @@ window.ORION_I18N = (() => {
   const same = (key, v) => add(key, v, v, v, v, v, v);
 
   same('online', 'ORION ONLINE');
-  add('version', 'VERSÃO V5.0', 'VERSION V5.0', 'VERSIÓN V5.0', 'VERSION V5.0', 'VERSION V5.0', 'VERSIONE V5.0');
+  add("version", "VERSÃO V5.2.0", "VERSION V5.2.0", "VERSIÓN V5.2.0", "VERSION V5.2.0", "VERSION V5.2.0", "VERSIONE V5.2.0");
   add('status.listening', 'Ouvindo…', 'Listening…', 'Escuchando…', 'J’écoute…', 'Ich höre zu…', 'In ascolto…');
   add('status.processing', 'Processando…', 'Processing…', 'Procesando…', 'Traitement…', 'Verarbeitung…', 'Elaborazione…');
   add('status.responding', 'Respondendo…', 'Responding…', 'Respondiendo…', 'Réponse…', 'Antwort…', 'Risposta…');
@@ -89,7 +89,7 @@ window.ORION_I18N = (() => {
   add('code.codeDesc', 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.', 'A programming assistant: it reads your project, proposes changes and only applies what you approve.', 'Un asistente de programación: lee tu proyecto, propone cambios y solo aplica lo que apruebes.', 'Un assistant de programmation : il lit votre projet, propose des modifications et n’applique que ce que vous approuvez.', 'Ein Programmierassistent: Er liest dein Projekt, schlägt Änderungen vor und wendet nur an, was du genehmigst.', 'Un assistente di programmazione: legge il tuo progetto, propone modifiche e applica solo ciò che approvi.');
   add('code.apiDesc', 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.', 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.', 'Usa la inteligencia de ORION en tus propias apps, con clave de API y límites por plan.', 'Utilisez l’intelligence d’ORION dans vos propres applications, avec une clé d’API et des limites selon le forfait.', 'Nutze die Intelligenz von ORION in deinen eigenen Apps – mit API-Schlüssel und Limits je nach Tarif.', 'Usa l’intelligenza di ORION nelle tue app, con chiave API e limiti per piano.');
   add('code.planned', 'Previsto: {v}', 'Planned: {v}', 'Previsto: {v}', 'Prévu : {v}', 'Geplant: {v}', 'Previsto: {v}');
-  add('code.note', 'Ainda não está disponível. Versões e datas podem mudar.', 'Not available yet. Versions and dates may change.', 'Aún no está disponible. Las versiones y fechas pueden cambiar.', 'Pas encore disponible. Les versions et les dates peuvent changer.', 'Noch nicht verfügbar. Versionen und Termine können sich ändern.', 'Non ancora disponibile. Versioni e date possono cambiare.');
+  add('code.note', 'O ORION CODE ainda não está disponível. Versões e datas podem mudar.', 'ORION CODE isn’t available yet. Versions and dates may change.');
   add('code.close', 'Fechar', 'Close', 'Cerrar', 'Fermer', 'Schließen', 'Chiudi');
 
   same('theme.indigo', 'Cosmic Indigo'); same('theme.midnight', 'Dark Blue'); same('theme.purple', 'Deep Purple');
@@ -179,6 +179,123 @@ window.ORION_I18N = (() => {
   add('task.lStepOff', 'Passo reaberto: ', 'Step reopened: ', 'Paso reabierto: ', 'Étape rouverte : ', 'Schritt wieder geöffnet: ', 'Passaggio riaperto: ');
   add('task.lStepAdd', 'Passo adicionado: ', 'Step added: ', 'Paso añadido: ', 'Étape ajoutée : ', 'Schritt hinzugefügt: ', 'Passaggio aggiunto: ');
   add('task.progress', 'Progresso', 'Progress', 'Progreso', 'Progression', 'Fortschritt', 'Avanzamento');
+
+
+  /* ═══ V5.2.0 — planos e faturamento, ORION API, Resumo do Dia. pt/en completos; es·fr·de·it caem para o inglês (regra do arquivo). ═══ */
+  add("plans.title", "Planos e faturamento", "Plans & billing");
+  add("plans.sub", "Escolha o plano ideal para você.", "Pick the plan that fits you.");
+  add("plans.badge.free", "Gratuito", "Free");
+  add("plans.badge.plus", "Premium", "Premium");
+  add("plans.badge.pro", "Profissional", "Professional");
+  add("plans.tag.free", "A experiência essencial do ORION.", "The essential ORION experience.");
+  add("plans.tag.plus", "Mais capacidade, mais vozes e acesso ao ORION API.", "More capacity, more voices and ORION API access.");
+  add("plans.tag.pro", "Limites maiores e mais cota no ORION API.", "Higher limits and a bigger ORION API quota.");
+  add("plans.chat", "Conversas com o ORION", "Chat with ORION");
+  add("plans.perDay", "{n} perguntas por dia", "{n} questions per day");
+  add("plans.voice1", "1 opção de voz", "1 voice option");
+  add("plans.voiceN", "{n} opções de voz", "{n} voice options");
+  add("plans.history", "Histórico de conversas", "Conversation history");
+  add("plans.apiNo", "Sem acesso ao ORION API", "No ORION API access");
+  add("plans.apiYes", "ORION API: {m} requisições por mês", "ORION API: {m} requests per month");
+  add("plans.apiRpm", "Até {n} requisições por minuto", "Up to {n} requests per minute");
+  add("plans.price", "{p}/mês", "{p}/month");
+  add("plans.free0", "Grátis", "Free");
+  add("plans.noPrice", "Preço em breve", "Price coming soon");
+  add("plans.current", "Plano atual", "Current plan");
+  add("plans.subscribe", "Assinar {name}", "Subscribe to {name}");
+  add("plans.soon", "Em breve", "Coming soon");
+  add("plans.unavailable", "Pagamentos indisponíveis agora", "Payments unavailable right now");
+  add("plans.redirecting", "Abrindo o pagamento…", "Opening checkout…");
+  add("plans.secure", "O pagamento é feito no Mercado Pago. O ORION não recebe nem guarda os dados do seu cartão.", "Payment is handled by Mercado Pago. ORION never receives or stores your card details.");
+  add("plans.confirming", "Confirmando o pagamento…", "Confirming your payment…");
+  add("plans.confirmed", "Plano {name} ativo!", "{name} plan is active!");
+  add("plans.notYet", "Ainda não recebemos a confirmação. Pode levar alguns minutos; volte aqui depois.", "We haven’t received the confirmation yet. It can take a few minutes; check back soon.");
+  add("plans.mine", "Minha assinatura", "My subscription");
+  add("plans.st.none", "Sem assinatura ativa", "No active subscription");
+  add("plans.st.authorized", "Ativa", "Active");
+  add("plans.st.paused", "Pausada", "Paused");
+  add("plans.st.cancelled", "Cancelada", "Canceled");
+  add("plans.until", "Acesso até {d}", "Access until {d}");
+  add("plans.cancelEnd", "Cancelada: o acesso continua até {d}.", "Canceled: access continues until {d}.");
+  add("plans.cancel", "Cancelar assinatura", "Cancel subscription");
+  add("plans.cancelSure", "Confirmar cancelamento", "Confirm cancellation");
+  add("plans.cancelDone", "Assinatura cancelada. O acesso continua até o fim do período pago.", "Subscription canceled. Access continues until the end of the paid period.");
+  add("plans.hist", "Histórico de pagamentos", "Payment history");
+  add("plans.noHist", "Nenhum lançamento ainda.", "No transactions yet.");
+  add("plans.tx.charge", "Pagamento", "Payment");
+  add("plans.tx.charge_failed", "Pagamento recusado", "Payment declined");
+  add("plans.tx.refund", "Reembolso", "Refund");
+  add("plans.tx.cancel", "Cancelamento", "Cancellation");
+  add("plans.err.billing_unavailable", "Pagamentos indisponíveis agora.", "Payments are unavailable right now.");
+  add("plans.err.plan_unavailable", "Este plano ainda não está à venda.", "This plan isn’t for sale yet.");
+  add("plans.err.email_required", "Sua conta precisa de um e-mail para assinar.", "Your account needs an email to subscribe.");
+  add("plans.err.too_many_checkouts", "Muitas tentativas. Aguarde um pouco.", "Too many attempts. Please wait a bit.");
+  add("plans.err.already_subscribed", "Você já assina este plano.", "You already subscribe to this plan.");
+  add("plans.err.no_active_subscription", "Você não tem uma assinatura ativa.", "You have no active subscription.");
+  add("plans.err.provider_error", "O Mercado Pago não respondeu. Tente de novo.", "Mercado Pago didn’t respond. Please try again.");
+  add("plans.err.generic", "Algo deu errado. Tente de novo.", "Something went wrong. Please try again.");
+  add("plans.loading", "Carregando…", "Loading…");
+  add("api.title", "ORION API", "ORION API");
+  add("api.sub", "Use o ORION nos seus próprios projetos.", "Use ORION in your own projects.");
+  add("api.needPlan", "O ORION API está disponível a partir do plano ORION PLUS.", "ORION API is available from the ORION PLUS plan.");
+  add("api.seePlans", "Ver planos", "See plans");
+  add("api.usage", "Uso da API", "API usage");
+  add("api.usageSub", "Requisições deste mês", "Requests this month");
+  add("api.used", "{u} de {l}", "{u} of {l}");
+  add("api.perMin", "Limite: {n} por minuto", "Limit: {n} per minute");
+  add("api.resets", "A cota renova em {d}", "Quota resets on {d}");
+  add("api.plan", "Plano {name}", "{name} plan");
+  add("api.keys", "Chaves de API", "API keys");
+  add("api.keysSub", "A chave aparece completa só uma vez, quando é criada. O ORION guarda apenas uma impressão digital dela.", "The full key is shown only once, when it’s created. ORION stores only a fingerprint of it.");
+  add("api.noKeys", "Você ainda não criou nenhuma chave.", "You haven’t created any key yet.");
+  add("api.namePh", "Nome da chave (ex.: meu app)", "Key name (e.g. my app)");
+  add("api.create", "Criar chave", "Create key");
+  add("api.createdOn", "Criada em {d}", "Created on {d}");
+  add("api.revoke", "Revogar", "Revoke");
+  add("api.rotate", "Girar", "Rotate");
+  add("api.revokeSure", "Confirmar revogação", "Confirm revoke");
+  add("api.rotateSure", "Confirmar rotação", "Confirm rotate");
+  add("api.newKey", "Sua nova chave", "Your new key");
+  add("api.copyNow", "Copie agora: por segurança, ela não será mostrada de novo.", "Copy it now: for security, it won’t be shown again.");
+  add("api.copy", "Copiar", "Copy");
+  add("api.copied", "Copiado!", "Copied!");
+  add("api.gotIt", "Já copiei", "I copied it");
+  add("api.keyLimit", "Limite de {n} chaves. Revogue uma para criar outra.", "Limit of {n} keys. Revoke one to create another.");
+  add("api.example", "Exemplo de requisição", "Request example");
+  add("api.docs", "Documentação", "Documentation");
+  add("api.docsIntro", "Todos os endpoints usam HTTPS e JSON. Envie a chave no cabeçalho Authorization: Bearer.", "All endpoints use HTTPS and JSON. Send the key in the Authorization: Bearer header.");
+  add("api.docsErrors", "Erros: sempre {\"error\": {\"code\", \"message\", \"request_id\"}}", "Errors: always {\"error\": {\"code\", \"message\", \"request_id\"}}");
+  add("api.docsSecurity", "Use a chave só no seu servidor. Nunca a coloque em código de site ou de app público.", "Use the key only on your server. Never put it in website or public app code.");
+  add("api.docsFull", "Abrir a documentação completa", "Open the full documentation");
+  add("api.err.plan_required", "O ORION API está disponível a partir do plano PLUS.", "ORION API is available from the PLUS plan.");
+  add("api.err.key_limit", "Você atingiu o limite de chaves.", "You reached the key limit.");
+  add("api.err.key_not_found", "Chave não encontrada.", "Key not found.");
+  add("api.err.api_unavailable", "O ORION API está indisponível agora.", "ORION API is unavailable right now.");
+  add("api.err.generic", "Algo deu errado. Tente de novo.", "Something went wrong. Please try again.");
+  add("code.apiOpen", "Abrir o ORION API", "Open ORION API");
+  add("code.available", "Disponível", "Available");
+  add("news.title", "Resumo do Dia", "Daily Brief");
+  add("news.refresh", "Atualizar", "Refresh");
+  add("news.updated", "Atualizado às {t}", "Updated at {t}");
+  add("news.loading", "Buscando as notícias…", "Fetching the news…");
+  add("news.error", "Não consegui buscar as notícias agora. Tente de novo em instantes.", "I couldn’t fetch the news right now. Please try again shortly.");
+  add("news.empty", "Sem notícias recentes nesta categoria.", "No recent news in this category.");
+  add("news.stale", "Mostrando o último resumo salvo: as fontes não responderam agora.", "Showing the last saved brief: the sources didn’t respond just now.");
+  add("news.srcFail", "{n} fonte(s) não responderam.", "{n} source(s) didn’t respond.");
+  add("news.note", "Títulos, trechos e datas vêm das próprias fontes. “Confirmado” significa que mais de um veículo publicou a notícia; não é checagem de fatos.", "Headlines, snippets and dates come from the sources themselves. “Confirmed” means more than one outlet published the story; it is not fact-checking.");
+  add("news.st.confirmed", "Confirmado por {n} fontes", "Confirmed by {n} sources");
+  add("news.st.developing", "Em desenvolvimento", "Developing");
+  add("news.st.single", "Fonte única", "Single source");
+  add("news.cat.mundo", "Mundo", "World");
+  add("news.cat.tecnologia", "Tecnologia", "Technology");
+  add("news.cat.ia", "IA", "AI");
+  add("news.cat.ciencia", "Ciência", "Science");
+  add("news.cat.economia", "Economia", "Economy");
+  add("news.cat.negocios", "Negócios", "Business");
+  add("news.cat.atualidades", "Atualidades", "Current affairs");
+  add("news.read", "Ler na fonte", "Read at source");
+  add("news.langEn", "Em inglês", "In English");
+  add("vs.locked", "Voz do plano PLUS", "PLUS plan voice");
 
   D.langs = LANGS;
   D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
