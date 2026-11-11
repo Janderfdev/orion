@@ -1,154 +1,82 @@
-"""Testes do catálogo de planos V5.2.0 e da integração com a cota (sem rede)."""
-import importlib
+"""V5.2.0: /plan, vozes travadas por plano em /models, /speak e /speak/preview (login, ElevenLabs e plano simulados)."""
+from types import SimpleNamespace
 
 import pytest
 
-from billing import plans
+pytest.importorskip("httpx")
+from fastapi.testclient import TestClient
+
+import main
+
+OK = {"Authorization": "Bearer ok"}
 
 
-# ── catálogo ──
-def test_order_and_ranks():
-    assert plans.ORDER == ("free", "plus", "pro", "ultra")
-    assert [plans.PLANS[i].rank for i in plans.ORDER] == [0, 1, 2, 3]
-
-
-def test_unknown_or_bad_plan_is_free():
-    for bad in (None, "", "   ", "admin", "PRO ", 5, ["pro"], {"plan": "ultra"}):
-        got = plans.get(bad).id
-        assert got in ("free", "pro"), bad          # "PRO " é normalizado de propósito; o resto vira free
-        if bad != "PRO ":
-            assert got == "free"
-    assert plans.get("PRO ").id == "pro"
-
-
-def test_daily_limits_grow_with_plan():
-    lim = plans.daily_limits()
-    assert lim["free"] < lim["plus"] < lim["pro"] < lim["ultra"]
-
-
-def test_each_plan_includes_the_previous_one():
-    for a, b in zip(plans.ORDER, plans.ORDER[1:]):
-        assert plans.PLANS[a].features <= plans.PLANS[b].features, f"{b} deve ter tudo de {a}"
-
-
-def test_voices_free_one_paid_four():
-    assert plans.PLANS["free"].voice_slots == (1,)
-    for p in ("plus", "pro", "ultra"):
-        assert plans.PLANS[p].voice_slots == (1, 2, 3, 4)
-    assert plans.allows_voice("free", 1) and not plans.allows_voice("free", 2)
-    assert plans.allows_voice("plus", 4) and not plans.allows_voice("plus", 5)
-    assert not plans.allows_voice("plus", True)      # bool não é número de slot
-    assert not plans.allows_voice("plus", "2")
-
-
-def test_api_access_starts_at_plus_with_growing_quota():
-    assert not plans.can("free", "api") and plans.PLANS["free"].api_monthly == 0
-    m = [plans.PLANS[p].api_monthly for p in ("plus", "pro", "ultra")]
-    assert all(plans.can(p, "api") for p in ("plus", "pro", "ultra"))
-    assert 0 < m[0] < m[1] < m[2]
-
-
-def test_unreleased_features_are_never_granted_even_to_ultra():
-    # ORION CODE é V5.5.0 e early_access ainda não tem nada para liberar: não antecipar versões futuras
-    for p in plans.ORDER:
-        assert not plans.can(p, "orion_code")
-        assert not plans.can(p, "early_access")
-    assert "orion_code" in plans.PLANS["pro"].features      # o direito existe; só não está liberado
-
-
-def test_unknown_feature_is_denied():
-    assert not plans.can("ultra", "teletransporte")
-
-
-def test_free_is_never_purchasable_and_no_price_means_not_for_sale(monkeypatch):
-    assert not plans.PLANS["free"].purchasable
-    for v in ("ORION_PRICE_PLUS", "ORION_PRICE_PRO", "ORION_PRICE_ULTRA"):
-        monkeypatch.delenv(v, raising=False)
-    fresh = plans._build()
-    assert all(p.price_cents is None and not p.purchasable for p in fresh.values())
-
-
-def test_price_from_env_and_garbage_is_ignored(monkeypatch):
-    monkeypatch.setenv("ORION_PRICE_PLUS", "1990")
-    monkeypatch.setenv("ORION_PRICE_PRO", "abc")
-    monkeypatch.setenv("ORION_PRICE_ULTRA", "-5")
-    fresh = plans._build()
-    assert fresh["plus"].price_cents == 1990 and fresh["plus"].purchasable
-    assert fresh["pro"].price_cents is None and fresh["ultra"].price_cents is None
-
-
-def test_limits_from_env_and_bad_values_fall_back(monkeypatch):
-    monkeypatch.setenv("ORION_LIMIT_PLUS", "250")
-    monkeypatch.setenv("ORION_LIMIT_PRO", "muitos")
-    monkeypatch.setenv("ORION_LIMIT_ULTRA", "-3")
-    fresh = plans._build()
-    assert fresh["plus"].daily_questions == 250
-    assert fresh["pro"].daily_questions == 500            # inválido -> padrão
-    assert fresh["ultra"].daily_questions == 0            # negativo vira 0 (nunca "ilimitado" por engano)
-
-
-# ── plano vencido ──
-def test_effective_plan_expiry():
-    assert plans.effective_plan("plus", "2026-11-30", "2026-11-09") == "plus"
-    assert plans.effective_plan("plus", "2026-11-09", "2026-11-09") == "plus"     # vence no fim do dia 'until'
-    assert plans.effective_plan("plus", "2026-11-08", "2026-11-09") == "free"
-    assert plans.effective_plan("ultra", "", "2026-11-09") == "ultra"             # sem 'until' = sem vencimento
-    assert plans.effective_plan("free", "2000-01-01", "2026-11-09") == "free"
-    assert plans.effective_plan("inventado", "", "2026-11-09") == "free"
-
-
-# ── catálogo público (o site) ──
-def test_public_catalog_has_no_internal_fields_and_hides_unreleased():
-    cat = plans.public_catalog()
-    assert [c["id"] for c in cat] == list(plans.ORDER)
-    allowed = {"id", "name", "price_cents", "currency", "purchasable", "daily_questions", "voices", "api", "features"}
-    for c in cat:
-        assert set(c) == allowed
-        assert "orion_code" not in c["features"] and "early_access" not in c["features"]
-    assert cat[0]["api"] is None and cat[1]["api"]["monthly"] > 0
-
-
-# ── integração com core/quota.py ──
 @pytest.fixture
-def quota_mod():
-    pytest.importorskip("google.oauth2")
-    import core.quota as q
-    return importlib.reload(q)
+def ctx(monkeypatch):
+    plan = {"v": "free"}
+    synth = []
+
+    async def fake_auth(authorization, count=False, with_email=False):
+        if authorization != "Bearer ok":
+            raise main.HTTPException(401, "Não autorizado.")
+        return ("uid1", "tok", "a@b.com") if with_email else ("uid1", "tok")
+    monkeypatch.setattr(main, "_auth", fake_auth)
+    monkeypatch.setattr(main.quota, "status", lambda uid: {"plan": plan["v"], "used": 3, "limit": 10})
+    fake_el = SimpleNamespace(
+        configured=lambda: True, voices=lambda: [{"slot": s, "label": f"Voz {s}"} for s in (1, 2, 3, 4)],
+        voice_id=lambda s: f"vid{s}", clean=lambda t: t, SLOTS=(1, 2, 3, 4),
+        synthesize=lambda text, voice, pace, expr: synth.append(voice) or b"MP3",
+        PACE_MIN=0.8, PACE_MAX=1.2, PACE_DEFAULT=1.0, EXPR_MIN=0.0, EXPR_MAX=1.0, EXPR_DEFAULT=0.5)
+    monkeypatch.setattr(main, "elevenlabs", fake_el)
+    monkeypatch.setattr(main, "_tts_ok", lambda uid, n: True)
+    monkeypatch.setattr(main, "registry", SimpleNamespace(default="m", models=lambda: [{"id": "m", "label": "M"}]))
+    return TestClient(main.app, raise_server_exceptions=False), plan, synth
 
 
-def _fake_quota(quota_mod, doc):
-    qt = quota_mod.Quota()
-    qt._admin = type("A", (), {"enabled": True})()
-    qt._get = lambda path: doc if path.startswith("plans/") else None
-    return qt
+def test_plan_endpoint_free_and_plus(ctx):
+    c, plan, _ = ctx
+    assert c.get("/plan").status_code == 401
+    assert c.get("/plan", headers=OK).json() == {"plan": "free", "used": 3, "limit": 10, "voices": [1], "api": False}
+    plan["v"] = "plus"
+    assert c.get("/plan", headers=OK).json() == {"plan": "plus", "used": 3, "limit": 10, "voices": [1, 2, 3, 4], "api": True}
 
 
-def test_quota_limits_come_from_catalog(quota_mod):
-    assert quota_mod.LIMITS == plans.daily_limits() and "ultra" in quota_mod.LIMITS
+def test_plan_endpoint_does_not_spend_a_question(ctx, monkeypatch):
+    c, *_ = ctx
+    monkeypatch.setattr(main.quota, "consume", lambda uid: (_ for _ in ()).throw(AssertionError("não pode gastar pergunta")))
+    assert c.get("/plan", headers=OK).status_code == 200
 
 
-def test_quota_reads_ultra_plan(quota_mod):
-    qt = _fake_quota(quota_mod, {"plan": {"stringValue": "ultra"}})
-    st = {"plan": "free", "plan_at": 0.0}
-    qt._refresh_plan("u", st, "2026-11-09")
-    assert st["plan"] == "ultra"
+def test_models_marks_locked_voices_by_plan(ctx):
+    c, plan, _ = ctx
+    v = c.get("/models", headers=OK).json()
+    assert v["plan"] == "free" and [(x["slot"], x["locked"]) for x in v["voices"]] == [(1, False), (2, True), (3, True), (4, True)]
+    plan["v"] = "pro"
+    assert not any(x["locked"] for x in c.get("/models", headers=OK).json()["voices"])
+    assert "vid" not in c.get("/models", headers=OK).text                         # Voice IDs nunca saem do servidor
 
 
-def test_quota_expired_or_unknown_plan_is_free(quota_mod):
-    for doc in ({"plan": {"stringValue": "pro"}, "until": {"stringValue": "2026-01-01"}},
-                {"plan": {"stringValue": "supremo"}},
-                {"plan": {"stringValue": "  PRO  "}, "until": {"stringValue": "2026-01-01"}}):
-        qt = _fake_quota(quota_mod, doc)
-        st = {"plan": "free", "plan_at": 0.0}
-        qt._refresh_plan("u", st, "2026-11-09")
-        assert st["plan"] == "free", doc
+def test_free_cannot_speak_with_locked_voices_and_nothing_is_synthesized(ctx):
+    c, plan, synth = ctx
+    for path, body in (("/speak", {"text": "oi", "voice": 2}), ("/speak/preview", {"voice": 3, "lang": "pt"})):
+        r = c.post(path, json=body, headers=OK)
+        assert r.status_code == 403 and r.json()["detail"] == "plan:voice_locked"
+    assert synth == []                                                            # o servidor barra ANTES de gastar o ElevenLabs
+    ok = c.post("/speak", json={"text": "oi", "voice": 1}, headers=OK)
+    assert ok.status_code == 200 and ok.content == b"MP3" and synth == [1]
 
 
-def test_quota_consume_respects_ultra_limit(quota_mod, monkeypatch):
-    monkeypatch.setitem(quota_mod.LIMITS, "ultra", 2)
-    qt = _fake_quota(quota_mod, {"plan": {"stringValue": "ultra"}})
-    qt._bg = lambda *a, **k: None
-    qt._load = lambda uid, today: qt._st.setdefault(uid, {"day": today, "count": 0, "plan": "free", "plan_at": 0.0})
-    assert qt.consume("u")["ok"] and qt.consume("u")["ok"]
-    r = qt.consume("u")
-    assert not r["ok"] and r["plan"] == "ultra" and r["limit"] == 2
+def test_paid_plans_can_use_all_four_voices(ctx):
+    c, plan, synth = ctx
+    plan["v"] = "plus"
+    for slot in (1, 2, 3, 4):
+        assert c.post("/speak", json={"text": "oi", "voice": slot}, headers=OK).status_code == 200
+    assert synth == [1, 2, 3, 4]
+
+
+def test_downgrade_locks_voices_again(ctx):
+    c, plan, _ = ctx
+    plan["v"] = "plus"
+    assert c.post("/speak", json={"text": "oi", "voice": 4}, headers=OK).status_code == 200
+    plan["v"] = "free"
+    assert c.post("/speak", json={"text": "oi", "voice": 4}, headers=OK).status_code == 403
