@@ -45,6 +45,10 @@ const I18N = (() => {
 })();
 const t = I18N.t;
 
+/* V5.2.0 — ponte para js/orion-v52.js. Este arquivo roda dentro de um bloco (o do standby): ORION_CONFIG e I18N NÃO são globais,
+   então o módulo dos painéis (Planos, ORION API, Resumo do Dia) só enxerga o que for exposto aqui. */
+window.ORION_APP = { t: (k, v) => I18N.t(k, v), lang: () => I18N.get(), locale: () => I18N.locale(), apiUrl: () => ORION_CONFIG.API_URL };
+
 /* ═══ visual-state.js — máquina de estados visuais da Orb ═══
    STANDBY (cor do tema) → LISTENING (branco escuro) → PROCESSING (cor do tema, mais atividade) → SPEAKING (cor do tema, mais intensa) → STANDBY
    (qualquer) → ERROR (cinza muito escuro: "não entendi" / falhas). Todos os estados vêm de eventos reais (fala, API, áudio, erros). */
@@ -691,12 +695,13 @@ const API = (() => {
     } catch (e) {
       throw fail('No response from core.', e.name === 'AbortError' ? 'timeout' : 'core_unavailable');
     } finally { clearTimeout(timer); }
-    let tts = null;   // motivo da falha da voz vindo do servidor ("tts:<status>:<palavra-chave>")
+    let tts = null, voiceLocked = false;   // motivo da falha da voz vindo do servidor ("tts:<status>:<palavra-chave>")
     if (!res.ok && path.startsWith('/speak')) {
-      try { const j = await res.clone().json(); const mm = /^tts:(\d+):([a-z_]*)$/.exec(j && j.detail); if (mm) tts = { status: +mm[1], kw: mm[2] }; } catch (_) {}
+      try { const j = await res.clone().json(); const mm = /^tts:(\d+):([a-z_]*)$/.exec(j && j.detail); if (mm) tts = { status: +mm[1], kw: mm[2] }; voiceLocked = !!(j && j.detail === 'plan:voice_locked'); } catch (_) {}
     }
     const failT = (msg, code) => { const e = fail(msg, code); if (tts) e.tts = tts; return e; };
     if (res.status === 401) { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); throw fail('Session expired.', 'api_error'); }
+    if (res.status === 403 && voiceLocked) throw failT('Voice locked by plan.', 'voice_locked');   // V5.2.0: voz 2 a 4 só nos planos pagos
     if (res.status === 403) throw failT('No access.', 'forbidden');
     if (res.status === 429) throw failT('Rate limited.', 'rate_limited');
     if (res.status === 402) throw failT('Daily limit.', 'quota_exceeded');   // cota do plano esgotada
@@ -711,6 +716,7 @@ const API = (() => {
     models: () => call('/models', { timeoutMs: 60000 }),   // 60 s: o servidor gratuito pode estar "dormindo"
     ask: (text, model, lang, att) => call('/ask', { method: 'POST', body: Object.assign({ text, model, lang }, att || {}) }),   // lang: 'pt' ou 'en' · att: {image} ou {file}
     clearMemory: () => call('/memory/clear', { method: 'POST' }),
+    plan: () => call('/plan', { timeoutMs: 20000 }),   // V5.2.0: plano e uso de hoje (não gasta pergunta)
     speak: (text, o) => call('/speak', { method: 'POST', body: { text, voice: o.voice, pace: o.pace, expressivity: o.expressivity }, timeoutMs: 20000, blob: true }),
     preview: o => call('/speak/preview', { method: 'POST', body: { voice: o.voice, pace: o.pace, expressivity: o.expressivity, lang: o.lang }, timeoutMs: 20000, blob: true }),
     speakDiag: slot => call('/speak/diag?voice=' + encodeURIComponent(slot || 1), { timeoutMs: 30000 }),
@@ -1109,7 +1115,7 @@ const API = (() => {
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
 
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #taskBtn, #gearBtn, #settingsPanel, #codePanel, #taskPanel, #voiceScreen')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #taskBtn, #gearBtn, #newsBtn, #settingsPanel, #codePanel, #taskPanel, #planPanel, #apiPanel, #newsPanel, #voiceScreen')) closePanel();
   });
   orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
   orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && hasAnswer) scheduleHold(5000); });
@@ -1155,7 +1161,7 @@ const API = (() => {
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     if (vs.isOpen()) return;
-    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open, #taskPanel.open');
+    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open, #taskPanel.open, #planPanel.open, #apiPanel.open, #newsPanel.open');
     if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
@@ -1184,9 +1190,11 @@ const API = (() => {
       models = Array.isArray(d.models) ? d.models : [];
       if (!models.some(m => m.id === prefs.model)) { prefs.model = d.default || (models[0] && models[0].id) || null; savePrefs(); }
       ttsOn = !!d.tts;   // o servidor tem a voz do ElevenLabs configurada?
-      voices = Array.isArray(d.voices) ? d.voices.filter(v => v && Number.isInteger(v.slot) && v.slot >= 1 && v.slot <= 4) : [];
-      if (ttsOn && voices.length && !voices.some(v => v.slot === prefs.slot)) { prefs.slot = voices[0].slot; savePrefs(); }
+      voices = Array.isArray(d.voices) ? d.voices.filter(v => v && Number.isInteger(v.slot) && v.slot >= 1 && v.slot <= 4).map(v => ({ slot: v.slot, label: v.label, locked: !!v.locked })) : [];
+      const usable = voices.filter(v => !v.locked);   // V5.2.0: o plano FREE tem 1 voz; PLUS e PRO, 4 (o servidor também confere)
+      if (ttsOn && usable.length && !usable.some(v => v.slot === prefs.slot)) { prefs.slot = usable[0].slot; savePrefs(); }
       online = true; coreErr = null;
+      loadPlan();
     } catch (err) {
       online = false; coreErr = err.code || 'api_error';
       LOGGER.warn('models_unavailable', { code: coreErr });
@@ -1194,6 +1202,21 @@ const API = (() => {
     }
     loading = false; settings.sync();
   }
+
+  /* ── V5.2.0: plano e uso de hoje (GET /plan, não gasta pergunta): alimenta o chip do plano e a tela de planos ── */
+  async function loadPlan() {
+    if (!API.configured()) return;
+    try {
+      const d = await API.plan();
+      if (d && Number.isFinite(d.used) && Number.isFinite(d.limit)) {
+        const prev = quota && quota.plan;
+        quota = { used: d.used, limit: d.limit, plan: String(d.plan || 'free').slice(0, 8) };
+        settings.sync();
+        if (prev && prev !== quota.plan) loadModels();   // o plano mudou (assinou/cancelou/venceu): relê quais vozes estão liberadas
+      }
+    } catch (_) { /* sem plano novo: o chip mostra o último valor conhecido */ }
+  }
+  window.ORION_PLAN_REFRESH = loadPlan;
 
   /* ── Voz e Fala (tela dedicada) ──
      Composição: a Orb original, dois arcos concêntricos (interno = intensidade da voz, externo = ritmo da fala; desenhados por
@@ -1211,9 +1234,11 @@ const API = (() => {
         const s = +d.dataset.slot, v = voices.find(x => x.slot === s);
         const name = t('vs.voiceN', { n: s });                 // "Voz 1" … "Voz 4": sem descrições das vozes
         d.querySelector('.vs-vname').textContent = name;
+        const locked = !!(v && v.locked);
         d.disabled = !(eleven && v);
-        d.setAttribute('aria-checked', String(prefs.slot === s));
-        d.setAttribute('aria-label', name);
+        d.dataset.locked = String(locked);
+        d.setAttribute('aria-checked', String(prefs.slot === s && !locked));
+        d.setAttribute('aria-label', locked ? name + ' — ' + t('vs.locked') : name);
       });
       dock.style.setProperty('--sel', String(prefs.slot - 1));   // o indicador índigo desliza até a voz ativa
     }
@@ -1222,7 +1247,7 @@ const API = (() => {
       if (previewing) { stopSpeech(); return; }                 // clicar de novo interrompe a prévia
       if (processing) return;
       const err = () => { const gen = setState('error', ''); setTimeout(() => { if (stateGen === gen && curState === 'error') setState('standby'); }, 1400); };
-      if (ttsOn !== true || !voices.some(v => v.slot === prefs.slot)) { err(); return; }
+      if (ttsOn !== true || !voices.some(v => v.slot === prefs.slot && !v.locked)) { err(); return; }
       stopSpeech();
       previewing = true;
       startSpeech('', () => { previewing = false; if (curState === 'speaking') setState('standby'); }, {
@@ -1249,6 +1274,7 @@ const API = (() => {
 
     dots.forEach(d => d.addEventListener('click', () => {
       if (d.disabled) return;
+      if (d.dataset.locked === 'true') { hide(); if (window.ORION_PLANS) window.ORION_PLANS.open(); return; }   // voz de plano pago: leva à tela de planos
       prefs.slot = +d.dataset.slot; savePrefs(); sync();
       if (previewing) stopSpeech();
       preview();                                                // tocar numa voz toca uma prévia
@@ -1298,10 +1324,10 @@ const API = (() => {
               <span class="code-ver">${t('code.planned', { v: 'V5.5.0' })}</span>
             </div>
             <div class="code-card">
-              <span class="code-badge">${t('code.soon')}</span>
+              <span class="code-badge ok">${t('code.available')}</span>
               <h3>ORION API</h3>
               <p>${t('code.apiDesc')}</p>
-              <span class="code-ver">${t('code.planned', { v: 'V5.2.0' })}</span>
+              <button id="apiOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('code.apiOpen')}</button>
             </div>
           </div>
           <p class="code-note">${t('code.note')}</p>
@@ -1310,6 +1336,7 @@ const API = (() => {
       document.body.appendChild(panel);
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#codeClose').addEventListener('click', () => setOpen(false));
+      panel.querySelector('#apiOpen').addEventListener('click', () => { if (window.ORION_API_PANEL) window.ORION_API_PANEL.open(); });   // V5.2.0: o painel do ORION API fecha este (Esc) e abre
     }
     function setOpen(on) {
       if (on) {
@@ -1427,7 +1454,7 @@ const API = (() => {
             <button id="signOutBtn" class="pill-btn danger grow" type="button">${IC.out}${t('set.signout')}</button>
             <button id="upgradeBtn" class="pill-btn primary grow" type="button">${IC.star}${t('set.upgrade')}</button>
           </div>
-          <p class="settings-hint" id="settingsHint">ORION AI V5.0</p>
+          <p class="settings-hint" id="settingsHint">ORION AI V5.2.0</p>
           <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
         </div>`;
       document.body.appendChild(panel);
@@ -1476,7 +1503,8 @@ const API = (() => {
       });
       panel.querySelector('#signOutBtn').addEventListener('click', () => { if (window.ORION_SIGNOUT) window.ORION_SIGNOUT(); });
       const upNote = panel.querySelector('#upgradeNote'), upHint = panel.querySelector('#settingsHint'); let upTimer = null;
-      panel.querySelector('#upgradeBtn').addEventListener('click', () => {   // planos PLUS/PRO chegam na V5.2.0: por enquanto, só um aviso (no lugar da versão)
+      panel.querySelector('#upgradeBtn').addEventListener('click', () => {   // V5.2.0: abre Planos e faturamento (orion-v52.js)
+        if (window.ORION_PLANS) { window.ORION_PLANS.open(); return; }
         upNote.textContent = t('set.upgradeSoon'); upNote.hidden = false; upHint.hidden = true;
         clearTimeout(upTimer); upTimer = setTimeout(() => { upNote.hidden = true; upHint.hidden = false; }, 4500);
       });
@@ -1485,7 +1513,7 @@ const API = (() => {
     function setOpen(on) {
       if (!panel) build();
       open = on;
-      if (open) { sync(); if (!online) loadModels(); }
+      if (open) { sync(); if (!online) loadModels(); loadPlan(); }
       panel.classList.toggle('open', open);
       if (open) setTimeout(() => { const c = panel && panel.querySelector('#setClose'); if (c && open) c.focus(); }, 80);
     }
