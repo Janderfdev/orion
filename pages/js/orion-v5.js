@@ -21,7 +21,7 @@
   arc.className = 'orb-arc'; arc.setAttribute('aria-hidden', 'true');
   zone.insertBefore(arc, orb);
   const body = document.body, cap = $('capBox'), form = $('askForm');
-  const MODS = [['#settingsPanel', 'gearBtn'], ['#codePanel', 'codeBtn'], ['#taskPanel', 'taskBtn']];
+  const MODS = [['#settingsPanel', 'gearBtn'], ['#codePanel', 'codeBtn'], ['#taskPanel', 'taskBtn'], ['#newsPanel', 'newsBtn'], ['#planPanel', ''], ['#apiPanel', '']];   // V5.2.0: Resumo do Dia, Planos e ORION API (orion-v52.js)
   let morphed = false, moduleOpen = false, textMode = false, capOn = false, src = 'voice';
 
   function sync() {
@@ -250,7 +250,7 @@
     blocked: () => { const v = $('voiceScreen'); return !!(v && v.classList.contains('open')); },
     title: () => T().name, sub: () => T().sub, closeLabel: () => T().close,
     // só um painel por vez: fecha Configurações / ORION CODE pelo mesmo caminho do Esc do app.js
-    beforeOpen: () => { if (document.querySelector('#settingsPanel.open, #codePanel.open')) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); },
+    beforeOpen: () => { if (document.querySelector('#settingsPanel.open, #codePanel.open, #newsPanel.open, #planPanel.open, #apiPanel.open')) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); },
     mount: card => {
       tasks = load(); sel = null; tab = 'details'; showForm = false; ensureSel();
       const head = card.querySelector('.set-head'), closeBtn = head.querySelector('.icon-btn');
@@ -265,7 +265,7 @@
   });
 
   // abrir Configurações ou ORION Code enquanto a Multitarefa está aberta troca de painel (só um por vez)
-  ['gearBtn', 'codeBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', () => { if (panel.isOpen()) panel.setOpen(false); }, true); });
+  ['gearBtn', 'codeBtn', 'newsBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', () => { if (panel.isOpen()) panel.setOpen(false); }, true); });
 
   // o rótulo do botão acompanha o idioma da interface
   const label = () => { const n = T().name; taskBtn.setAttribute('aria-label', n); taskBtn.title = n; };
