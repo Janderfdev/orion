@@ -1,4 +1,4 @@
- <div align="center">
+<div align="center">
 
 # 🌌 ORION AI
 
@@ -7,7 +7,7 @@
 **“The future begins with curiosity.”**
 
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-5.0-4B287D?style=for-the-badge)](#-version-history)
+[![Version](https://img.shields.io/badge/Version-5.2.0-4B287D?style=for-the-badge)](#-version-history)
 [![Status](https://img.shields.io/badge/Status-Beta-FF9800?style=for-the-badge)](#-current-status)
 [![Launch](https://img.shields.io/badge/Public%20Launch-May%202027-4B282D?style=for-the-badge)](#-public-launch--2027)
 [![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](LICENSE)
@@ -244,7 +244,7 @@ API keys and other secrets must remain protected on the backend and must never b
 
 # 📍 Current Status
 
-**Current version: V5.0 — Beta**
+**Current version: V5.2.0 — Beta**
 
 ORION AI is in active development, evolving from its foundational interface and model integration toward a more structured system for orchestration, tools and future platform capabilities.
 
@@ -265,6 +265,19 @@ Feedback and testing are valuable, but the project may still contain bugs, incom
 
 ---
 
+## What V5.2.0 adds
+
+- **Plans — ORION FREE, PLUS and PRO.** One catalog (`backend/billing/plans.py`) decides what each plan can do; limits and prices come from server settings, never from the browser. ORION ULTRA and ORION CODE are planned for V5.5.0.
+- **Subscriptions with Mercado Pago.** Checkout, webhook with signature validation, renewals, declined payments, cancellation, refunds and payment history. A plan is activated only after the server confirms the payment with the provider. Card data never reaches ORION. See [`docs/BILLING.md`](docs/BILLING.md).
+- **ORION API.** API keys (shown once, stored only as a hash), rotation and revocation, per-minute limits, monthly quota, standardized errors and `POST /v1/chat` on top of ORION Core. See [`docs/API.md`](docs/API.md).
+- **Daily Brief.** News by category from public RSS feeds of recognized outlets: headlines, snippets, dates and links come from the sources themselves; repeated stories are merged; nothing is written by the model.
+- **Seasonal logos.** Christmas (Dec 1–31) and Easter (Palm Sunday to Easter Sunday, computed every year), always in Brasília time (UTC-3).
+- **Voice by plan.** FREE has one voice; PLUS and PRO have four (enforced by the server).
+
+Payments are validated in the provider's **test environment** first; production credentials are a separate step. Features marked as planned elsewhere in this document remain planned.
+
+---
+
 # 🗺️ Development Roadmap
 
 The roadmap represents the intended direction of development. Milestones and features may change as implementation and testing reveal new requirements.
@@ -272,7 +285,7 @@ The roadmap represents the intended direction of development. Milestones and fea
 | Milestone | Focus |
 |---|---|
 | **V5.0** | ORION Core and agent architecture foundations |
-| **V5.2.0** | ORION API and platform foundations |
+| **V5.2.0** | Plans, subscriptions, ORION API and Daily Brief *(this release)* |
 | **V5.5.0** | ORION CODE and an initial developer preview |
 | **V6.0** | Memory System and personalization |
 | **V7.0** | Vision Layer for supported images and documents |
