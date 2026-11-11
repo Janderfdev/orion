@@ -12,7 +12,7 @@ Firestore:
 
 Variáveis do Render:
   FIREBASE_SERVICE_ACCOUNT   conteúdo COMPLETO do JSON da service account (nunca vai para o GitHub)
-  ORION_LIMIT_FREE (10) · ORION_LIMIT_PLUS (100) · ORION_LIMIT_PRO (500)
+  ORION_LIMIT_FREE (10) · ORION_LIMIT_PLUS (100) · ORION_LIMIT_PRO (500)   (ver billing/plans.py)
   FIREBASE_PROJECT_ID        padrão: orion-ai-b8d39
 
 Velocidade: depois da 1ª pergunta do dia o contador fica em cache no processo e a gravação no
@@ -26,14 +26,12 @@ import requests
 from google.auth.transport import requests as g_requests
 from google.oauth2 import service_account
 
+from billing import plans
+
 log = logging.getLogger("orion.quota")
 
 PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "orion-ai-b8d39")
-LIMITS = {
-    "free": int(os.getenv("ORION_LIMIT_FREE", "10")),
-    "plus": int(os.getenv("ORION_LIMIT_PLUS", "100")),
-    "pro": int(os.getenv("ORION_LIMIT_PRO", "500")),
-}
+LIMITS = plans.daily_limits()   # V5.2.0: o catálogo (billing/plans.py) é a fonte única; free/plus/pro
 PLAN_TTL = 300   # segundos: de quanto em quanto tempo o plano é relido (mudanças manuais valem sem reiniciar)
 TIMEOUT = 6
 _DOCS = f"projects/{PROJECT_ID}/databases/(default)/documents"
@@ -138,11 +136,9 @@ class Quota:
             return
         try:
             f = self._get(f"plans/{quote(uid, safe='')}") or {}
-            plan = f.get("plan", {}).get("stringValue", "free").strip().lower()
+            plan = f.get("plan", {}).get("stringValue", "free")
             until = f.get("until", {}).get("stringValue", "").strip()
-            if plan not in LIMITS or (plan != "free" and until and until < today):
-                plan = "free"   # plano desconhecido ou vencido
-            st["plan"] = plan
+            st["plan"] = plans.effective_plan(plan, until, today)   # desconhecido ou vencido -> free
         except Exception as e:
             log.warning("Não consegui ler o plano no Firestore (%s); mantendo o plano atual.", e)
 
@@ -169,6 +165,27 @@ class Quota:
             st["count"] += 1
             self._bg(self._bump, uid, 1)
             return {"ok": True, "used": st["count"], "limit": limit, "plan": st["plan"]}
+
+    def status(self, uid: str) -> dict:
+        """V5.2.0: plano e uso de HOJE sem gastar pergunta (o site mostra no chip do plano e libera/trava recursos).
+        Devolve {plan, used, limit}. Rodar com asyncio.to_thread."""
+        today = self._today()
+        with self._lock(uid):
+            st = self._st.get(uid)
+            if st is None:
+                st = self._load(uid, today)
+            elif st["day"] != today:
+                st["day"], st["count"] = today, 0
+            if time.time() - st["plan_at"] > PLAN_TTL:
+                self._refresh_plan(uid, st, today)
+            return {"plan": st["plan"], "used": st["count"], "limit": LIMITS[st["plan"]]}
+
+    def invalidate_plan(self, uid: str) -> None:
+        """V5.2.0: o plano acabou de mudar (pagamento confirmado): relê o plano na próxima pergunta, sem esperar o cache (PLAN_TTL)."""
+        with self._lock(uid):
+            st = self._st.get(uid)
+            if st:
+                st["plan_at"] = 0.0
 
     def refund(self, uid: str) -> None:
         """Devolve 1 pergunta (quando o modelo falhou: não cobra por resposta que não existiu)."""
