@@ -3,6 +3,9 @@
 Rodar local:  uvicorn main:app --reload
 Anexos (V5.0): POST /ask aceita "image" {mime, data(base64)} e "file" {name, text}; inválidos → 422 "anexo:<código>" sem gastar cota.
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
+V5.2.0 (Resumo do Dia): GET /news/daily?refresh=1
+V5.2.0 (ORION API): POST /v1/chat · GET /v1/models · GET /v1/usage (chave de API) · GET|POST /api/keys · POST /api/keys/{id}/revoke|rotate · GET /api/usage (login)
+V5.2.0 (planos e assinaturas): GET /plan · GET /plans · GET /billing/me · POST /billing/checkout · POST /billing/cancel · POST /billing/webhook/mercadopago
 Variáveis:
   GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
   ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
@@ -25,20 +28,30 @@ Variáveis:
   ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
+  V5.2.0: ORION_MP_ACCESS_TOKEN · ORION_MP_WEBHOOK_SECRET · ORION_MP_TEST_PAYER_EMAIL · ORION_PRICE_PLUS|PRO ·
+          ORION_API_KEY_PEPPER (opcional: segredo do hash das chaves de API) · ORION_API_MONTHLY_PLUS|PRO · ORION_API_RPM_PLUS|PRO ·
+          ORION_BILLING_GRACE_DAYS · ORION_BILLING_RETURN_URL · limites em billing/plans.py (docs/BILLING.md explica tudo)
 """
-import asyncio, datetime, logging, os, re, time
+import asyncio, datetime, logging, os, re, secrets, time
 from collections import deque
 from typing import Literal
 
-from fastapi import FastAPI, Header, HTTPException, Response
+from fastapi import FastAPI, Header, HTTPException, Path, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from api import keys as api_keys
+from api.errors import ApiError, body as api_error_body
+from api.service import ApiService
+from api.store import ApiStore
 from auth.firebase import verify
+from billing import plans, service as billing_service
 from core import attachments, images
 from core.orchestrator import Orchestrator
-from core.quota import Quota
+from core.quota import Quota, PROJECT_ID as FIREBASE_PROJECT
 from memory.store import Memory
+from news.service import NewsService, NewsUnavailable
 from providers.registry import Registry
 from voice import elevenlabs
 
@@ -67,6 +80,9 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", 
 registry = Registry()
 orchestrator = Orchestrator(Memory())
 quota = Quota()   # cota diária por plano (free/plus/pro)
+billing = billing_service.build(quota._admin, FIREBASE_PROJECT, on_plan_change=quota.invalidate_plan)   # V5.2.0: assinaturas (Mercado Pago)
+news = NewsService()   # V5.2.0: Resumo do Dia (RSS de fontes reais, com cache)
+orion_api = ApiService(ApiStore(quota._admin, FIREBASE_PROJECT), plan_of=lambda uid: quota.status(uid)["plan"])   # V5.2.0: ORION API
 _hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
 _tts_used: dict[str, tuple] = {}  # uid -> (dia, caracteres falados hoje)
 _seen: dict = {"day": None, "uids": set()}   # contas que usaram a ORION hoje
@@ -177,7 +193,7 @@ async def _with_images(sources, task):
     return srcs
 
 
-async def _auth(authorization: str, count: bool = False):
+async def _auth(authorization: str, count: bool = False, with_email: bool = False):
     """Valida o login do Firebase, a lista de e-mails e o limite de contas por dia. Devolve (uid, token).
     count=True também aplica o limite de uso (perguntas ao modelo)."""
     token = authorization.removeprefix("Bearer ").strip()
@@ -193,6 +209,8 @@ async def _auth(authorization: str, count: bool = False):
         raise HTTPException(429, "Muitos usuários agora. Tente mais tarde.")
     if count and not _rate_ok(uid):
         raise HTTPException(429, "Muitas solicitações. Aguarde um instante.")
+    if with_email:                                     # V5.2.0: o checkout precisa do e-mail VERIFICADO PELO TOKEN (nunca do corpo da requisição)
+        return uid, token, (claims.get("email") or "").strip()
     return uid, token
 
 
@@ -203,9 +221,11 @@ def health():
 
 @app.get("/models")
 async def models(authorization: str = Header(default="")):
-    await _auth(authorization)
-    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured(),
-            "voices": elevenlabs.voices(),   # [{slot, label}] — nunca os Voice IDs
+    uid, _ = await _auth(authorization)
+    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
+    voices = [dict(v, locked=not plans.allows_voice(plan, v.get("slot"))) for v in elevenlabs.voices()]   # V5.2.0: FREE = 1 voz; PLUS/PRO = 4
+    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured(), "plan": plan,
+            "voices": voices,   # [{slot, label, locked}] — nunca os Voice IDs
             "voice_limits": {"pace": [elevenlabs.PACE_MIN, elevenlabs.PACE_MAX, elevenlabs.PACE_DEFAULT],
                              "expressivity": [elevenlabs.EXPR_MIN, elevenlabs.EXPR_MAX, elevenlabs.EXPR_DEFAULT]}}
 
@@ -243,6 +263,220 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
             "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}}
 
 
+class CheckoutIn(BaseModel):
+    plan: Literal["plus", "pro"]               # o preço NÃO vem do site: o servidor usa o do catálogo
+
+
+def _billing_http(e: "billing_service.BillingError") -> HTTPException:
+    return HTTPException(e.status, f"billing:{e.code}")   # o site traduz "billing:<código>"
+
+
+@app.get("/plan")
+async def my_plan(authorization: str = Header(default="")):
+    """Plano e uso de hoje (não gasta pergunta). O site usa para o chip do plano e para liberar/travar recursos."""
+    uid, _ = await _auth(authorization)
+    st = await asyncio.to_thread(quota.status, uid)
+    return {"plan": st["plan"], "used": st["used"], "limit": st["limit"],
+            "voices": list(plans.get(st["plan"]).voice_slots), "api": plans.can(st["plan"], "api")}
+
+
+@app.get("/plans")
+def plans_catalog():
+    """Catálogo público dos planos (sem segredos e sem recursos ainda não lançados)."""
+    return {"plans": plans.public_catalog(), "billing": billing.configured}
+
+
+@app.get("/billing/me")
+async def billing_me(authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    try:
+        return await asyncio.to_thread(billing.me, uid)
+    except billing_service.BillingError as e:
+        raise _billing_http(e)
+
+
+@app.post("/billing/checkout")
+async def billing_checkout(body: CheckoutIn, authorization: str = Header(default="")):
+    uid, _, email = await _auth(authorization, with_email=True)
+    try:
+        return await asyncio.to_thread(billing.checkout, uid, email, body.plan)
+    except billing_service.BillingError as e:
+        raise _billing_http(e)
+
+
+@app.post("/billing/cancel")
+async def billing_cancel(authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    try:
+        return await asyncio.to_thread(billing.cancel, uid)
+    except billing_service.BillingError as e:
+        raise _billing_http(e)
+
+
+@app.post("/billing/webhook/mercadopago")
+async def mercadopago_webhook(request: Request):
+    """Chamado pelo Mercado Pago (não pelo site): sem login; a prova de origem é a assinatura x-signature.
+    401 = assinatura inválida · 200 = tratado ou ignorado de propósito · 5xx = falhou de verdade (o Mercado Pago tenta de novo)."""
+    try:
+        raw = await request.json()
+    except Exception:
+        raw = {}
+    body = raw if isinstance(raw, dict) else {}
+    headers = {k.lower(): v for k, v in request.headers.items()}
+    try:
+        res = await asyncio.to_thread(billing.handle_webhook, headers, dict(request.query_params), body)
+    except billing_service.InvalidSignature:
+        raise HTTPException(401, "Assinatura inválida.")
+    except billing_service.BillingError as e:
+        raise _billing_http(e)
+    except Exception:
+        log.exception("Falha ao processar o webhook do Mercado Pago")
+        raise HTTPException(500, "Falha ao processar.")
+    return {"ok": True, **res}
+
+
+# ═══ ORION API (V5.2.0) ═══
+# Dois públicos: a pessoa logada gerencia as chaves (/api/*, login do Firebase) e o programa dela usa a chave (/v1/*).
+# Todo erro dessas rotas tem o formato {"error": {"code", "message", "request_id"}} (ver api/errors.py).
+V1_MAX_BODY = 32_768
+V1_TIMEOUT = 45
+
+
+def _rid() -> str:
+    return "req_" + secrets.token_hex(6)
+
+
+@app.exception_handler(ApiError)
+async def _api_error(request: Request, exc: ApiError):
+    rid = _rid()
+    headers = {"X-Request-Id": rid}
+    if exc.retry_after:
+        headers["Retry-After"] = str(exc.retry_after)
+    return JSONResponse(api_error_body(exc, rid), status_code=exc.status, headers=headers)
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    log.exception("Erro não tratado em %s", request.url.path)             # detalhes só no log do servidor
+    if request.url.path.startswith(("/v1/", "/api/")):
+        rid = _rid()
+        return JSONResponse(api_error_body(ApiError(500, "internal_error", "Erro interno."), rid), status_code=500, headers={"X-Request-Id": rid})
+    return PlainTextResponse("Internal Server Error", status_code=500)
+
+
+class KeyIn(BaseModel):
+    name: str = Field(default="", max_length=60)
+
+
+KEY_ID = Path(..., pattern="^[0-9a-f]{8}$")
+
+
+@app.get("/api/keys")
+async def api_list_keys(authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    return {"keys": await asyncio.to_thread(orion_api.list_keys, uid)}
+
+
+@app.post("/api/keys")
+async def api_create_key(body: KeyIn, authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    return await asyncio.to_thread(orion_api.create_key, uid, body.name)   # a chave completa só vem nesta resposta
+
+
+@app.post("/api/keys/{key_id}/revoke")
+async def api_revoke_key(key_id: str = KEY_ID, authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    return await asyncio.to_thread(orion_api.revoke, uid, key_id)
+
+
+@app.post("/api/keys/{key_id}/rotate")
+async def api_rotate_key(key_id: str = KEY_ID, authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    return await asyncio.to_thread(orion_api.rotate, uid, key_id)
+
+
+@app.get("/api/usage")
+async def api_usage(authorization: str = Header(default="")):
+    uid, _ = await _auth(authorization)
+    return await asyncio.to_thread(orion_api.usage, uid)
+
+
+async def _v1_who(authorization: str) -> dict:
+    return await asyncio.to_thread(orion_api.authenticate, api_keys.from_header(authorization))
+
+
+@app.get("/v1/models")
+async def v1_models(response: Response, authorization: str = Header(default="")):
+    await _v1_who(authorization)
+    response.headers["X-Request-Id"] = _rid()
+    return {"default": registry.default, "models": registry.models()}
+
+
+@app.get("/v1/usage")
+async def v1_usage(response: Response, authorization: str = Header(default="")):
+    who = await _v1_who(authorization)
+    response.headers["X-Request-Id"] = _rid()
+    return await asyncio.to_thread(orion_api.usage, who["uid"])
+
+
+@app.post("/v1/chat")
+async def v1_chat(request: Request, response: Response, authorization: str = Header(default="")):
+    """Uma pergunta ao ORION. Corpo: {"message": "...", "model": "<id de GET /v1/models>" (opcional)}."""
+    rid = _rid()
+    response.headers["X-Request-Id"] = rid
+    who = await _v1_who(authorization)
+    try:
+        if int(request.headers.get("content-length") or 0) > V1_MAX_BODY:
+            raise ApiError(413, "payload_too_large", "Corpo grande demais.")
+    except ValueError:
+        raise ApiError(400, "invalid_request", "Cabeçalho Content-Length inválido.")
+    raw = await request.body()
+    if len(raw) > V1_MAX_BODY:
+        raise ApiError(413, "payload_too_large", "Corpo grande demais.")
+    try:
+        data = await request.json()
+    except Exception:
+        raise ApiError(400, "invalid_request", "O corpo precisa ser um JSON.")
+    msg = data.get("message") if isinstance(data, dict) else None
+    mdl = data.get("model") if isinstance(data, dict) else None
+    if not isinstance(msg, str) or not msg.strip() or len(msg) > 4000:
+        raise ApiError(400, "invalid_request", '"message" deve ser um texto de 1 a 4000 caracteres.')
+    if mdl is not None and (not isinstance(mdl, str) or len(mdl) > 80):
+        raise ApiError(400, "invalid_request", '"model" deve ser um texto.')
+    if not registry.models():
+        raise ApiError(503, "model_unavailable", "Nenhum modelo configurado no servidor.")
+    model_id, provider = registry.get(mdl)
+    if not provider:
+        raise ApiError(400, "model_unavailable", "Modelo indisponível. Veja GET /v1/models.")
+    use = await asyncio.to_thread(orion_api.begin, who["uid"], who["key_id"])    # plano, limite por minuto e cota do mês
+    try:
+        result = await asyncio.wait_for(orchestrator.ask_stateless(msg.strip(), provider), timeout=V1_TIMEOUT)
+    except asyncio.TimeoutError:
+        await asyncio.to_thread(orion_api.refund, who["uid"], who["key_id"])
+        raise ApiError(504, "timeout", "O modelo demorou demais.")
+    except Exception as e:
+        await asyncio.to_thread(orion_api.refund, who["uid"], who["key_id"])     # sem resposta, sem cobrança
+        log.exception("ORION API: falha ao consultar o modelo")
+        status = getattr(e, "status_code", None)
+        if status == 429:
+            raise ApiError(503, "provider_busy", "O modelo está no limite de uso agora. Tente em instantes.", retry_after=10)
+        if status in (403, 404):
+            raise ApiError(503, "model_unavailable", "Modelo indisponível no momento.")
+        raise ApiError(502, "provider_error", "Falha ao consultar o modelo.")
+    sources = [{"title": s.get("title"), "url": s.get("url")} for s in result["sources"] if isinstance(s, dict) and s.get("url")]
+    return {"id": rid, "reply": result["reply"], "model": model_id, "sources": sources, "usage": use}
+
+
+@app.get("/news/daily")
+async def news_daily(refresh: bool = False, authorization: str = Header(default="")):
+    """Resumo do Dia: notícias reais (RSS de veículos reconhecidos), por categoria, sem repetição. Ver news/service.py."""
+    await _auth(authorization)
+    try:
+        return await asyncio.to_thread(news.get, refresh)
+    except NewsUnavailable:
+        raise HTTPException(503, "news:unavailable")
+
+
 @app.post("/memory/clear")
 async def clear_memory(authorization: str = Header(default="")):
     uid, token = await _auth(authorization)
@@ -256,6 +490,9 @@ async def _speak(uid: str, text: str, opts: VoiceOpts) -> Response:
         raise HTTPException(503, "Voz não configurada.")
     if not elevenlabs.voice_id(opts.voice):
         raise HTTPException(400, "Essa voz não está configurada no servidor.")
+    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
+    if not plans.allows_voice(plan, opts.voice):       # V5.2.0: voz 2 a 4 só nos planos pagos (validado aqui, não no site)
+        raise HTTPException(403, "plan:voice_locked")
     text = elevenlabs.clean(text)
     if not _tts_ok(uid, len(text)):
         raise HTTPException(429, "Limite diário de voz atingido.")
