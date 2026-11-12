@@ -269,7 +269,7 @@ Feedback and testing are valuable, but the project may still contain bugs, incom
 
 - **Plans — ORION FREE, PLUS and PRO.** One catalog (`backend/billing/plans.py`) decides what each plan can do; limits and prices come from server settings, never from the browser. ORION ULTRA and ORION CODE are planned for V5.5.0.
 - **Subscriptions with Mercado Pago.** Checkout, webhook with signature validation, renewals, declined payments, cancellation, refunds and payment history. A plan is activated only after the server confirms the payment with the provider. Card data never reaches ORION. See [`docs/BILLING.md`](docs/BILLING.md).
-- **ORION API.** API keys (shown once, stored only as a hash), rotation and revocation, per-minute limits, monthly quota, standardized errors and `POST /v1/chat` on top of ORION Core. See [`docs/API.md`](docs/API.md).
+- **ORION API.** Available on every plan (FREE with a reduced quota and one key; PLUS and PRO with more). API keys (shown once, stored only as a hash), rotation and revocation, per-minute limits, monthly quota, standardized errors and `POST /v1/chat` on top of ORION Core. See [`docs/API.md`](docs/API.md).
 - **Daily Brief.** News by category from public RSS feeds of recognized outlets: headlines, snippets, dates and links come from the sources themselves; repeated stories are merged; nothing is written by the model.
 - **Seasonal logos.** Christmas (Dec 1–31) and Easter (Palm Sunday to Easter Sunday, computed every year), always in Brasília time (UTC-3).
 - **Voice by plan.** FREE has one voice; PLUS and PRO have four (enforced by the server).
