@@ -1,7 +1,7 @@
 """ORION API (V5.2.0) — regras: chaves, autenticação, limite por minuto e cota mensal. Sem HTTP aqui.
 
-Quem pode usar: planos com o recurso "api" (PLUS e PRO). O plano é lido NO SERVIDOR a cada uso (cache curto): se a pessoa
-sair do plano, as chaves dela deixam de funcionar na hora, sem precisar apagá-las.
+Quem pode usar: planos com o recurso "api" (FREE com cota reduzida, PLUS e PRO com mais). O plano é lido NO SERVIDOR a cada uso
+(cache curto): se a pessoa mudar para um plano sem o recurso, as chaves dela deixam de funcionar na hora, sem precisar apagá-las.
 
   create_key / list_keys / revoke / rotate   gerenciamento (chamado com o login do Firebase)
   authenticate(chave)                        chave de API → {uid, key_id}   (confere o HASH; a chave nunca é guardada)
@@ -20,7 +20,6 @@ from billing import plans
 
 log = logging.getLogger("orion.api")
 
-MAX_KEYS = 5
 CACHE_TTL = 30            # segundos que uma chave válida fica em cache (revogar leva até isso em OUTRO processo; neste, é na hora)
 CACHE_MAX = 2000
 WINDOW_MAX_KEYS = 5000    # limite de chaves com janela em memória antes de limpar
@@ -66,7 +65,7 @@ class ApiService:
     def _need_plan(self, uid: str) -> str:
         plan = self._plan_of(uid)
         if not plans.can(plan, "api"):
-            raise ApiError(403, "plan_required", "O ORION API está disponível a partir do plano ORION PLUS.")
+            raise ApiError(403, "plan_required", "O seu plano não inclui o ORION API.")
         return plan
 
     def _month(self) -> str:
@@ -85,11 +84,11 @@ class ApiService:
 
     def create_key(self, uid: str, name: str) -> dict:
         self._need()
-        self._need_plan(uid)
+        limit = plans.get(self._need_plan(uid)).api_max_keys
         with self._lock(uid):
             ks = self.store.get_keys(uid)
-            if len(ks) >= MAX_KEYS:
-                raise ApiError(409, "key_limit", f"Limite de {MAX_KEYS} chaves. Revogue uma para criar outra.")
+            if len(ks) >= limit:
+                raise ApiError(409, "key_limit", f"Limite de {limit} chave(s) no seu plano. Revogue uma para criar outra.")
             key, item = self._new_item(clean_name(name) or "Minha chave")
             ks.append(item)
             self.store.set_keys(uid, ks)
@@ -213,4 +212,4 @@ class ApiService:
         nxt = (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
         return {"plan": p.id, "plan_name": p.name, "api": ok, "month": self._month(),
                 "used": used, "limit": p.api_monthly if ok else 0, "per_minute": p.api_per_minute if ok else 0,
-                "resets_on": nxt.isoformat(), "max_keys": MAX_KEYS}
+                "resets_on": nxt.isoformat(), "max_keys": p.api_max_keys if ok else 0}
