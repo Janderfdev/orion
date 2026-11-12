@@ -9,8 +9,8 @@ Eles precisam ser confirmados por você antes do lançamento. Preço sem variáv
 
 Variáveis:
   ORION_LIMIT_FREE|PLUS|PRO              perguntas por dia           (10 · 100 · 500)
-  ORION_API_MONTHLY_PLUS|PRO             requisições do ORION API por mês   (1000 · 10000)
-  ORION_API_RPM_PLUS|PRO                 requisições por minuto no ORION API (10 · 30)
+  ORION_API_MONTHLY_FREE|PLUS|PRO        requisições do ORION API por mês   (100 · 1000 · 10000)
+  ORION_API_RPM_FREE|PLUS|PRO            requisições por minuto no ORION API (3 · 10 · 30)
   ORION_PRICE_PLUS|PRO                   preço mensal em CENTAVOS de real (ex.: 1990). Vazio = sem preço definido
 """
 import os
@@ -54,6 +54,7 @@ class Plan:
     api_per_minute: int
     price_cents: int | None     # mensal, em centavos de BRL; None = ainda sem preço (não pode ser assinado)
     features: frozenset
+    api_max_keys: int = 1       # chaves de API ao mesmo tempo (FREE: 1; PLUS/PRO: 5)
 
     @property
     def purchasable(self) -> bool:
@@ -61,17 +62,18 @@ class Plan:
 
 
 def _build() -> dict:
-    base = {"chat", "images_basic", "history"}
-    plus = base | {"images_advanced", "voices_4", "api"}
+    base = {"chat", "images_basic", "history", "api"}        # o FREE tem ORION API, com cota reduzida
+    plus = base | {"images_advanced", "voices_4"}
     pro = plus | {"multitask", "advanced_analysis", "orion_code"}
     return {
-        "free":  Plan("free", "ORION FREE", 0, _int("ORION_LIMIT_FREE", 10), (1,), 0, 0, None, frozenset(base)),
+        "free":  Plan("free", "ORION FREE", 0, _int("ORION_LIMIT_FREE", 10), (1,),
+                      _int("ORION_API_MONTHLY_FREE", 100), _int("ORION_API_RPM_FREE", 3), None, frozenset(base), api_max_keys=1),
         "plus":  Plan("plus", "ORION PLUS", 1, _int("ORION_LIMIT_PLUS", 100), (1, 2, 3, 4),
                       _int("ORION_API_MONTHLY_PLUS", 1000), _int("ORION_API_RPM_PLUS", 10),
-                      _price("ORION_PRICE_PLUS"), frozenset(plus)),
+                      _price("ORION_PRICE_PLUS"), frozenset(plus), api_max_keys=5),
         "pro":   Plan("pro", "ORION PRO", 2, _int("ORION_LIMIT_PRO", 500), (1, 2, 3, 4),
                       _int("ORION_API_MONTHLY_PRO", 10000), _int("ORION_API_RPM_PRO", 30),
-                      _price("ORION_PRICE_PRO"), frozenset(pro)),
+                      _price("ORION_PRICE_PRO"), frozenset(pro), api_max_keys=5),
     }
 
 
@@ -112,7 +114,7 @@ def public_catalog() -> list:
         out.append({
             "id": p.id, "name": p.name, "price_cents": p.price_cents, "currency": "BRL", "purchasable": p.purchasable,
             "daily_questions": p.daily_questions, "voices": len(p.voice_slots),
-            "api": {"monthly": p.api_monthly, "per_minute": p.api_per_minute} if can(p.id, "api") else None,
+            "api": {"monthly": p.api_monthly, "per_minute": p.api_per_minute, "keys": p.api_max_keys} if can(p.id, "api") else None,
             "features": sorted(f for f in p.features if f in RELEASED),
         })
     return out
