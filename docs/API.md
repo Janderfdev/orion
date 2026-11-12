@@ -3,7 +3,7 @@
 Use o ORION nos seus próprios projetos. A API chama o **ORION CORE** (a mesma identidade, ferramentas e orquestração do app),
 **sem memória**: cada requisição é independente e não lê nem grava o histórico de ninguém.
 
-- Disponível a partir do plano **ORION PLUS** (cota maior no **ORION PRO**).
+- Disponível em **todos os planos**: o **ORION FREE** tem cota reduzida (para testar e começar), o **ORION PLUS** tem mais e o **ORION PRO** tem a maior cota.
 - Base: `https://orion-backend-9qk5.onrender.com`
 - Tudo em HTTPS e JSON. Autenticação: `Authorization: Bearer <sua chave>`.
 
@@ -12,8 +12,8 @@ Use o ORION nos seus próprios projetos. A API chama o **ORION CORE** (a mesma i
 Crie e gerencie no site: botão `</>` → **ORION API**.
 
 - A chave completa aparece **uma única vez**, ao criar ou girar. O servidor guarda só uma impressão digital (hash): nem o ORION consegue recuperá-la.
-- Até 5 chaves por conta. **Revogar** mata a chave na hora; **Girar** cria uma nova com o mesmo nome e revoga a antiga.
-- Se você sair do plano PLUS/PRO, as chaves param de funcionar (não são apagadas); ao voltar, a mesma chave volta a valer.
+- **FREE: 1 chave** · **PLUS e PRO: até 5 chaves**. **Revogar** mata a chave na hora; **Girar** cria uma nova com o mesmo nome e revoga a antiga.
+- Se o seu plano deixar de incluir o ORION API, as chaves param de funcionar (não são apagadas); ao voltar, a mesma chave volta a valer. Ao mudar de plano, o limite de chaves muda junto.
 - **Use a chave só no seu servidor.** Nunca coloque em site, app público ou repositório. Por isso o navegador de terceiros é bloqueado (CORS): a API foi feita para chamadas servidor a servidor.
 
 ## `POST /v1/chat`
@@ -50,10 +50,11 @@ texto direto, sem markdown.
 
 ## Limites
 
-| | PLUS | PRO |
-|---|---|---|
-| Requisições por mês | 1.000 | 10.000 |
-| Requisições por minuto (por chave) | 10 | 30 |
+| | FREE | PLUS | PRO |
+|---|---|---|---|
+| Requisições por mês | 100 | 1.000 | 10.000 |
+| Requisições por minuto (por chave) | 3 | 10 | 30 |
+| Chaves ao mesmo tempo | 1 | 5 | 5 |
 
 Os valores vêm do servidor (`ORION_API_MONTHLY_*` e `ORION_API_RPM_*`) e podem mudar; `GET /v1/usage` mostra os seus. A cota do mês é
 contada em Brasília (UTC-3) e renova no dia 1º. **Requisição que falha por culpa do modelo não é cobrada** e requisição inválida
@@ -72,7 +73,7 @@ Sempre o mesmo formato, com o `request_id` (também no cabeçalho `X-Request-Id`
 | 400 | `invalid_request` | corpo que não é JSON, `message` vazio/longo demais, `model` inválido |
 | 400 | `model_unavailable` | `model` que não existe (veja `GET /v1/models`) |
 | 401 | `invalid_api_key` | chave ausente, malformada, revogada ou desconhecida |
-| 403 | `plan_required` | o plano atual não inclui o ORION API |
+| 403 | `plan_required` | o plano atual não inclui o ORION API (hoje todos incluem; o código existe para planos futuros) |
 | 413 | `payload_too_large` | corpo acima de 32 KB |
 | 429 | `rate_limited` | limite por minuto; veja o cabeçalho `Retry-After` (segundos) |
 | 429 | `quota_exceeded` | cota do mês esgotada (renova no dia 1º) |
@@ -121,8 +122,10 @@ console.log(r.ok ? j.reply : j.error);
 | Variável | Para quê |
 |---|---|
 | `ORION_API_KEY_PEPPER` | (recomendado) segredo do servidor usado no hash das chaves. **Trocar invalida todas as chaves.** |
-| `ORION_API_MONTHLY_PLUS` / `_PRO` | requisições por mês (1000 · 10000) |
-| `ORION_API_RPM_PLUS` / `_PRO` | requisições por minuto, por chave (10 · 30) |
+| `ORION_API_MONTHLY_FREE` / `_PLUS` / `_PRO` | requisições por mês (100 · 1000 · 10000) |
+| `ORION_API_RPM_FREE` / `_PLUS` / `_PRO` | requisições por minuto, por chave (3 · 10 · 30) |
+
+Os números são valores de partida provisórios: ajuste pelas variáveis, sem mexer no código.
 
 Coleções do Firestore (só o servidor escreve; bloqueie para clientes): `api_hash`, `api_users`, `api_usage`.
 O limite **por minuto** fica na memória do servidor (recomeça se ele reiniciar); a **cota mensal** é gravada no Firestore.
