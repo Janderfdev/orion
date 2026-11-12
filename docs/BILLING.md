@@ -90,6 +90,6 @@ Os testes automáticos usam o Mercado Pago simulado. Estes pontos só se confirm
 ## O que cada plano libera (e o que NÃO é anunciado)
 
 O catálogo (`billing/plans.py`) só anuncia o que o ORION faz de verdade **e** o servidor controla por plano:
-perguntas por dia, histórico, opções de voz (FREE 1; PLUS/PRO 4, travadas no servidor em `/speak`) e ORION API (a partir do PLUS).
+perguntas por dia, histórico, opções de voz (FREE 1; PLUS/PRO 4, travadas no servidor em `/speak`) e ORION API (FREE com cota reduzida e 1 chave; PLUS e PRO com mais cota e até 5 chaves).
 Ficam fora, de propósito, até existirem: geração de imagens (hoje o ORION só mostra fotos de fontes), multitarefa e análises avançadas por plano,
 ORION CODE (V5.5.0) e ULTRA (V5.5.0).
