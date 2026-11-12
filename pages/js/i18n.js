@@ -187,7 +187,7 @@ window.ORION_I18N = (() => {
   add("plans.badge.free", "Gratuito", "Free");
   add("plans.badge.plus", "Premium", "Premium");
   add("plans.badge.pro", "Profissional", "Professional");
-  add("plans.tag.free", "A experiência essencial do ORION.", "The essential ORION experience.");
+  add("plans.tag.free", "A experiência essencial do ORION, com ORION API em cota reduzida.", "The essential ORION experience, with a reduced ORION API quota.");
   add("plans.tag.plus", "Mais capacidade, mais vozes e acesso ao ORION API.", "More capacity, more voices and ORION API access.");
   add("plans.tag.pro", "Limites maiores e mais cota no ORION API.", "Higher limits and a bigger ORION API quota.");
   add("plans.chat", "Conversas com o ORION", "Chat with ORION");
@@ -237,7 +237,7 @@ window.ORION_I18N = (() => {
   add("plans.loading", "Carregando…", "Loading…");
   add("api.title", "ORION API", "ORION API");
   add("api.sub", "Use o ORION nos seus próprios projetos.", "Use ORION in your own projects.");
-  add("api.needPlan", "O ORION API está disponível a partir do plano ORION PLUS.", "ORION API is available from the ORION PLUS plan.");
+  add("api.needPlan", "O seu plano atual não inclui o ORION API.", "Your current plan doesn’t include ORION API.");
   add("api.seePlans", "Ver planos", "See plans");
   add("api.usage", "Uso da API", "API usage");
   add("api.usageSub", "Requisições deste mês", "Requests this month");
@@ -260,14 +260,14 @@ window.ORION_I18N = (() => {
   add("api.copy", "Copiar", "Copy");
   add("api.copied", "Copiado!", "Copied!");
   add("api.gotIt", "Já copiei", "I copied it");
-  add("api.keyLimit", "Limite de {n} chaves. Revogue uma para criar outra.", "Limit of {n} keys. Revoke one to create another.");
+  add("api.keyLimit", "Limite de {n} chave(s) no seu plano. Revogue uma para criar outra.", "Limit of {n} key(s) on your plan. Revoke one to create another.");
   add("api.example", "Exemplo de requisição", "Request example");
   add("api.docs", "Documentação", "Documentation");
   add("api.docsIntro", "Todos os endpoints usam HTTPS e JSON. Envie a chave no cabeçalho Authorization: Bearer.", "All endpoints use HTTPS and JSON. Send the key in the Authorization: Bearer header.");
   add("api.docsErrors", "Erros: sempre {\"error\": {\"code\", \"message\", \"request_id\"}}", "Errors: always {\"error\": {\"code\", \"message\", \"request_id\"}}");
   add("api.docsSecurity", "Use a chave só no seu servidor. Nunca a coloque em código de site ou de app público.", "Use the key only on your server. Never put it in website or public app code.");
   add("api.docsFull", "Abrir a documentação completa", "Open the full documentation");
-  add("api.err.plan_required", "O ORION API está disponível a partir do plano PLUS.", "ORION API is available from the PLUS plan.");
+  add("api.err.plan_required", "O seu plano atual não inclui o ORION API.", "Your current plan doesn’t include ORION API.");
   add("api.err.key_limit", "Você atingiu o limite de chaves.", "You reached the key limit.");
   add("api.err.key_not_found", "Chave não encontrada.", "Key not found.");
   add("api.err.api_unavailable", "O ORION API está indisponível agora.", "ORION API is unavailable right now.");
