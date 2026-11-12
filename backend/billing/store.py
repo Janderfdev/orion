@@ -69,6 +69,19 @@ class FirestoreStore:
                            json={"fields": {k: _enc(v) for k, v in data.items()}})
         r.raise_for_status()
 
+    def _delete(self, path: str) -> None:
+        r = requests.delete(f"{self._base}/{path}", headers=self._admin.headers(), timeout=TIMEOUT)
+        if r.status_code not in (200, 404):
+            r.raise_for_status()
+
+    def _increment(self, path: str, field: str, n: int) -> None:
+        """Soma n a um campo inteiro de forma atômica (cria o documento se preciso)."""
+        r = requests.post(f"https://firestore.googleapis.com/v1/{self._docs}:commit",
+                          headers=self._admin.headers(), timeout=TIMEOUT,
+                          json={"writes": [{"transform": {"document": f"{self._docs}/{path}",
+                                "fieldTransforms": [{"fieldPath": field, "increment": {"integerValue": str(n)}}]}}]})
+        r.raise_for_status()
+
     def _create_once(self, collection: str, doc_id: str, data: dict) -> bool:
         """Cria o documento só se ainda não existir. False = já existia (webhook repetido)."""
         r = requests.post(f"{self._base}/{collection}", params={"documentId": doc_id},
