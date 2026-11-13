@@ -737,7 +737,7 @@ const API = (() => {
   const stored = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } })();
   const prefs = Object.assign({
     voice: true,            // falar as respostas
-    sound: true, wake: true, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0
+    sound: true, wake: true, clap: false, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0 · clap (V5.2.0): duas palmas, desligado até a pessoa ligar
     ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): pt · en · es · fr · de · it
     slot: 1, pace: 1, expr: 0.5,
   }, stored);
@@ -769,6 +769,7 @@ const API = (() => {
   let curState = 'standby', stateGen = 0, processing = false;
   let panelOpen = false, chatOpen = false, hasAnswer = false, speaking = false, holdTimer = null, flashTimer = null;
   let wakeFault = null, wakeBlockUntil = 0;
+  let clapFault = null, CLAP = null;   // V5.2.0: gesto de duas palmas (gestures.js)
   // ttsOn: null = ainda não sei (servidor acordando) · true = ElevenLabs ligado · false = servidor sem voz
   let models = [], voices = [], online = false, loading = false, coreErr = null, ttsOn = null;
   let quota = null;   // {used, limit, plan} do último /ask
@@ -921,6 +922,19 @@ const API = (() => {
     else { my.over = true; if (my.url) URL.revokeObjectURL(my.url); speech = null; speaking = false; if (my.cancel) my.cancel(); }
   }
   const canSpeak = () => prefs.voice && (ttsOn !== false || !!window.speechSynthesis);
+
+  /* V5.2.0 — o ORION fala um texto qualquer (usado pelo Resumo do Dia): mesma voz, mesmo plano B e mesmos estados da Orb de uma resposta.
+     Devolve false se não puder falar agora (voz desligada, ocupado ouvindo/pensando). */
+  function speakBrief(text, onEnd) {
+    if (!text || !canSpeak() || processing || curState === 'listening' || vs.isOpen()) return false;
+    setState('processing', '');
+    startSpeech(text, () => {
+      if (curState === 'speaking' || curState === 'processing') setState('standby');
+      if (onEnd) onEnd();
+    }, { onStart: () => { if (curState === 'processing' || curState === 'speaking') setState('speaking', ''); }, onCancel: () => { if (onEnd) onEnd(); } });
+    return true;
+  }
+  Object.assign(window.ORION_APP, { speak: speakBrief, stopSpeak: () => stopSpeech(), isSpeaking: () => speaking });
 
   /* ── painel de resposta: na hora de responder, a própria Orb cresce no lugar ── */
   function openPanel() {
@@ -1318,16 +1332,16 @@ const API = (() => {
           <header class="set-head"><span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5L3 12l5.5 5.5M15.5 6.5L21 12l-5.5 5.5M13.5 4.5l-3 15"/></svg></span><div><h2 id="codeTitle">${t('code.title')}</h2></div></header>
           <div class="code-grid">
             <div class="code-card">
-              <span class="code-badge">${t('code.soon')}</span>
-              <h3>ORION CODE</h3>
-              <p>${t('code.codeDesc')}</p>
-              <span class="code-ver">${t('code.planned', { v: 'V5.5.0' })}</span>
-            </div>
-            <div class="code-card">
               <span class="code-badge ok">${t('code.available')}</span>
               <h3>ORION API</h3>
               <p>${t('code.apiDesc')}</p>
               <button id="apiOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('code.apiOpen')}</button>
+            </div>
+            <div class="code-card">
+              <span class="code-badge">${t('code.soon')}</span>
+              <h3>ORION CODE</h3>
+              <p>${t('code.codeDesc')}</p>
+              <span class="code-ver">${t('code.planned', { v: 'V5.5.0' })}</span>
             </div>
           </div>
           <p class="code-note">${t('code.note')}</p>
@@ -1365,6 +1379,8 @@ const API = (() => {
       model: ic('<path d="M12 5a3 3 0 1 0-6 .1 4 4 0 0 0-2.5 5.7 4 4 0 0 0 .6 6.6A4 4 0 1 0 12 18z"/><path d="M12 5a3 3 0 1 1 6 .1 4 4 0 0 1 2.5 5.7 4 4 0 0 1-.6 6.6A4 4 0 1 1 12 18z"/><path d="M12 5v13"/>'),
       voice: ic('<path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/>'),
       wake: ic('<circle cx="12" cy="12" r="9.5"/><path d="M8 10.5v3M10.7 8v8M13.3 9.5v5M16 10.5v3"/>'),
+      clap: ic('<path d="M9.4 20.6l-4.1-4.1a2.6 2.6 0 0 1 0-3.7l5.5-5.5 6.8 6.8-2.2 2.2c-1.9 1.9-4.9 1.9-6 .3z"/><path d="M8 4.2l.7 2M4.4 6.2l1.6 1.4M3 10.3l2 .3M17.4 3.6l-1 1.8M20.7 7l-2 .6"/>'),
+      gestures: ic('<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><circle cx="12" cy="12" r="2.2"/>'),
       sound: ic('<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>'),
       theme: ic('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" fill-opacity=".35"/>'),
       globe: ic('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>'),
@@ -1400,6 +1416,10 @@ const API = (() => {
       tw.setAttribute('aria-checked', String(wakeOn()));
       tw.disabled = !VOICE.isAvailable;
       tw.title = !VOICE.isAvailable ? t('vs.unavailWake') : wakeFault ? t('vs.wakeMic') : '';
+      const tcl = panel.querySelector('#toggleClap');   // V5.2.0: Gestos → palmas
+      tcl.setAttribute('aria-checked', String(clapOn()));
+      tcl.disabled = !CLAP || !VOICE.isAvailable;
+      tcl.title = !CLAP ? t('clap.unavail') : !VOICE.isAvailable ? t('vs.unavailWake') : clapFault ? t(clapFault === 'denied' ? 'clap.denied' : 'clap.mic') : '';
       panel.querySelector('#setName').textContent = (user && (user.displayName || (user.email || '').split('@')[0])) || '—';
       panel.querySelectorAll('#themeSwatches .sw').forEach(b => b.setAttribute('aria-checked', String(b.dataset.k === prefs.theme)));
       const sel = panel.querySelector('#modelSelect');
@@ -1446,7 +1466,9 @@ const API = (() => {
               <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
               <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
               <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}">${I18N.langs.map(l => `<option value="${l}">${t('lang.' + l)}</option>`).join('')}</select></div>
-              <div class="set-row"><span class="ico">${IC.wake}</span><div><h3>Hey ORION</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
+              <div class="set-row set-group"><span class="ico">${IC.gestures}</span><div><h3>${t('set.gestures')}</h3><p>${t('set.gesturesD')}</p></div></div>
+              <div class="set-row set-sub"><span class="ico">${IC.wake}</span><div><h3>${t('set.gWake')}</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
+              <div class="set-row set-sub"><span class="ico">${IC.clap}</span><div><h3>${t('set.gClap')}</h3><p>${t('set.gClapD')}</p></div><button id="toggleClap" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="${t('set.gClap')}"></button></div>
               <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
             </div>
           </div>
@@ -1478,6 +1500,12 @@ const API = (() => {
         prefs.wake = !prefs.wake; savePrefs(); wakeFault = null;
         syncWake(); sync();   // o clique é o que permite o navegador pedir o microfone
         if (prefs.wake) flash(t('wake.say'), 3200);
+      });
+      panel.querySelector('#toggleClap').addEventListener('click', () => {
+        if (!CLAP || !VOICE.isAvailable) return;
+        prefs.clap = !prefs.clap; savePrefs(); clapFault = null;
+        syncClap(); sync();   // o clique é o que permite o navegador pedir o microfone
+        if (prefs.clap) flash(t('clap.say'), 3200);
       });
       panel.querySelector('#themeSwatches').addEventListener('click', e => {
         const b = e.target.closest('.sw'); if (!b) return;
@@ -1568,6 +1596,34 @@ const API = (() => {
   setInterval(syncWake, 800);
   document.addEventListener('visibilitychange', syncWake);
   syncWake();
+
+  /* ── V5.2.0 Gestos: duas palmas acordam o ORION (gestures.js). O áudio é analisado só no aparelho: nada é gravado nem enviado.
+        O microfone só fica aberto com o gesto ligado, a página visível e o ORION em repouso (mesmas regras do "Hey ORION"). ── */
+  function clapOn() { return !!(prefs.clap && CLAP && VOICE.isAvailable && !clapFault); }
+  function clapShouldRun() {
+    return clapOn() && !document.hidden && appEl.classList.contains('on') && !processing && !speaking
+      && Date.now() > wakeBlockUntil && curState === 'standby';
+  }
+  function syncClap() { if (!CLAP) return; if (clapShouldRun()) CLAP.start(); else CLAP.stop(); }
+  try {
+    if (window.ORION_GESTURES) CLAP = window.ORION_GESTURES.createMicClap({
+      onDouble: () => {
+        if (!clapShouldRun()) return;
+        CLAP.stop(); WAKE.stop();
+        wakeBlockUntil = Date.now() + 2500;
+        setTimeout(() => {   // mesmo caminho do "Hey ORION": fecha o que estiver aberto e começa a ouvir
+          if (processing || curState === 'listening' || curState === 'error') return;
+          if (vs.isOpen()) vs.hide();
+          closePanel();
+          activate();
+        }, 200);
+      },
+      onFault: kind => { clapFault = kind; flash(t(kind === 'denied' ? 'clap.denied' : 'clap.mic'), 4200); settings.sync(); },
+    });
+  } catch (err) { console.error('[ORION] CLAP init failed:', err); }
+  setInterval(syncClap, 800);
+  document.addEventListener('visibilitychange', syncClap);
+  syncClap();
 
   LOGGER.info('session_started', { sessionId: LOGGER.sessionId, apiConfigured: API.configured(), sttAvailable: VOICE.isAvailable });
   loadModels();   // já durante o boot: também acorda o servidor gratuito
