@@ -174,6 +174,7 @@ body.chat-open .hint-text{ opacity:0; }
   position:fixed; right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); z-index:40; display:flex; align-items:center; gap:2px; padding:5px;
   border-radius:999px; background:rgba(7,7,14,.82); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.55);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  transition:opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1), visibility 0s;
 }
 .dock-sep{ width:1px; height:18px; margin:0 3px; background:var(--line); }
 .dock-btn{
@@ -662,6 +663,72 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 @container mod (max-width:900px){ .v52-plans{ grid-template-columns:1fr; } }
 @container mod (max-width:640px){ .v52-body{ padding:16px 18px 18px; } .v52-foot{ padding:12px 18px 18px; } .v52-key{ grid-template-columns:1fr; } .v52-hist li{ grid-template-columns:1fr auto; } .v52-hist .d{ grid-column:1 / -1; } }
 @media (prefers-reduced-motion:reduce){ .v52-spin{ animation-duration:2.4s; } .v52-bar > i{ transition:none; } }
+
+/* ═══════ V5.2.0 (2ª parte) — barra de botões "tipo iPhone", painel da API no layout de referência, Gestos ═══════ */
+/* Com um módulo aberto, a barra de botões vira uma barrinha fina no centro (como o indicador do iPhone) e deixa de cobrir o conteúdo.
+   Toque/clique/Enter (ou arrastar para cima) na barrinha mostra a barra de novo; ela se recolhe sozinha depois de alguns segundos. */
+.dock-handle{ display:none; }
+body.module-open .dock-handle{
+  display:flex; position:fixed; left:50%; bottom:max(6px, env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); z-index:41;
+  width:176px; height:34px; align-items:flex-end; justify-content:center; padding:0 0 8px; border:0; background:transparent; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; touch-action:none;
+}
+.dock-handle::before{ content:""; width:136px; height:5px; border-radius:999px; background:rgba(var(--w),.42); transition:background .2s ease, opacity .25s ease, transform .25s ease; }
+.dock-handle:hover::before{ background:rgba(var(--w),.72); }
+.dock-handle:active::before{ transform:scaleX(.92); }
+.dock-handle:focus-visible{ outline:none; } .dock-handle:focus-visible::before{ outline:2px solid var(--accent); outline-offset:5px; background:rgba(var(--w),.8); }
+body.module-open .dock{ opacity:0; transform:translateY(12px) scale(.96); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
+body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
+body.module-open.dock-open .dock-handle::before{ opacity:0; }
+@media (prefers-reduced-motion:reduce){ .dock, .dock-handle::before{ transition-duration:.01s !important; } }
+
+/* Configurações → Gestos */
+.set-row.set-group{ border-bottom:0; padding-bottom:4px; }
+.set-row.set-sub{ padding-left:26px; }
+.set-row.set-sub .ico{ width:34px; height:34px; } .set-row.set-sub h3{ font-size:13px; }
+.set-row.set-group + .set-sub, .set-row.set-sub + .set-sub{ padding-top:12px; padding-bottom:12px; }
+
+/* ORION API no layout de referência */
+.v52-api{ display:grid; grid-template-columns:minmax(0,1.85fr) minmax(0,1fr); gap:16px; align-items:start; }
+.v52-col{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+.v52-acc{ color:var(--accent-soft); }
+.v52-ch{ display:flex; align-items:center; gap:12px; }
+.v52-ch h3{ font:600 15px var(--font); } .v52-ch p{ margin-top:2px; font-size:12px; color:var(--fg2); line-height:1.5; }
+.v52-ib{ flex:none; width:36px; height:36px; border-radius:12px; display:grid; place-items:center; color:var(--accent-text); background:rgba(var(--act-hi),.85); border:1px solid rgba(var(--acc),.38); }
+.v52-ib svg{ display:block; }
+.v52-keyrow{ display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; }
+.v52-keyfield{ flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:10px; min-height:48px; padding:6px 8px 6px 16px; border:1px solid var(--line); border-radius:14px; background:var(--surface2); }
+.v52-keyfield .v52-mono{ flex:1; min-width:0; font-size:13px; word-break:break-all; }
+.v52-keyfield .icon-btn{ flex:none; }
+.v52-keyrow > .pill-btn{ min-height:48px; padding:0 22px; }
+.v52-keyrow > .pill-btn[disabled]{ opacity:.5; }
+.v52-usage{ display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,1.05fr); gap:22px; align-items:center; }
+.v52-ring{ position:relative; width:136px; height:136px; }
+.v52-ring svg{ width:100%; height:100%; transform:rotate(-90deg); display:block; }
+.v52-ring .bg{ fill:none; stroke:var(--surface2); stroke-width:11; } .v52-ring .fg{ fill:none; stroke:var(--accent); stroke-width:11; stroke-linecap:round; transition:stroke-dashoffset .8s var(--ease); }
+.v52-ring.warn .fg{ stroke:#C9B26A; } .v52-ring.full .fg{ stroke:#F87171; }
+.v52-ring .mid{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.v52-ring .mid b{ font:600 28px var(--font); } .v52-ring .mid span{ font-size:12px; color:var(--fg2); }
+.v52-stats{ display:flex; flex-direction:column; gap:16px; min-width:0; }
+.v52-stat{ display:flex; gap:12px; align-items:center; } .v52-stat small{ display:block; font-size:12px; color:var(--fg2); } .v52-stat b{ font:600 17px var(--font); } .v52-stat b i{ font-style:normal; font:500 13px var(--font); color:var(--fg2); }
+.v52-stat .v52-bar{ margin-top:8px; }
+.v52-planmini{ display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface2); }
+.v52-planmini .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--fg2); }
+.v52-planname{ font:700 21px var(--font); letter-spacing:.03em; color:var(--accent-soft); }
+.v52-code.num{ counter-reset:ln; padding-left:12px; }
+.v52-code.num .l{ display:block; white-space:pre; }
+.v52-code.num .l::before{ counter-increment:ln; content:counter(ln); display:inline-block; width:2ch; margin-right:16px; text-align:right; color:rgba(var(--w),.28); }
+.v52-online{ display:inline-flex; align-items:center; gap:8px; font:500 12px var(--font); color:#7DD3A8; align-self:flex-end; }
+.v52-online::before{ content:""; width:8px; height:8px; border-radius:50%; background:#34D399; box-shadow:0 0 8px rgba(52,211,153,.7); }
+.v52-others{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+@container mod (max-width:900px){
+  .v52-api{ grid-template-columns:1fr; }
+  .v52-usage{ grid-template-columns:auto minmax(0,1fr); } .v52-usage .v52-planmini{ grid-column:1 / -1; }
+}
+@container mod (max-width:640px){
+  .v52-usage{ grid-template-columns:1fr; justify-items:center; } .v52-usage .v52-stats, .v52-usage .v52-planmini{ width:100%; }
+  .v52-keyrow > .pill-btn{ flex:1 1 100%; }
+}
 </style>
 </head>
 <body>
@@ -843,10 +910,11 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=9"></script>
+<script src="js/i18n.js?c=10"></script>
+<script src="js/gestures.js?c=10"></script>
 <script src="js/orb-frame.js?c=7"></script>
-<script defer src="js/app.js?c=9"></script>
-<script defer src="js/orion-v5.js?c=9"></script>
-<script defer src="js/orion-v52.js?c=9"></script>
+<script defer src="js/app.js?c=10"></script>
+<script defer src="js/orion-v5.js?c=10"></script>
+<script defer src="js/orion-v52.js?c=10"></script>
 </body>
 </html>
