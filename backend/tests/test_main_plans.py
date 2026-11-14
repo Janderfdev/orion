@@ -36,9 +36,9 @@ def ctx(monkeypatch):
 def test_plan_endpoint_free_and_plus(ctx):
     c, plan, _ = ctx
     assert c.get("/plan").status_code == 401
-    assert c.get("/plan", headers=OK).json() == {"plan": "free", "used": 3, "limit": 10, "voices": [1], "api": True}
+    assert c.get("/plan", headers=OK).json() == {"plan": "free", "used": 3, "limit": 10, "voices": [1], "api": True, "role": "user"}
     plan["v"] = "plus"
-    assert c.get("/plan", headers=OK).json() == {"plan": "plus", "used": 3, "limit": 10, "voices": [1, 2, 3, 4], "api": True}
+    assert c.get("/plan", headers=OK).json() == {"plan": "plus", "used": 3, "limit": 10, "voices": [1, 2, 3, 4], "api": True, "role": "user"}
 
 
 def test_plan_endpoint_does_not_spend_a_question(ctx, monkeypatch):
