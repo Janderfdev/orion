@@ -13,6 +13,10 @@ Firestore:
 Variáveis do Render:
   FIREBASE_SERVICE_ACCOUNT   conteúdo COMPLETO do JSON da service account (nunca vai para o GitHub)
   ORION_LIMIT_FREE (10) · ORION_LIMIT_PLUS (100) · ORION_LIMIT_PRO (500)   (ver billing/plans.py)
+  ORION_OWNER_EMAIL          e-mail da conta do PROPRIETÁRIO (V5.2.0). Essa conta ganha o papel "owner" e, sem documento em `plans`,
+                             usa o plano PRO (o mais alto da V5.2.0). Para testar FREE ou PLUS, crie plans/{uid} à mão: ele vale primeiro.
+                             O papel é decidido AQUI, no servidor, pelo e-mail do TOKEN do Firebase; o site não declara nada.
+                             Exige e-mail verificado (ORION_OWNER_ALLOW_UNVERIFIED=1 aceita contas de e-mail e senha sem verificação).
   FIREBASE_PROJECT_ID        padrão: orion-ai-b8d39
 
 Velocidade: depois da 1ª pergunta do dia o contador fica em cache no processo e a gravação no
@@ -32,6 +36,9 @@ log = logging.getLogger("orion.quota")
 
 PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "orion-ai-b8d39")
 LIMITS = plans.daily_limits()   # V5.2.0: o catálogo (billing/plans.py) é a fonte única; free/plus/pro
+OWNER_EMAIL = os.getenv("ORION_OWNER_EMAIL", "").strip().lower()
+OWNER_ALLOW_UNVERIFIED = os.getenv("ORION_OWNER_ALLOW_UNVERIFIED", "0") == "1"
+OWNER_PLAN = "pro"   # plano padrão do proprietário (o mais alto lançado na V5.2.0; o ULTRA é da V5.5.0)
 PLAN_TTL = 300   # segundos: de quanto em quanto tempo o plano é relido (mudanças manuais valem sem reiniciar)
 TIMEOUT = 6
 _DOCS = f"projects/{PROJECT_ID}/databases/(default)/documents"
@@ -72,6 +79,25 @@ class Quota:
         self._st: dict[str, dict] = {}            # uid -> {day, count, plan, plan_at}
         self._locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
+        self._owners: set[str] = set()            # uids reconhecidos como proprietário (neste processo)
+
+    # ── proprietário (V5.2.0) ──
+    def note_login(self, uid: str, claims: dict) -> bool:
+        """Chamado pelo main.py a cada requisição autenticada, com os dados do TOKEN já validado. Marca o uid como proprietário
+        quando o e-mail do token é o ORION_OWNER_EMAIL (e verificado). Devolve True se é o proprietário."""
+        email = str((claims or {}).get("email") or "").strip().lower()
+        if OWNER_EMAIL and email == OWNER_EMAIL and ((claims or {}).get("email_verified") or OWNER_ALLOW_UNVERIFIED):
+            if uid not in self._owners:
+                self._owners.add(uid)
+                self.invalidate_plan(uid)         # relê o plano já como proprietário
+            return True
+        return False
+
+    def is_owner(self, uid: str) -> bool:
+        return uid in self._owners
+
+    def role(self, uid: str) -> str:
+        return "owner" if uid in self._owners else "user"
 
     # ── utilidades ──
     @staticmethod
@@ -132,10 +158,16 @@ class Quota:
 
     def _refresh_plan(self, uid: str, st: dict, today: str) -> None:
         st["plan_at"] = time.time()
+        owner = uid in self._owners
+        if owner:
+            st["plan"] = OWNER_PLAN                 # padrão do proprietário; um documento plans/{uid} (abaixo) tem prioridade
         if not self._admin.enabled:
             return
         try:
-            f = self._get(f"plans/{quote(uid, safe='')}") or {}
+            f = self._get(f"plans/{quote(uid, safe='')}")
+            if f is None:                           # sem documento: proprietário = PRO, os demais = free
+                st["plan"] = OWNER_PLAN if owner else "free"
+                return
             plan = f.get("plan", {}).get("stringValue", "free")
             until = f.get("until", {}).get("stringValue", "").strip()
             st["plan"] = plans.effective_plan(plan, until, today)   # desconhecido ou vencido -> free
