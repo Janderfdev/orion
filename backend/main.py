@@ -26,6 +26,8 @@ Variáveis:
   ORION_DIAG             "1" liga o /speak/diag (padrão: desligado; exige ORION_ALLOWED_EMAILS preenchida)
   FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
   ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
+  ORION_OWNER_EMAIL      (V5.2.0) e-mail do proprietário: papel "owner" decidido no servidor (ver core/quota.py);
+                         ORION_OWNER_ALLOW_UNVERIFIED=1 aceita e-mail e senha sem verificação
   ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
   ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
   V5.2.0: ORION_MP_ACCESS_TOKEN · ORION_MP_WEBHOOK_SECRET · ORION_MP_TEST_PAYER_EMAIL · ORION_PRICE_PLUS|PRO ·
@@ -205,6 +207,7 @@ async def _auth(authorization: str, count: bool = False, with_email: bool = Fals
     if REQUIRE_VERIFIED and not claims.get("email_verified"):
         raise HTTPException(403, "Conta sem acesso.")
     uid = claims.get("sub", "?")
+    quota.note_login(uid, claims)                      # V5.2.0: proprietário pelo e-mail do TOKEN (nunca pelo que o site diz)
     if not ALLOWED and not _user_ok(uid):
         raise HTTPException(429, "Muitos usuários agora. Tente mais tarde.")
     if count and not _rate_ok(uid):
@@ -277,7 +280,8 @@ async def my_plan(authorization: str = Header(default="")):
     uid, _ = await _auth(authorization)
     st = await asyncio.to_thread(quota.status, uid)
     return {"plan": st["plan"], "used": st["used"], "limit": st["limit"],
-            "voices": list(plans.get(st["plan"]).voice_slots), "api": plans.can(st["plan"], "api")}
+            "voices": list(plans.get(st["plan"]).voice_slots), "api": plans.can(st["plan"], "api"),
+            "role": quota.role(uid)}
 
 
 @app.get("/plans")
