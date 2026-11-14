@@ -16,14 +16,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Instalar dependências
-        run: pip install -r requirements.txt pytest
+        run: pip install -r requirements.txt pytest httpx
       - name: Rodar os testes
         # "python -m pytest" coloca backend/ no caminho de imports (core/, memory/, providers/, billing/)
         run: python -m pytest -v
         env:
           ORION_MEMORY: local
 
-  # V5.2.0: logos sazonais (cálculo da Páscoa, fronteiras de Natal/Páscoa em UTC-3)
+  # V5.2.0: logos sazonais (cálculo da Páscoa, fronteiras de Natal/Páscoa em UTC-3) e gesto de palmas (detector + microfone simulado)
   seasonal-logo:
     runs-on: ubuntu-latest
     steps:
@@ -31,5 +31,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Testar o módulo de logos sazonais
-        run: node --test tests/seasonal-logo.test.js
+      - name: Testar logos sazonais e gesto de palmas
+        run: node --test tests/seasonal-logo.test.js tests/gestures.test.js
