@@ -543,14 +543,16 @@
   });
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
 
-  /* ═══════════════ BARRA DE BOTÕES "TIPO iPHONE" ═══════════════
-     Com um módulo aberto (body.module-open, marcado por orion-v5.js), a barra do dock some e fica só uma barrinha fina no centro,
-     como o indicador do iPhone: ela não cobre mais o conteúdo. Toque/clique/Enter (ou arrastar para cima) mostra a barra de novo;
+  /* ═══════════════ DOCK ADAPTATIVO (círculo compacto) ═══════════════
+     Com um módulo aberto (body.module-open, marcado por orion-v5.js), o dock vira um círculo compacto com a engrenagem
+     (canto inferior direito): ele não cobre mais o conteúdo. Toque/clique/Enter (ou arrastar para cima) mostra a barra de novo;
      ela se recolhe sozinha depois de alguns segundos, ao escolher um botão, com Esc ou ao fechar o módulo. */
   (function dockHandle() {
     const nav = document.querySelector('.dock');
     if (!nav) return;
     const handle = h('button', { id: 'dockHandle', class: 'dock-handle', type: 'button', 'aria-expanded': 'false', 'aria-label': T('dock.show'), title: T('dock.show') });
+    const gearIcon = $('gearBtn') && $('gearBtn').querySelector('svg');      // mesma engrenagem do dock
+    if (gearIcon) { const g = gearIcon.cloneNode(true); g.setAttribute('width', '20'); g.setAttribute('height', '20'); handle.appendChild(g); }
     document.body.appendChild(handle);
     let timer = 0, swiped = false, y0 = null;
     const set = on => {
@@ -571,6 +573,8 @@
     nav.addEventListener('focusin', () => { if (document.body.classList.contains('dock-open')) set(true); });
     nav.addEventListener('click', e => { if (e.target.closest('.dock-btn')) setTimeout(() => set(false), 120); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
+    /* Quantidade de abas abertas = condição explícita do dock (1-2: círculo; 3+: dock fino visível). O Workspace chamará setTabs(n). */
+    window.ORION_DOCK = { setTabs: n => { n = Math.max(0, Number(n) | 0); document.body.dataset.tabs = n >= 3 ? '3+' : String(n); if (n >= 3) set(false); } };
     new MutationObserver(() => {
       if (!document.body.classList.contains('module-open')) set(false);        // nenhum módulo aberto: a barra volta ao normal
       handle.setAttribute('aria-label', T('dock.show')); handle.title = T('dock.show');
