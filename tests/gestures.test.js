@@ -145,3 +145,89 @@ test('o ruído de fundo é aprendido só em quadros calmos', () => {
   for (let i = 0; i + FRAME <= s.length; i += FRAME) det.push(s.subarray(i, i + FRAME), (i / FRAME) * FRAME_MS);
   assert.ok(det.floor > 0.01 && det.floor < 0.04, String(det.floor));
 });
+
+// ───────────── ligação com o microfone (microfone e AudioContext SIMULADOS) ─────────────
+function fakeBrowser({ denyWith = null, sampleRate = 48000, hang = false } = {}) {
+  const log = { constraints: null, connects: [], tracksStopped: 0, ctxClosed: 0, intervals: [], resumed: 0, ended: [] };
+  const track = { stop() { log.tracksStopped++; }, addEventListener(ev, fn) { log.ended.push(fn); } };
+  const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+  class AC {
+    constructor() { this.sampleRate = sampleRate; this.state = 'suspended'; this.destination = { name: 'DESTINO-ALTO-FALANTE' }; }
+    resume() { log.resumed++; this.state = 'running'; return Promise.resolve(); }
+    close() { log.ctxClosed++; return Promise.resolve(); }
+    createMediaStreamSource() { return { connect: n => log.connects.push(n) }; }
+    createAnalyser() { const a = { name: 'ANALISADOR', fftSize: 0, smoothingTimeConstant: 1, getFloatTimeDomainData(buf) { buf.fill(0); } }; log.analyser = a; return a; }
+  }
+  const realSI = globalThis.setInterval, realCI = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { log.intervals.push(ms); return 7; }; globalThis.clearInterval = () => { log.cleared = (log.cleared || 0) + 1; };
+  const gum = async c => { log.constraints = c; if (hang) await new Promise(r => { log.release = r; }); if (denyWith) throw Object.assign(new Error('x'), { name: denyWith }); return stream; };
+  Object.defineProperty(globalThis, 'navigator', { value: { mediaDevices: { getUserMedia: gum } }, configurable: true, writable: true });
+  globalThis.window = { AudioContext: AC };
+  globalThis.performance = globalThis.performance || { now: () => Date.now() };
+  return { log, restore() { globalThis.setInterval = realSI; globalThis.clearInterval = realCI; delete globalThis.window; } };
+}
+const { createMicClap } = require('../pages/js/gestures.js');
+
+test('microfone: sem cancelamento de eco/ruído/ganho (que achatam a palma) e analisa em quadros de ~20 ms', async () => {
+  const fb = fakeBrowser(); try {
+    const m = createMicClap({ onDouble() {} }); assert.equal(await m.start(), true);
+    assert.deepEqual(fb.log.constraints, { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    assert.equal(fb.log.analyser.fftSize, 1024);                      // 48 kHz → 1024 amostras ≈ 21 ms
+    assert.ok(fb.log.intervals[0] >= 15 && fb.log.intervals[0] <= 25, String(fb.log.intervals));
+    assert.equal(fb.log.resumed, 1); assert.equal(m.isActive(), true); m.stop();
+  } finally { fb.restore(); }
+});
+
+test('microfone: a entrada vai SÓ para o analisador, nunca para os alto-falantes (sem eco/realimentação)', async () => {
+  const fb = fakeBrowser(); try {
+    const m = createMicClap({}); await m.start();
+    assert.equal(fb.log.connects.length, 1); assert.equal(fb.log.connects[0].name, 'ANALISADOR');
+    assert.ok(!fb.log.connects.some(n => n.name === 'DESTINO-ALTO-FALANTE')); m.stop();
+  } finally { fb.restore(); }
+});
+
+test('microfone: parar solta tudo (trilhas, contexto de áudio, temporizador) e pode religar', async () => {
+  const fb = fakeBrowser(); try {
+    const m = createMicClap({}); await m.start(); m.stop();
+    assert.equal(fb.log.tracksStopped, 1); assert.equal(fb.log.ctxClosed, 1); assert.ok(fb.log.cleared >= 1); assert.equal(m.isActive(), false);
+    assert.equal(await m.start(), true); m.stop();
+  } finally { fb.restore(); }
+});
+
+test('microfone: permissão negada vira "denied"; outras falhas viram "mic"; nada fica aberto', async () => {
+  for (const [name, kind] of [['NotAllowedError', 'denied'], ['NotFoundError', 'mic'], ['NotReadableError', 'mic']]) {
+    const fb = fakeBrowser({ denyWith: name }); try {
+      const faults = []; const m = createMicClap({ onFault: k => faults.push(k) });
+      assert.equal(await m.start(), false); assert.deepEqual(faults, [kind]); assert.equal(m.isActive(), false);
+    } finally { fb.restore(); }
+  }
+});
+
+test('microfone: sem suporte do navegador falha limpo', async () => {
+  const fb = fakeBrowser(); try {
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true, writable: true });
+    const faults = []; const m = createMicClap({ onFault: k => faults.push(k) });
+    assert.equal(await m.start(), false); assert.deepEqual(faults, ['mic']);
+  } finally { fb.restore(); }
+});
+
+test('microfone: se parar ANTES de a permissão responder, as trilhas são soltas e não liga', async () => {
+  const fb = fakeBrowser({ hang: true }); try {
+    const m = createMicClap({}); const p = m.start(); m.stop(); fb.log.release();
+    assert.equal(await p, false); assert.equal(fb.log.tracksStopped, 1); assert.equal(m.isActive(), false);
+  } finally { fb.restore(); }
+});
+
+test('microfone: trilha que acaba sozinha (aparelho desconectado) avisa e solta', async () => {
+  const fb = fakeBrowser(); try {
+    const faults = []; const m = createMicClap({ onFault: k => faults.push(k) }); await m.start();
+    fb.log.ended.forEach(fn => fn()); assert.deepEqual(faults, ['mic']); assert.equal(m.isActive(), false); assert.ok(fb.log.ctxClosed >= 1);
+  } finally { fb.restore(); }
+});
+
+test('microfone: quadro em 16 kHz (aparelhos simples) também fecha em ~20–32 ms', async () => {
+  const fb = fakeBrowser({ sampleRate: 16000 }); try {
+    const m = createMicClap({}); await m.start();
+    assert.equal(fb.log.analyser.fftSize, 512); assert.ok(fb.log.intervals[0] >= 25 && fb.log.intervals[0] <= 33, String(fb.log.intervals)); m.stop();
+  } finally { fb.restore(); }
+});
