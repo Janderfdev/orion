@@ -676,7 +676,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 .dock-handle{ display:none; }
 body.module-open .dock-handle{
   display:flex; position:fixed; right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); z-index:41;
-  width:50px; height:50px; padding:0; align-items:center; justify-content:center; border-radius:50%;
+  width:44px; height:44px; padding:0; align-items:center; justify-content:center; border-radius:50%;
   border:1px solid var(--line); cursor:pointer; color:rgba(var(--w),.62);
   background:
     radial-gradient(circle at 28% 26%, rgba(41,36,84,.95) 0%, rgba(41,36,84,0) 62%),
@@ -693,20 +693,28 @@ body.module-open .dock-handle{
 .dock-handle:active{ transform:scale(.94); }
 .dock-handle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
 .dock-handle svg{ display:block; }
+/* dock expandido dentro de um módulo: versão compacta (botões de 34 px, mesma altura do círculo) */
 body.module-open .dock{ opacity:0; transform:scale(.55); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
+body.module-open .dock-btn{ width:34px; height:34px; }
 body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
 body.module-open.dock-open .dock-handle{ opacity:0; transform:scale(.7); pointer-events:none; }
+/* Telas largas: o painel deixa uma faixa livre de --mod-s de cada lado. O círculo e o dock compacto ficam CENTRALIZADOS nessa faixa,
+   então nunca encostam no painel. (Telas menores: o painel reserva a faixa de baixo, e o dock fica no canto, abaixo dele.) */
+@media (min-width:1100px){
+  body.module-open .dock-handle{ right:calc(var(--mod-s) / 2 - 22px); }
+  body.module-open .dock{ right:calc(var(--mod-s) / 2); transform-origin:center; transform:translateX(50%) scale(.55); }
+  body.module-open.dock-open .dock{ transform:translateX(50%); }
+}
 /* 3 ou mais abas: sem círculo; o dock fica visível, mais fino, para não tomar a área de trabalho */
 body.module-open[data-tabs="3+"] .dock-handle{ display:none; }
-body.module-open[data-tabs="3+"] .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; padding:3px; }
+body.module-open[data-tabs="3+"] .dock{ opacity:1; pointer-events:auto; visibility:visible; padding:3px; }
 body.module-open[data-tabs="3+"] .dock-btn{ width:32px; height:32px; }
+@media (min-width:1100px){ body.module-open[data-tabs="3+"] .dock{ transform:translateX(50%); } }
+@media (max-width:1099.98px){ body.module-open[data-tabs="3+"] .dock{ transform:none; } }
 @media (prefers-reduced-motion:reduce){ .dock, .dock-handle{ transition-duration:.01s !important; animation:none !important; } }
 
 /* Configurações → Gestos */
-.set-row.set-group{ border-bottom:0; padding-bottom:4px; }
-.set-row.set-sub{ padding-left:26px; }
-.set-row.set-sub .ico{ width:34px; height:34px; } .set-row.set-sub h3{ font-size:13px; }
-.set-row.set-group + .set-sub, .set-row.set-sub + .set-sub{ padding-top:12px; padding-bottom:12px; }
+/* Gestos: "Hey ORION" e "Bater palmas" usam o mesmo tamanho, espaçamento e linha separadora das demais linhas (.set-row). */
 
 /* ORION API no layout de referência */
 .v52-api{ display:grid; grid-template-columns:minmax(0,1.85fr) minmax(0,1fr); gap:16px; align-items:start; }
