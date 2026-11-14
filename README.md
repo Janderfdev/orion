@@ -273,6 +273,9 @@ Feedback and testing are valuable, but the project may still contain bugs, incom
 - **Daily Brief.** News by category from public RSS feeds of recognized outlets: headlines, snippets, dates and links come from the sources themselves; repeated stories are merged; nothing is written by the model.
 - **Seasonal logos.** Christmas (Dec 1–31) and Easter (Palm Sunday to Easter Sunday, computed every year), always in Brasília time (UTC-3).
 - **Voice by plan.** FREE has one voice; PLUS and PRO have four (enforced by the server).
+- **Gestures.** Settings → Gestures: wake ORION by saying “Hey ORION” or by clapping twice. Clap detection is opt-in and runs only on the device: the microphone is analyzed in memory every ~20 ms, never recorded or sent, never routed to the speakers, and only open while the gesture is on, the page is visible and ORION is idle. To tune it, run `localStorage.setItem('orion_clap_debug','1')` in the browser console to log each detected clap.
+- **Daily Brief, read aloud.** Opening the Daily Brief makes ORION read the top headlines (real headlines from the sources, a few categories, short) with the same voice and Orb states as a reply. A button stops or repeats it; closing the panel stops it.
+- **Button bar like iOS.** While a module is open the button bar collapses into a thin bar at the bottom center so it no longer covers content; tap, click, press Enter or swipe up to bring it back (it hides again by itself).
 
 Payments are validated in the provider's **test environment** first; production credentials are a separate step. Features marked as planned elsewhere in this document remain planned.
 
