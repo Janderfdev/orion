@@ -808,11 +808,16 @@ const API = (() => {
   const previewOpts = () => Object.assign(voiceOpts(), { lang: convLang() });
 
   /* ── boot (V4.5.5: mais rápido, sem textos de status) ── */
-  setTimeout(() => {
+  /* V5.2.0: sem atraso artificial. A tela preta some (≈0,5 s) assim que a sessão e as fontes estão prontas; se demorar, o CSS mostra um indicador discreto. */
+  const bootReady = Promise.race([
+    Promise.all([window.ORION_AUTH_READY || Promise.resolve(), document.fonts ? document.fonts.ready : Promise.resolve()]),
+    new Promise(r => setTimeout(r, 6000)),   // rede ruim: não prende o usuário na tela preta
+  ]);
+  bootReady.then(() => {
     bootEl.classList.add('out');
     try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init failed:', err); }
-    setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); flash(t('online'), 3200); }, 670);
-  }, 1200);
+    setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); flash(t('online'), 3200); }, 500);
+  });
 
   function flash(msg, ms = 2600) {
     clearTimeout(flashTimer);
