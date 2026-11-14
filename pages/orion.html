@@ -59,10 +59,11 @@ body{ transition:opacity .3s ease; }
 html.theme-swap body{ opacity:0; transition-duration:.2s; }
 
 /* ═══════ BOOT ═══════ */
-#boot{ position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .67s ease; }
+#boot{ position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .5s ease; }
 #boot.out{ opacity:0; pointer-events:none; }
-.boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(119,112,184,.22)); }
-.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; }
+.boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(119,112,184,.22)); opacity:0; animation:bootShow .5s ease 1.2s forwards; }
+.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; opacity:0; animation:bootShow .5s ease 1.2s forwards; }
+@keyframes bootShow{ to{ opacity:1; } }   /* V5.2.0: carregou rápido = só o preto some; demorou (>1,2 s) = indicador discreto */
 .boot-ring{ position:absolute; inset:0; border-radius:50%; border:1px solid rgba(119,112,184,.18); border-top-color:rgba(119,112,184,.75); animation:bootspin 1.1s linear infinite; }
 .boot-ring:nth-child(2){ inset:14px; border-top-color:rgba(119,112,184,.45); animation-duration:1.6s; animation-direction:reverse; }
 @keyframes bootspin{ to{ transform:rotate(360deg); } }
@@ -667,20 +668,39 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 /* ═══════ V5.2.0 (2ª parte) — barra de botões "tipo iPhone", painel da API no layout de referência, Gestos ═══════ */
 /* Com um módulo aberto, a barra de botões vira uma barrinha fina no centro (como o indicador do iPhone) e deixa de cobrir o conteúdo.
    Toque/clique/Enter (ou arrastar para cima) na barrinha mostra a barra de novo; ela se recolhe sozinha depois de alguns segundos. */
+/* Dock adaptativo (regra 11.4). Com um módulo aberto (1 ou 2 abas), o dock vira UM círculo compacto no canto inferior direito, com a
+   engrenagem no centro e a iluminação interna das três tonalidades escuras da Orb. Tocar/clicar/Enter (ou arrastar para cima) expande
+   o dock na mesma posição; ele se recolhe sozinho depois de alguns segundos. A quantidade de abas é condição explícita: body[data-tabs]
+   (window.ORION_DOCK.setTabs(n)). Com 3 ou mais abas o círculo não é aplicado: o dock fica visível, em versão fina. */
+.dock{ transform-origin:right center; }
 .dock-handle{ display:none; }
 body.module-open .dock-handle{
-  display:flex; position:fixed; left:50%; bottom:max(6px, env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); z-index:41;
-  width:176px; height:34px; align-items:flex-end; justify-content:center; padding:0 0 8px; border:0; background:transparent; cursor:pointer;
+  display:flex; position:fixed; right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); z-index:41;
+  width:50px; height:50px; padding:0; align-items:center; justify-content:center; border-radius:50%;
+  border:1px solid var(--line); cursor:pointer; color:rgba(var(--w),.62);
+  background:
+    radial-gradient(circle at 28% 26%, rgba(41,36,84,.95) 0%, rgba(41,36,84,0) 62%),
+    radial-gradient(circle at 76% 30%, rgba(48,32,68,.9) 0%, rgba(48,32,68,0) 58%),
+    radial-gradient(circle at 60% 82%, rgba(23,39,71,.95) 0%, rgba(23,39,71,0) 64%),
+    #07070E;
+  box-shadow:0 10px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(var(--w),.05);
+  transition:opacity .25s ease, transform .3s cubic-bezier(.22,1,.36,1), color .2s ease, border-color .2s ease;
+  animation:dockOrbIn .3s cubic-bezier(.22,1,.36,1);
   -webkit-tap-highlight-color:transparent; touch-action:none;
 }
-.dock-handle::before{ content:""; width:136px; height:5px; border-radius:999px; background:rgba(var(--w),.42); transition:background .2s ease, opacity .25s ease, transform .25s ease; }
-.dock-handle:hover::before{ background:rgba(var(--w),.72); }
-.dock-handle:active::before{ transform:scaleX(.92); }
-.dock-handle:focus-visible{ outline:none; } .dock-handle:focus-visible::before{ outline:2px solid var(--accent); outline-offset:5px; background:rgba(var(--w),.8); }
-body.module-open .dock{ opacity:0; transform:translateY(12px) scale(.96); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
+@keyframes dockOrbIn{ from{ opacity:0; transform:scale(.7); } }
+.dock-handle:hover{ color:var(--fg); border-color:rgba(var(--acc),.45); }
+.dock-handle:active{ transform:scale(.94); }
+.dock-handle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.dock-handle svg{ display:block; }
+body.module-open .dock{ opacity:0; transform:scale(.55); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
 body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
-body.module-open.dock-open .dock-handle::before{ opacity:0; }
-@media (prefers-reduced-motion:reduce){ .dock, .dock-handle::before{ transition-duration:.01s !important; } }
+body.module-open.dock-open .dock-handle{ opacity:0; transform:scale(.7); pointer-events:none; }
+/* 3 ou mais abas: sem círculo; o dock fica visível, mais fino, para não tomar a área de trabalho */
+body.module-open[data-tabs="3+"] .dock-handle{ display:none; }
+body.module-open[data-tabs="3+"] .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; padding:3px; }
+body.module-open[data-tabs="3+"] .dock-btn{ width:32px; height:32px; }
+@media (prefers-reduced-motion:reduce){ .dock, .dock-handle{ transition-duration:.01s !important; animation:none !important; } }
 
 /* Configurações → Gestos */
 .set-row.set-group{ border-bottom:0; padding-bottom:4px; }
