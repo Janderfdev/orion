@@ -698,20 +698,47 @@ body.module-open .dock{ opacity:0; transform:scale(.55); pointer-events:none; vi
 body.module-open .dock-btn{ width:34px; height:34px; }
 body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
 body.module-open.dock-open .dock-handle{ opacity:0; transform:scale(.7); pointer-events:none; }
-/* Telas largas: o painel deixa uma faixa livre de --mod-s de cada lado. O círculo e o dock compacto ficam CENTRALIZADOS nessa faixa,
-   então nunca encostam no painel. (Telas menores: o painel reserva a faixa de baixo, e o dock fica no canto, abaixo dele.) */
+/* Telas largas: o círculo fica no CANTO inferior direito, com a mesma folga à direita e embaixo (a folga da etiqueta de versão, à esquerda),
+   alinhado com a borda de baixo do painel. O dock compacto abre ali mesmo, com a engrenagem exatamente sob o círculo, e é estreito
+   o bastante para ficar na faixa livre ao lado do painel, sem encostar nele. (Telas menores: o painel reserva a faixa de baixo.) */
 @media (min-width:1100px){
-  body.module-open .dock-handle{ right:calc(var(--mod-s) / 2 - 22px); }
-  body.module-open .dock{ right:calc(var(--mod-s) / 2); transform-origin:center; transform:translateX(50%) scale(.55); }
-  body.module-open.dock-open .dock{ transform:translateX(50%); }
+  body.module-open{ --corner:clamp(14px,3vw,28px); }
+  body.module-open .dock-handle{ right:var(--corner); bottom:var(--corner); }
+  body.module-open .dock{ right:calc(var(--corner) + 2px); bottom:calc(var(--corner) + 2px); transform-origin:right center; transform:scale(.55); }
+  body.module-open.dock-open .dock{ transform:none; }
+  body.module-open .dock-btn{ width:30px; height:30px; }
 }
 /* 3 ou mais abas: sem círculo; o dock fica visível, mais fino, para não tomar a área de trabalho */
 body.module-open[data-tabs="3+"] .dock-handle{ display:none; }
 body.module-open[data-tabs="3+"] .dock{ opacity:1; pointer-events:auto; visibility:visible; padding:3px; }
-body.module-open[data-tabs="3+"] .dock-btn{ width:32px; height:32px; }
-@media (min-width:1100px){ body.module-open[data-tabs="3+"] .dock{ transform:translateX(50%); } }
+body.module-open[data-tabs="3+"] .dock-btn{ width:30px; height:30px; }
+@media (min-width:1100px){ body.module-open[data-tabs="3+"] .dock{ transform:none; } }
 @media (max-width:1099.98px){ body.module-open[data-tabs="3+"] .dock{ transform:none; } }
 @media (prefers-reduced-motion:reduce){ .dock, .dock-handle{ transition-duration:.01s !important; animation:none !important; } }
+
+/* ═══════ V5.2.0 — Duas abas lado a lado (js/orion-split.js) ═══════
+   Dois módulos abertos ao mesmo tempo: cada um num cartão igual ao de uma aba normal; o primeiro à esquerda, o segundo à direita.
+   Como nas telas menores, o painel reserva o topo (logo) e a base (dock/círculo). */
+.set-head > [data-split-btn]{ margin-left:auto; }
+.set-head > [data-split-btn] + .icon-btn{ margin-left:0; }
+@media (max-width:899px){ [data-split-btn]{ display:none; } }
+.split-menu{ position:fixed; z-index:60; min-width:200px; padding:6px; display:flex; flex-direction:column; gap:2px; border-radius:16px;
+  background:var(--surface); border:1px solid var(--line); box-shadow:0 18px 50px rgba(0,0,0,.65); animation:splitMenuIn .18s ease; }
+@keyframes splitMenuIn{ from{ opacity:0; transform:translateY(-4px); } }
+.split-item{ height:38px; padding:0 14px; border:0; border-radius:11px; background:transparent; color:var(--fg); font:500 13px var(--font); text-align:left; cursor:pointer; transition:background .2s ease; }
+.split-item:hover, .split-item:focus-visible{ background:rgba(var(--act-hi),.9); outline:none; }
+body.split-view{ --mod-s:28px; --mod-t:78px; --mod-b:78px; --mod-r:30px; }
+body.split-view .orb.module{ opacity:0; transition:opacity .3s ease; }
+body.split-view .orb-zone .orb-arc{ opacity:0; }
+body.split-view [data-split]{ pointer-events:none !important; }
+body.split-view [data-split] .settings-card{
+  pointer-events:auto; background:var(--panel-bg); border:1px solid rgba(var(--acc),.2);
+  box-shadow:0 30px 90px rgba(0,0,0,.8), inset 0 1px 0 rgba(var(--w),.04);
+  transition:opacity .35s ease .1s, left .45s var(--ease), right .45s var(--ease) !important;
+}
+body.split-view [data-split="a"] .settings-card{ right:calc(50% + 7px); }
+body.split-view [data-split="b"] .settings-card{ left:calc(50% + 7px); }
+@media (prefers-reduced-motion:reduce){ body.split-view [data-split] .settings-card{ transition-duration:.01s !important; } .split-menu{ animation:none; } }
 
 /* Configurações → Gestos */
 /* Gestos: "Hey ORION" e "Bater palmas" usam o mesmo tamanho, espaçamento e linha separadora das demais linhas (.set-row). */
@@ -938,11 +965,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=10"></script>
+<script src="js/i18n.js?c=11"></script>
 <script src="js/gestures.js?c=10"></script>
-<script src="js/orb-frame.js?c=7"></script>
-<script defer src="js/app.js?c=10"></script>
-<script defer src="js/orion-v5.js?c=10"></script>
-<script defer src="js/orion-v52.js?c=10"></script>
+<script src="js/orion-split.js?c=1"></script>
+<script src="js/orb-frame.js?c=8"></script>
+<script defer src="js/app.js?c=11"></script>
+<script defer src="js/orion-v5.js?c=11"></script>
+<script defer src="js/orion-v52.js?c=11"></script>
 </body>
 </html>
