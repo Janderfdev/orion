@@ -9,6 +9,7 @@ troque-o por ORION_MODELS sem mexer no código.
 """
 import os
 
+from billing import plans
 from providers.claude import ClaudeProvider
 from providers.gemini import GeminiProvider, api_key as gemini_key
 
@@ -43,6 +44,28 @@ class Registry:
 
     def models(self) -> list[dict]:
         return [{"id": k, "label": v["label"]} for k, v in self._entries.items()]
+
+    # ── V5.2.0: modelos por plano (a regra está em billing/plans.py; o servidor decide, o site só mostra) ──
+    def has(self, model_id) -> bool:
+        return model_id in self._entries
+
+    def _floor(self) -> int:
+        return min((plans.get(plans.model_min_plan(k)).rank for k in self._entries), default=0)
+
+    def allowed(self, plan_id, model_id) -> bool:
+        """O plano pode usar esse modelo? Os modelos de menor nível configurados ficam sempre liberados (o serviço nunca fica sem modelo)."""
+        if model_id not in self._entries:
+            return False
+        return plans.allows_model(plan_id, model_id) or plans.get(plans.model_min_plan(model_id)).rank == self._floor()
+
+    def default_for(self, plan_id):
+        if self.default and self.allowed(plan_id, self.default):
+            return self.default
+        return next((k for k in self._entries if self.allowed(plan_id, k)), None)
+
+    def models_for(self, plan_id) -> list[dict]:
+        return [{"id": k, "label": v["label"], "locked": not self.allowed(plan_id, k), "min_plan": plans.model_min_plan(k)}
+                for k, v in self._entries.items()]
 
     def get(self, model_id: str | None):
         """Devolve (id, provider). id vazio = padrão; id desconhecido = (None, None)."""
