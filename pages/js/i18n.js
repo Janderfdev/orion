@@ -313,6 +313,7 @@ window.ORION_I18N = (() => {
   add("news.say.foreign", "Uma manchete em outro idioma:", "A headline in another language:");
   add("news.say.dev", "Ainda em desenvolvimento.", "Still developing.");
   add("dock.show", "Mostrar a barra de botões", "Show the button bar");
+  add("split.open", "Abrir ao lado", "Open side by side", "Abrir al lado", "Ouvrir côte à côte", "Daneben öffnen", "Apri affiancato");
   add("api.hero", "Integre o poder do ORION em seus projetos, apps e soluções.", "Bring the power of ORION to your projects, apps and solutions.");
   add("api.yourKey", "Sua API Key", "Your API key");
   add("api.yourKeySub", "Use sua chave para acessar o ORION API com segurança.", "Use your key to access ORION API securely.");
