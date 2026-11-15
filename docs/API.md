@@ -42,7 +42,10 @@ texto direto, sem markdown.
 
 ## `GET /v1/models`
 
-`{"default": "...", "models": [{"id": "...", "label": "..."}]}`
+`{"default": "...", "models": [{"id": "...", "label": "...", "locked": false, "min_plan": "free"}]}`
+
+Os modelos dependem do plano (o servidor decide). `locked: true` = o seu plano ainda não inclui esse modelo; `min_plan` diz a partir de qual plano ele é liberado.
+Hoje: **FREE e PLUS** usam o Gemini 3.5 Flash-Lite; **PRO** também usa o Gemini 3.6 Flash e o Gemini 3.8 Flash. O `default` é sempre um modelo liberado para o seu plano.
 
 ## `GET /v1/usage`
 
@@ -72,6 +75,7 @@ Sempre o mesmo formato, com o `request_id` (também no cabeçalho `X-Request-Id`
 |---|---|---|
 | 400 | `invalid_request` | corpo que não é JSON, `message` vazio/longo demais, `model` inválido |
 | 400 | `model_unavailable` | `model` que não existe (veja `GET /v1/models`) |
+| 403 | `model_not_in_plan` | o `model` pedido existe, mas o seu plano não o inclui (veja `locked` em `GET /v1/models`) |
 | 401 | `invalid_api_key` | chave ausente, malformada, revogada ou desconhecida |
 | 403 | `plan_required` | o plano atual não inclui o ORION API (hoje todos incluem; o código existe para planos futuros) |
 | 413 | `payload_too_large` | corpo acima de 32 KB |
