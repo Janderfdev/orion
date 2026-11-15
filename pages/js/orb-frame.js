@@ -47,7 +47,7 @@ window.OrbFrame = (() => {
     function setOpen(on) {
       if (on === isOpen) return;
       if (on) {
-        registry.forEach(f => { if (f !== api) f.setOpen(false); });
+        if (!(window.ORION_SPLIT && window.ORION_SPLIT.opening)) registry.forEach(f => { if (f !== api) f.setOpen(false); });   // V5.2.0: aberto "ao lado" não fecha o outro
         if (o.beforeOpen) o.beforeOpen();
         if (panel) panel.remove();
         build();
