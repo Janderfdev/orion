@@ -71,6 +71,10 @@ class ApiService:
     def _month(self) -> str:
         return self._today().strftime("%Y-%m")
 
+    def plan(self, uid: str) -> str:
+        """Plano atual (lido no servidor). Usado para decidir quais modelos a chave pode usar."""
+        return self._plan_of(uid)
+
     # ── gerenciamento de chaves ──
     def list_keys(self, uid: str) -> list:
         self._need()
