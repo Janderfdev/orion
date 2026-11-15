@@ -143,7 +143,7 @@
     panels.push(api);
     return api;
   }
-  const closeAll = () => panels.forEach(p => p.isOpen() && p.close(false));
+  const closeAll = () => { if (window.ORION_SPLIT && window.ORION_SPLIT.opening) return; panels.forEach(p => p.isOpen() && p.close(false)); };   // V5.2.0: não fecha ao abrir "ao lado"
   document.addEventListener('keydown', e => { if (e.key === 'Escape') panels.forEach(p => p.isOpen() && p.close()); });
   ['chatBtn', 'gearBtn', 'codeBtn', 'taskBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', closeAll, true); });   // abrir outro módulo fecha estes
 
