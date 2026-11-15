@@ -314,6 +314,8 @@ window.ORION_I18N = (() => {
   add("news.say.dev", "Ainda em desenvolvimento.", "Still developing.");
   add("dock.show", "Mostrar a barra de botões", "Show the button bar");
   add("split.open", "Abrir ao lado", "Open side by side", "Abrir al lado", "Ouvrir côte à côte", "Daneben öffnen", "Apri affiancato");
+  add("split.swap", "Trocar de lado", "Swap sides", "Intercambiar lados", "Échanger les côtés", "Seiten tauschen", "Scambia i lati");
+  add("split.resize", "Ajustar o tamanho (arraste ou use as setas; clique duplo restaura)", "Resize (drag or use arrow keys; double-click resets)", "Ajustar el tamaño (arrastra o usa las flechas; doble clic restablece)", "Redimensionner (glisser ou flèches ; double-clic réinitialise)", "Größe ändern (ziehen oder Pfeiltasten; Doppelklick setzt zurück)", "Ridimensiona (trascina o usa le frecce; doppio clic ripristina)");
   add("api.hero", "Integre o poder do ORION em seus projetos, apps e soluções.", "Bring the power of ORION to your projects, apps and solutions.");
   add("api.yourKey", "Sua API Key", "Your API key");
   add("api.yourKeySub", "Use sua chave para acessar o ORION API com segurança.", "Use your key to access ORION API securely.");
