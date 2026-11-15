@@ -16,6 +16,7 @@ Variáveis:
   ORION_REQUIRE_VERIFIED "1" exige e-mail verificado no token (padrão: desligado; o login atual não envia verificação)
   ORION_AGENT            "1" liga o Agent Engine (padrão: desligado). O /ask passa a devolver "agent" quando ele respondeu.
   ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
+  ORION_MODEL_PLANS      (V5.2.0) "id:plano,..." plano mínimo de cada modelo (padrão: Flash-Lite = FREE; 3.6 e 3.8 Flash = PRO)
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
@@ -227,7 +228,7 @@ async def models(authorization: str = Header(default="")):
     uid, _ = await _auth(authorization)
     plan = (await asyncio.to_thread(quota.status, uid))["plan"]
     voices = [dict(v, locked=not plans.allows_voice(plan, v.get("slot"))) for v in elevenlabs.voices()]   # V5.2.0: FREE = 1 voz; PLUS/PRO = 4
-    return {"default": registry.default, "models": registry.models(), "tts": elevenlabs.configured(), "plan": plan,
+    return {"default": registry.default_for(plan), "models": registry.models_for(plan), "tts": elevenlabs.configured(), "plan": plan,
             "voices": voices,   # [{slot, label, locked}] — nunca os Voice IDs
             "voice_limits": {"pace": [elevenlabs.PACE_MIN, elevenlabs.PACE_MAX, elevenlabs.PACE_DEFAULT],
                              "expressivity": [elevenlabs.EXPR_MIN, elevenlabs.EXPR_MAX, elevenlabs.EXPR_DEFAULT]}}
@@ -238,7 +239,11 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
     uid, token = await _auth(authorization, count=True)
     if not registry.models():
         raise HTTPException(503, "Nenhum modelo configurado no servidor.")
-    model_id, provider = registry.get(body.model)
+    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
+    wanted = body.model
+    if wanted and registry.has(wanted) and not registry.allowed(plan, wanted):
+        wanted = registry.default_for(plan)            # V5.2.0: modelo fora do plano (ex.: escolha antiga após um downgrade) -> o do plano
+    model_id, provider = registry.get(wanted or registry.default_for(plan))
     if not provider:
         raise HTTPException(400, "Modelo indisponível.")
     try:                                               # anexo inválido NÃO gasta cota
@@ -411,9 +416,10 @@ async def _v1_who(authorization: str) -> dict:
 
 @app.get("/v1/models")
 async def v1_models(response: Response, authorization: str = Header(default="")):
-    await _v1_who(authorization)
+    who = await _v1_who(authorization)
     response.headers["X-Request-Id"] = _rid()
-    return {"default": registry.default, "models": registry.models()}
+    plan = await asyncio.to_thread(orion_api.plan, who["uid"])
+    return {"default": registry.default_for(plan), "models": registry.models_for(plan)}
 
 
 @app.get("/v1/usage")
@@ -449,7 +455,10 @@ async def v1_chat(request: Request, response: Response, authorization: str = Hea
         raise ApiError(400, "invalid_request", '"model" deve ser um texto.')
     if not registry.models():
         raise ApiError(503, "model_unavailable", "Nenhum modelo configurado no servidor.")
-    model_id, provider = registry.get(mdl)
+    plan = await asyncio.to_thread(orion_api.plan, who["uid"])
+    if mdl and registry.has(mdl) and not registry.allowed(plan, mdl):
+        raise ApiError(403, "model_not_in_plan", "Este modelo não está incluído no seu plano. Veja GET /v1/models.")
+    model_id, provider = registry.get(mdl or registry.default_for(plan))
     if not provider:
         raise ApiError(400, "model_unavailable", "Modelo indisponível. Veja GET /v1/models.")
     use = await asyncio.to_thread(orion_api.begin, who["uid"], who["key_id"])    # plano, limite por minuto e cota do mês
