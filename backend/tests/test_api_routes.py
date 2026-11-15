@@ -50,6 +50,10 @@ class FakeRegistry:
     default = "m1"
     def __init__(self, prov): self.prov = prov
     def models(self): return [{"id": "m1", "label": "Modelo 1"}]
+    def has(self, mid): return mid == "m1"
+    def allowed(self, plan, mid): return mid == "m1"
+    def default_for(self, plan): return "m1"
+    def models_for(self, plan): return [{"id": "m1", "label": "Modelo 1", "locked": False, "min_plan": "free"}]
     def get(self, mid): return ("m1", self.prov) if mid in (None, "m1") else (None, None)
 
 
@@ -104,7 +108,7 @@ def test_create_key_then_chat(ctx):
 def test_models_and_usage_endpoints_with_key(ctx):
     c, *_ = ctx
     k = make_key(c)["key"]
-    assert c.get("/v1/models", headers=bearer(k)).json() == {"default": "m1", "models": [{"id": "m1", "label": "Modelo 1"}]}
+    assert c.get("/v1/models", headers=bearer(k)).json() == {"default": "m1", "models": [{"id": "m1", "label": "Modelo 1", "locked": False, "min_plan": "free"}]}
     c.post("/v1/chat", json={"message": "oi"}, headers=bearer(k))
     u = c.get("/v1/usage", headers=bearer(k)).json()
     assert u["used"] == 1 and u["limit"] == 4 and u["plan"] == "plus"
