@@ -1359,7 +1359,7 @@ const API = (() => {
     }
     function setOpen(on) {
       if (on) {
-        settings.close();                                   // só um painel por vez
+        if (!(window.ORION_SPLIT && window.ORION_SPLIT.opening)) settings.close();   // só um painel por vez (exceto ao abrir "ao lado")
         if (panel) panel.remove();
         build();                                            // reconstrói a cada abertura: já vem no idioma atual
         open = true;
