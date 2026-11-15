@@ -42,7 +42,7 @@ OK = {"Authorization": "Bearer ok"}
 def test_plans_catalog_is_public_and_has_no_secrets(client):
     c, _ = client
     r = c.get("/plans")
-    assert r.status_code == 200 and [p["id"] for p in r.json()["plans"]] == ["free", "plus", "pro", "ultra"]
+    assert r.status_code == 200 and [p["id"] for p in r.json()["plans"]] == ["free", "plus", "pro"]   # o ULTRA é da V5.5.0
     assert "orion_code" not in r.text and "token" not in r.text.lower()
 
 
