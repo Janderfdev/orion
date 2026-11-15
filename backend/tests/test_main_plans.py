@@ -29,7 +29,9 @@ def ctx(monkeypatch):
         PACE_MIN=0.8, PACE_MAX=1.2, PACE_DEFAULT=1.0, EXPR_MIN=0.0, EXPR_MAX=1.0, EXPR_DEFAULT=0.5)
     monkeypatch.setattr(main, "elevenlabs", fake_el)
     monkeypatch.setattr(main, "_tts_ok", lambda uid, n: True)
-    monkeypatch.setattr(main, "registry", SimpleNamespace(default="m", models=lambda: [{"id": "m", "label": "M"}]))
+    monkeypatch.setattr(main, "registry", SimpleNamespace(
+        default="m", models=lambda: [{"id": "m", "label": "M"}], default_for=lambda p: "m",
+        models_for=lambda p: [{"id": "m", "label": "M", "locked": False, "min_plan": "free"}]))
     return TestClient(main.app, raise_server_exceptions=False), plan, synth
 
 
