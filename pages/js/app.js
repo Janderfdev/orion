@@ -1207,7 +1207,7 @@ const API = (() => {
     try {
       const d = await API.models();
       models = Array.isArray(d.models) ? d.models : [];
-      if (!models.some(m => m.id === prefs.model)) { prefs.model = d.default || (models[0] && models[0].id) || null; savePrefs(); }
+      if (!models.some(m => m.id === prefs.model && !m.locked)) { prefs.model = d.default || ((models.find(m => !m.locked) || models[0] || {}).id) || null; savePrefs(); }   // V5.2.0: o plano decide quais modelos estão liberados
       ttsOn = !!d.tts;   // o servidor tem a voz do ElevenLabs configurada?
       voices = Array.isArray(d.voices) ? d.voices.filter(v => v && Number.isInteger(v.slot) && v.slot >= 1 && v.slot <= 4).map(v => ({ slot: v.slot, label: v.label, locked: !!v.locked })) : [];
       const usable = voices.filter(v => !v.locked);   // V5.2.0: o plano FREE tem 1 voz; PLUS e PRO, 4 (o servidor também confere)
@@ -1432,7 +1432,7 @@ const API = (() => {
       if (!models.length) {
         const o = document.createElement('option'); o.textContent = loading ? t('core.connecting') : (online ? t('set.nomodel') : t('set.unavail')); sel.appendChild(o); sel.disabled = true;
       } else {
-        models.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; sel.appendChild(o); });
+        models.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label + (m.locked ? ' · ' + String(m.min_plan || 'pro').toUpperCase() : ''); o.disabled = !!m.locked; sel.appendChild(o); });   // travado = precisa de plano maior
         sel.value = prefs.model; sel.disabled = false;
       }
       panel.querySelector('#uiSelect').value = prefs.ui;
