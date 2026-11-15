@@ -359,6 +359,15 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 .plan-chip{ font:600 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; padding:5px 11px; border-radius:999px; color:var(--accent-soft); background:rgba(var(--act-hi),.9); border:1px solid rgba(var(--acc),.32); }
 .side-note{ font-size:10.5px; line-height:1.6; color:rgba(var(--w),.5); text-align:center; }
 .set-list{ padding:8px 28px; min-width:0; max-width:860px; }
+/* V5.2.0: o perfil (coluna da esquerda) fica parado; só a lista de comandos (direita) rola. Em telas estreitas (uma coluna) tudo rola junto. */
+.set-body{ overflow:hidden; grid-template-rows:minmax(0,1fr); }
+.set-side{ min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(var(--acc),.35) transparent; }
+.set-list{ min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(var(--acc),.35) transparent; }
+@media (max-height:760px){
+  .avatar-btn{ width:64px; height:64px; font-size:24px; }
+  .set-side{ gap:8px; padding:16px 22px; }
+  .side-info{ margin-top:4px; padding-top:10px; gap:6px; }
+}
 .set-row{ display:grid; grid-template-columns:40px 1fr auto; gap:14px; align-items:center; padding:16px 0; border-bottom:1px solid rgba(var(--w),.05); }
 .set-row:last-child{ border-bottom:0; }
 .set-row .ico{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--accent-soft); background:var(--surface2); border:1px solid var(--line); }
@@ -415,7 +424,8 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 .settings-select option{ background:var(--card-solid); color:var(--fg); }
 
 @container mod (max-width:720px){
-  .set-body{ grid-template-columns:1fr; }
+  .set-body{ grid-template-columns:1fr; grid-template-rows:none; grid-auto-rows:max-content; overflow-y:auto; }
+  .set-side, .set-list{ min-height:auto; overflow:visible; }
   .set-side{ border-right:0; border-bottom:1px solid rgba(var(--w),.05); }
   .set-row{ grid-template-columns:36px 1fr; row-gap:10px; }
   .set-row > :last-child{ grid-column:2; justify-self:start; }
@@ -674,8 +684,9 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
    (window.ORION_DOCK.setTabs(n)). Com 3 ou mais abas o círculo não é aplicado: o dock fica visível, em versão fina. */
 .dock{ transform-origin:right center; }
 .dock-handle{ display:none; }
+body.module-open{ --corner:clamp(8px,1.1vw,14px); }   /* o círculo e o dock compacto ficam bem no cantinho */
 body.module-open .dock-handle{
-  display:flex; position:fixed; right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); z-index:41;
+  display:flex; position:fixed; right:var(--corner); bottom:var(--corner); z-index:41;
   width:44px; height:44px; padding:0; align-items:center; justify-content:center; border-radius:50%;
   border:1px solid var(--line); cursor:pointer; color:rgba(var(--w),.62);
   background:
@@ -695,15 +706,13 @@ body.module-open .dock-handle{
 .dock-handle svg{ display:block; }
 /* dock expandido dentro de um módulo: versão compacta (botões de 34 px, mesma altura do círculo) */
 body.module-open .dock{ opacity:0; transform:scale(.55); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
+body.module-open .dock{ right:var(--corner); bottom:var(--corner); }
 body.module-open .dock-btn{ width:34px; height:34px; }
 body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
 body.module-open.dock-open .dock-handle{ opacity:0; transform:scale(.7); pointer-events:none; }
-/* Telas largas: o círculo fica no CANTO inferior direito, com a mesma folga à direita e embaixo (a folga da etiqueta de versão, à esquerda),
-   alinhado com a borda de baixo do painel. O dock compacto abre ali mesmo, com a engrenagem exatamente sob o círculo, e é estreito
+/* O círculo fica bem no CANTINHO inferior direito, com a mesma folga à direita e embaixo (--corner). O dock compacto abre ali mesmo, com a engrenagem exatamente sob o círculo, e é estreito
    o bastante para ficar na faixa livre ao lado do painel, sem encostar nele. (Telas menores: o painel reserva a faixa de baixo.) */
 @media (min-width:1100px){
-  body.module-open{ --corner:clamp(14px,3vw,28px); }
-  body.module-open .dock-handle{ right:var(--corner); bottom:var(--corner); }
   body.module-open .dock{ right:calc(var(--corner) + 2px); bottom:calc(var(--corner) + 2px); transform-origin:right center; transform:scale(.55); }
   body.module-open.dock-open .dock{ transform:none; }
   body.module-open .dock-btn{ width:30px; height:30px; }
@@ -736,8 +745,18 @@ body.split-view [data-split] .settings-card{
   box-shadow:0 30px 90px rgba(0,0,0,.8), inset 0 1px 0 rgba(var(--w),.04);
   transition:opacity .35s ease .1s, left .45s var(--ease), right .45s var(--ease) !important;
 }
-body.split-view [data-split="a"] .settings-card{ right:calc(50% + 7px); }
-body.split-view [data-split="b"] .settings-card{ left:calc(50% + 7px); }
+/* --r = fatia da largura que fica com o cartão da ESQUERDA (0,30 a 0,70; padrão 0,5). O divisor (.split-handle) muda --r. */
+body.split-view{ --r:.5; --gap:14px; --avail:calc(100% - 2 * var(--mod-s) - var(--gap)); }
+body.split-view [data-split="a"] .settings-card{ right:calc(var(--mod-s) + var(--avail) * (1 - var(--r)) + var(--gap)); }
+body.split-view [data-split="b"] .settings-card{ left:calc(var(--mod-s) + var(--avail) * var(--r) + var(--gap)); }
+body.split-drag [data-split] .settings-card{ transition:none !important; }
+.split-handle{ position:fixed; z-index:31; top:var(--mod-t); bottom:var(--mod-b); width:18px; margin:0; padding:0; border:0; background:transparent; cursor:col-resize; touch-action:none;
+  left:calc(var(--mod-s) + (100% - 2 * var(--mod-s) - var(--gap)) * var(--r) + var(--gap) / 2 - 9px); }
+.split-handle::before{ content:""; position:absolute; left:7px; top:50%; width:4px; height:44px; transform:translateY(-50%); border-radius:4px; background:rgba(var(--w),.22); transition:background .2s ease, height .2s ease; }
+.split-handle:hover::before, .split-handle:focus-visible::before, body.split-drag .split-handle::before{ background:rgba(var(--acc),.9); height:64px; }
+.split-handle:focus-visible{ outline:none; }
+.set-head > [data-swap-btn]{ margin-left:auto; } .set-head > [data-swap-btn] + .icon-btn{ margin-left:0; }
+body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ display:none; }
 @media (prefers-reduced-motion:reduce){ body.split-view [data-split] .settings-card{ transition-duration:.01s !important; } .split-menu{ animation:none; } }
 
 /* Configurações → Gestos */
@@ -965,11 +984,11 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=11"></script>
+<script src="js/i18n.js?c=12"></script>
 <script src="js/gestures.js?c=10"></script>
-<script src="js/orion-split.js?c=1"></script>
+<script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=11"></script>
+<script defer src="js/app.js?c=12"></script>
 <script defer src="js/orion-v5.js?c=11"></script>
 <script defer src="js/orion-v52.js?c=11"></script>
 </body>
