@@ -103,6 +103,26 @@ def allows_voice(plan_id, slot) -> bool:
     return isinstance(slot, int) and not isinstance(slot, bool) and slot in get(plan_id).voice_slots
 
 
+# ── Modelos por plano (V5.2.0) ──
+# Plano MÍNIMO de cada modelo. FREE usa só o mais leve; os dois mais fortes ficam do PRO para cima.
+# Ordem de qualidade em nov/2026 (Artificial Analysis, BenchLM e outros comparativos): 3.8 Flash > 3.6 Flash > 3.5 Flash-Lite.
+# Troque sem mexer no código com ORION_MODEL_PLANS="id:plano,id2:plano" (modelo que não está em nenhuma lista exige PRO).
+MODEL_MIN_PLAN = {"gemini-3.5-flash-lite": "free", "gemini-3.6-flash": "pro", "gemini-3.8-flash": "pro"}
+
+
+def model_min_plan(model_id) -> str:
+    over = {}
+    for item in os.getenv("ORION_MODEL_PLANS", "").split(","):
+        mid, _, pid = item.strip().partition(":")
+        if mid and pid.strip() in PLANS:
+            over[mid] = pid.strip()
+    return over.get(model_id) or MODEL_MIN_PLAN.get(model_id) or "pro"
+
+
+def allows_model(plan_id, model_id) -> bool:
+    return get(plan_id).rank >= get(model_min_plan(model_id)).rank
+
+
 def daily_limits() -> dict:
     return {p.id: p.daily_questions for p in PLANS.values()}
 
