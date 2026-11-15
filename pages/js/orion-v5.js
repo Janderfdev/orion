@@ -265,7 +265,7 @@
   });
 
   // abrir Configurações ou ORION Code enquanto a Multitarefa está aberta troca de painel (só um por vez)
-  ['gearBtn', 'codeBtn', 'newsBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', () => { if (panel.isOpen()) panel.setOpen(false); }, true); });
+  ['gearBtn', 'codeBtn', 'newsBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', () => { if (window.ORION_SPLIT && window.ORION_SPLIT.opening) return; if (panel.isOpen()) panel.setOpen(false); }, true); });   // V5.2.0: não fecha ao abrir "ao lado"
 
   // o rótulo do botão acompanha o idioma da interface
   const label = () => { const n = T().name; taskBtn.setAttribute('aria-label', n); taskBtn.title = n; };
