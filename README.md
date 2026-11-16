@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/Version-5.2.0-4B287D?style=for-the-badge)](#-version-history)
 [![Status](https://img.shields.io/badge/Status-Beta-FF9800?style=for-the-badge)](#-current-status)
-[![Launch](https://img.shields.io/badge/Public%20Launch-May%202027-4B282D?style=for-the-badge)](#-public-launch--2027)
+[![Launch](https://img.shields.io/badge/Public%20Launch-Coming%20Soon-4B282D?style=for-the-badge)](#-public-launch--coming-soon)
 [![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](LICENSE)
 
 </div>
@@ -37,7 +37,7 @@ ORION AI is evolving toward two complementary goals:
 - A personal AI experience with its own identity and interface.
 - An extensible AI platform that allows developers to integrate intelligent capabilities into their own applications and systems.
 
-ORION AI is currently in **Beta**, with development focused on evolving its architecture, validating core functionality and preparing the foundation for a broader public release in 2027.
+ORION AI is currently in **Beta**, with development focused on evolving its architecture, validating core functionality and preparing the foundation for a broader public release.
 
 ---
 
@@ -294,7 +294,7 @@ The roadmap represents the intended direction of development. Milestones and fea
 | **V7.0** | Vision Layer for supported images and documents |
 | **V8.0** | Voice and integration of core capabilities |
 | **V9.0** | Stabilization, security review, testing and release preparation |
-| **V1.0 — Juneau** | Target public release in May 2027 |
+| **V1.0 — Juneau** | Public release coming soon |
 
 The public release will prioritize the capabilities that are sufficiently tested and ready for use. The version sequence and schedule may be adjusted when necessary.
 
