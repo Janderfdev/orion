@@ -175,26 +175,39 @@
         msg = h('p', { class: 'v52-msg', role: 'status', 'aria-live': 'polite' });
         const buttons = [];
 
-        const cards = d.cat.plans.map(p => {
+        /* V5.2.0 — apresentação dos planos em 2 colunas × 2 linhas (FREE | PLUS / PRO | ULTRA; empilha em telas estreitas).
+           Os textos vêm do i18n (plans2.*). O que o SERVIDOR decide continua vindo dele: preço cobrado, "dá para assinar" e plano atual.
+           O ORION ULTRA ainda não existe no servidor: aparece como "Disponível em breve", sem botão de assinatura. */
+        const SHOW = [
+          { id: 'free', n: 5 },
+          { id: 'plus', n: 6, fallback: 2990 },
+          { id: 'pro', n: 7, fallback: 4990, soonItem: 3 },        // item 3 do PRO = ORION CODE (Disponível em breve)
+          { id: 'ultra', n: 9, fallback: 9990, soon: true },
+        ];
+        const cards = SHOW.map(def => {
+          const p = def.soon ? null : (d.cat.plans.find(x => x.id === def.id) || null);
+          const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
           const items = [];
-          if ((p.features || []).includes('chat')) items.push(h('li', {}, T('plans.chat')));
-          items.push(h('li', {}, T('plans.perDay', { n: num(p.daily_questions) })));
-          if ((p.features || []).includes('history')) items.push(h('li', {}, T('plans.history')));
-          items.push(h('li', {}, p.voices > 1 ? T('plans.voiceN', { n: p.voices }) : T('plans.voice1')));
-          if (p.api) { items.push(h('li', {}, T('plans.apiYes', { m: num(p.api.monthly) }))); items.push(h('li', {}, T('plans.apiRpm', { n: num(p.api.per_minute) }))); }
-          else items.push(h('li', { class: 'no' }, T('plans.apiNo')));
+          for (let i = 1; i <= def.n; i++) {
+            const li = h('li', i === 1 && def.id !== 'free' ? { class: 'inherit' } : {}, T('plans2.' + def.id + '.' + i));
+            if (def.soonItem === i) li.append(' ', h('span', { class: 'v52-soon' }, T('plans2.soon')));
+            items.push(li);
+          }
 
           let btn = null;
-          if (p.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
-          else if (p.id !== 'free') {
-            const can = p.purchasable && billingOn;
-            btn = h('button', { class: 'pill-btn primary block', type: 'button', disabled: !can, onclick: () => subscribe(p) },
-              !p.purchasable ? T('plans.soon') : !billingOn ? T('plans.unavailable') : T('plans.subscribe', { name: p.name }));
+          if (def.soon) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans2.soon'));      // ULTRA: não dá para contratar
+          else if (def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
+          else if (def.id !== 'free') {
+            const can = !!(p && p.purchasable && billingOn);
+            btn = h('button', { class: 'pill-btn primary block', type: 'button', disabled: !can, onclick: () => p && subscribe(p) },
+              !(p && p.purchasable) ? T('plans.soon') : !billingOn ? T('plans.unavailable') : T('plans.subscribe', { name }));
             if (can) buttons.push(btn);
           }
-          const price = p.price_cents ? h('div', { class: 'v52-price' }, T('plans.price', { p: money(p.price_cents) })) : h('div', { class: 'v52-price' }, p.id === 'free' ? T('plans.free0') : h('small', {}, T('plans.noPrice')));
-          return h('section', { class: 'v52-plan' + (p.id === curPlan ? ' cur' : ''), 'aria-label': p.name },
-            h('span', { class: 'v52-badge' }, T('plans.badge.' + p.id)), h('h3', {}, p.name), h('p', { class: 'v52-sub' }, T('plans.tag.' + p.id)), price, h('ul', { class: 'v52-list' }, items), btn);
+          const cents = p && p.price_cents ? p.price_cents : def.fallback;     // o preço COBRADO é o do servidor; sem ele, mostra o preço de tabela
+          const price = def.id === 'free' ? T('plans2.free.price') : T('plans.price', { p: money(cents) });
+          return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.soon ? ' ultra' : ''), 'aria-label': name },
+            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T('plans2.soon')) : null),
+            h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
         async function subscribe(p) {
@@ -543,43 +556,10 @@
   });
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
 
-  /* ═══════════════ DOCK ADAPTATIVO (círculo compacto) ═══════════════
-     Com um módulo aberto (body.module-open, marcado por orion-v5.js), o dock vira um círculo compacto com a engrenagem
-     (canto inferior direito): ele não cobre mais o conteúdo. Toque/clique/Enter (ou arrastar para cima) mostra a barra de novo;
-     ela se recolhe sozinha depois de alguns segundos, ao escolher um botão, com Esc ou ao fechar o módulo. */
-  (function dockHandle() {
-    const nav = document.querySelector('.dock');
-    if (!nav) return;
-    const handle = h('button', { id: 'dockHandle', class: 'dock-handle', type: 'button', 'aria-expanded': 'false', 'aria-label': T('dock.show'), title: T('dock.show') });
-    const gearIcon = $('gearBtn') && $('gearBtn').querySelector('svg');      // mesma engrenagem do dock
-    if (gearIcon) { const g = gearIcon.cloneNode(true); g.setAttribute('width', '20'); g.setAttribute('height', '20'); handle.appendChild(g); }
-    document.body.appendChild(handle);
-    let timer = 0, swiped = false, y0 = null;
-    const set = on => {
-      document.body.classList.toggle('dock-open', on);
-      handle.setAttribute('aria-expanded', String(on));
-      clearTimeout(timer);
-      if (on) timer = setTimeout(() => set(false), 4500);
-    };
-    handle.addEventListener('click', e => {
-      if (swiped) { swiped = false; return; }
-      const on = !document.body.classList.contains('dock-open');
-      set(on);
-      if (on && e.detail === 0) { const b = nav.querySelector('.dock-btn'); if (b) b.focus(); }   // por teclado: o foco já vai para a barra
-    });
-    handle.addEventListener('pointerdown', e => { y0 = e.clientY; });
-    handle.addEventListener('pointerup', e => { if (y0 !== null && y0 - e.clientY > 12) { swiped = true; set(true); } y0 = null; });
-    nav.addEventListener('pointermove', () => { if (document.body.classList.contains('dock-open')) set(true); });   // mexendo na barra: não recolhe
-    nav.addEventListener('focusin', () => { if (document.body.classList.contains('dock-open')) set(true); });
-    nav.addEventListener('click', e => { if (e.target.closest('.dock-btn')) setTimeout(() => set(false), 120); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
-    /* Quantidade de abas abertas = condição explícita do dock (1-2: círculo; 3+: dock fino visível). O Workspace chamará setTabs(n). */
-    window.ORION_DOCK = { setTabs: n => { n = Math.max(0, Number(n) | 0); document.body.dataset.tabs = n >= 3 ? '3+' : String(n); if (n >= 3) set(false); } };
-    new MutationObserver(() => {
-      if (!document.body.classList.contains('module-open')) set(false);        // nenhum módulo aberto: a barra volta ao normal
-      handle.setAttribute('aria-label', T('dock.show')); handle.title = T('dock.show');
-    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  })();
+  /* ═══════════════ DOCK COMPACTO ═══════════════
+     Com um módulo aberto (body.module-open, marcado por orion-v5.js) o dock continua visível, mais compacto, no cantinho inferior
+     direito (CSS em orion.html): sem círculo e sem recolher. O orion-split.js informa a quantidade de abas por ORION_DOCK.setTabs(n). */
+  window.ORION_DOCK = { setTabs: n => { n = Math.max(0, Number(n) | 0); document.body.dataset.tabs = n >= 3 ? '3+' : String(n); } };
 
   /* ── exposição e retorno do pagamento ── */
   window.ORION_PLANS = { open: arg => plansPanel.open(arg) };
