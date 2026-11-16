@@ -61,9 +61,8 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 /* ═══════ BOOT ═══════ */
 #boot{ position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .5s ease; }
 #boot.out{ opacity:0; pointer-events:none; }
-.boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(119,112,184,.22)); opacity:0; animation:bootShow .5s ease 1.2s forwards; }
-.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; opacity:0; animation:bootShow .5s ease 1.2s forwards; }
-@keyframes bootShow{ to{ opacity:1; } }   /* V5.2.0: carregou rápido = só o preto some; demorou (>1,2 s) = indicador discreto */
+.boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(119,112,184,.22)); }
+.boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; }
 .boot-ring{ position:absolute; inset:0; border-radius:50%; border:1px solid rgba(119,112,184,.18); border-top-color:rgba(119,112,184,.75); animation:bootspin 1.1s linear infinite; }
 .boot-ring:nth-child(2){ inset:14px; border-top-color:rgba(119,112,184,.45); animation-duration:1.6s; animation-direction:reverse; }
 @keyframes bootspin{ to{ transform:rotate(360deg); } }
@@ -623,7 +622,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 .v52-center{ display:flex; flex-direction:column; align-items:center; gap:12px; padding:36px 12px; text-align:center; color:var(--fg2); font-size:13px; }
 .v52-spin{ width:22px; height:22px; border-radius:50%; border:2px solid rgba(var(--acc),.25); border-top-color:var(--accent-soft); animation:v52spin .9s linear infinite; }
 @keyframes v52spin{ to{ transform:rotate(360deg); } }
-.v52-plans{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.v52-plans{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }   /* FREE | PLUS  /  PRO | ULTRA */
 .v52-plan{ display:flex; flex-direction:column; gap:12px; padding:20px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
 .v52-plan.cur{ border-color:rgba(var(--acc),.75); box-shadow:inset 0 0 0 1px rgba(var(--acc),.25); }
 .v52-badge{ align-self:flex-start; font:600 10px var(--font-mono); letter-spacing:.16em; text-transform:uppercase; padding:3px 10px; border-radius:999px; color:var(--accent-text); border:1px solid rgba(var(--acc),.4); background:rgba(var(--act-hi),.8); }
@@ -633,6 +632,13 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 .v52-list li{ display:flex; gap:9px; line-height:1.45; }
 .v52-list li::before{ content:""; flex:none; width:15px; height:15px; margin-top:2px; background:var(--accent-soft); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat; }
 .v52-list li.no{ color:var(--fg2); } .v52-list li.no::before{ background:rgba(var(--w),.3); -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E"); }
+.v52-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.v52-tier{ margin-top:-6px; font:500 11px var(--font-mono); letter-spacing:.18em; text-transform:uppercase; color:var(--accent-soft); }
+.v52-list li.inherit{ color:var(--accent-text); font-weight:600; }
+.v52-soon, .v52-badge.soon{ display:inline-block; align-self:center; padding:2px 9px; border-radius:999px; font:600 9.5px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; white-space:nowrap;
+  color:var(--accent-soft); border:1px solid rgba(var(--acc),.35); background:rgba(var(--act-hi),.55); }
+.v52-plan.ultra{ border-color:rgba(var(--acc),.55); box-shadow:0 0 0 1px rgba(var(--acc),.16), 0 0 38px rgba(var(--acc),.10); }   /* destaque discreto do ULTRA */
+.v52-plan.ultra .pill-btn:disabled{ opacity:.7; }
 .v52-plan .pill-btn{ margin-top:auto; }
 .v52-hist{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; }
 .v52-hist li{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:6px 16px; align-items:center; padding:10px 0; border-top:1px solid rgba(var(--w),.05); font-size:13px; }
@@ -671,59 +677,20 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 .v52-st[data-st="developing"]{ color:#C9B26A; border-color:rgba(201,178,106,.4); background:rgba(201,178,106,.07); }
 .vs-voice[data-locked="true"]{ color:rgba(var(--w),.38); }
 .vs-voice[data-locked="true"] .vs-vname::after{ content:""; display:inline-block; width:11px; height:11px; margin-left:6px; vertical-align:-1px; background:currentColor; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center/contain no-repeat; }
-@container mod (max-width:900px){ .v52-plans{ grid-template-columns:1fr; } }
+@container mod (max-width:700px){ .v52-plans{ grid-template-columns:1fr; } }   /* telas estreitas: empilha na ordem FREE, PLUS, PRO, ULTRA */
 @container mod (max-width:640px){ .v52-body{ padding:16px 18px 18px; } .v52-foot{ padding:12px 18px 18px; } .v52-key{ grid-template-columns:1fr; } .v52-hist li{ grid-template-columns:1fr auto; } .v52-hist .d{ grid-column:1 / -1; } }
 @media (prefers-reduced-motion:reduce){ .v52-spin{ animation-duration:2.4s; } .v52-bar > i{ transition:none; } }
 
 /* ═══════ V5.2.0 (2ª parte) — barra de botões "tipo iPhone", painel da API no layout de referência, Gestos ═══════ */
 /* Com um módulo aberto, a barra de botões vira uma barrinha fina no centro (como o indicador do iPhone) e deixa de cobrir o conteúdo.
    Toque/clique/Enter (ou arrastar para cima) na barrinha mostra a barra de novo; ela se recolhe sozinha depois de alguns segundos. */
-/* Dock adaptativo (regra 11.4). Com um módulo aberto (1 ou 2 abas), o dock vira UM círculo compacto no canto inferior direito, com a
-   engrenagem no centro e a iluminação interna das três tonalidades escuras da Orb. Tocar/clicar/Enter (ou arrastar para cima) expande
-   o dock na mesma posição; ele se recolhe sozinho depois de alguns segundos. A quantidade de abas é condição explícita: body[data-tabs]
-   (window.ORION_DOCK.setTabs(n)). Com 3 ou mais abas o círculo não é aplicado: o dock fica visível, em versão fina. */
-.dock{ transform-origin:right center; }
-.dock-handle{ display:none; }
-body.module-open{ --corner:clamp(8px,1.1vw,14px); }   /* o círculo e o dock compacto ficam bem no cantinho */
-body.module-open .dock-handle{
-  display:flex; position:fixed; right:var(--corner); bottom:var(--corner); z-index:41;
-  width:44px; height:44px; padding:0; align-items:center; justify-content:center; border-radius:50%;
-  border:1px solid var(--line); cursor:pointer; color:rgba(var(--w),.62);
-  background:
-    radial-gradient(circle at 28% 26%, rgba(41,36,84,.95) 0%, rgba(41,36,84,0) 62%),
-    radial-gradient(circle at 76% 30%, rgba(48,32,68,.9) 0%, rgba(48,32,68,0) 58%),
-    radial-gradient(circle at 60% 82%, rgba(23,39,71,.95) 0%, rgba(23,39,71,0) 64%),
-    #07070E;
-  box-shadow:0 10px 30px rgba(0,0,0,.55), inset 0 1px 0 rgba(var(--w),.05);
-  transition:opacity .25s ease, transform .3s cubic-bezier(.22,1,.36,1), color .2s ease, border-color .2s ease;
-  animation:dockOrbIn .3s cubic-bezier(.22,1,.36,1);
-  -webkit-tap-highlight-color:transparent; touch-action:none;
-}
-@keyframes dockOrbIn{ from{ opacity:0; transform:scale(.7); } }
-.dock-handle:hover{ color:var(--fg); border-color:rgba(var(--acc),.45); }
-.dock-handle:active{ transform:scale(.94); }
-.dock-handle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
-.dock-handle svg{ display:block; }
-/* dock expandido dentro de um módulo: versão compacta (botões de 34 px, mesma altura do círculo) */
-body.module-open .dock{ opacity:0; transform:scale(.55); pointer-events:none; visibility:hidden; transition:opacity .22s ease, transform .28s cubic-bezier(.22,1,.36,1), visibility 0s linear .28s; }
-body.module-open .dock{ right:var(--corner); bottom:var(--corner); }
-body.module-open .dock-btn{ width:34px; height:34px; }
-body.module-open.dock-open .dock{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.22,1,.36,1), visibility 0s; }
-body.module-open.dock-open .dock-handle{ opacity:0; transform:scale(.7); pointer-events:none; }
-/* O círculo fica bem no CANTINHO inferior direito, com a mesma folga à direita e embaixo (--corner). O dock compacto abre ali mesmo, com a engrenagem exatamente sob o círculo, e é estreito
-   o bastante para ficar na faixa livre ao lado do painel, sem encostar nele. (Telas menores: o painel reserva a faixa de baixo.) */
-@media (min-width:1100px){
-  body.module-open .dock{ right:calc(var(--corner) + 2px); bottom:calc(var(--corner) + 2px); transform-origin:right center; transform:scale(.55); }
-  body.module-open.dock-open .dock{ transform:none; }
-  body.module-open .dock-btn{ width:30px; height:30px; }
-}
-/* 3 ou mais abas: sem círculo; o dock fica visível, mais fino, para não tomar a área de trabalho */
-body.module-open[data-tabs="3+"] .dock-handle{ display:none; }
-body.module-open[data-tabs="3+"] .dock{ opacity:1; pointer-events:auto; visibility:visible; padding:3px; }
-body.module-open[data-tabs="3+"] .dock-btn{ width:30px; height:30px; }
-@media (min-width:1100px){ body.module-open[data-tabs="3+"] .dock{ transform:none; } }
-@media (max-width:1099.98px){ body.module-open[data-tabs="3+"] .dock{ transform:none; } }
-@media (prefers-reduced-motion:reduce){ .dock, .dock-handle{ transition-duration:.01s !important; animation:none !important; } }
+/* Dock compacto: com um módulo aberto, o dock continua visível, mais compacto, bem no CANTINHO inferior direito (sem círculo e sem
+   recolher). Os botões ficam de 30 px; a barra tem ~177 px e cabe na faixa livre ao lado do painel (telas largas) ou abaixo dele
+   (telas menores, onde o painel reserva a faixa de baixo), então nunca cobre o conteúdo. */
+body.module-open{ --corner:clamp(8px,1.1vw,14px); }
+body.module-open .dock{ right:var(--corner); bottom:var(--corner); padding:5px; }
+body.module-open .dock-btn{ width:30px; height:30px; }
+@media (prefers-reduced-motion:reduce){ .dock{ transition-duration:.01s !important; } }
 
 /* ═══════ V5.2.0 — Duas abas lado a lado (js/orion-split.js) ═══════
    Dois módulos abertos ao mesmo tempo: cada um num cartão igual ao de uma aba normal; o primeiro à esquerda, o segundo à direita.
@@ -811,12 +778,7 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
 <div class="orb-bleed" id="bleed"></div>
 
 <!-- BOOT -->
-<div id="boot">
-  <img class="boot-word" src="../assets/orion_ai_wordmark.png" alt="ORION AI">
-  <div class="boot-ring-wrap">
-    <div class="boot-ring"></div>
-    <div class="boot-ring"></div>
-  </div>
+<div id="boot"></div>   <!-- V5.2.0: só o fundo preto; a interface acende em ≈0,5 s quando a sessão está pronta -->
 </div>
 
 <!-- APP -->
@@ -984,12 +946,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=12"></script>
+<script src="js/i18n.js?c=13"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
 <script defer src="js/app.js?c=12"></script>
 <script defer src="js/orion-v5.js?c=11"></script>
-<script defer src="js/orion-v52.js?c=11"></script>
+<script defer src="js/orion-v52.js?c=12"></script>
 </body>
 </html>
