@@ -16,7 +16,7 @@ Variáveis:
   ORION_REQUIRE_VERIFIED "1" exige e-mail verificado no token (padrão: desligado; o login atual não envia verificação)
   ORION_AGENT            "1" liga o Agent Engine (padrão: desligado). O /ask passa a devolver "agent" quando ele respondeu.
   ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
-  ORION_MODEL_PLANS      (V5.2.0) "id:plano,..." plano mínimo de cada modelo (padrão: Flash-Lite = FREE; 3.6 e 3.8 Flash = PRO)
+  ORION_MODEL_PLANS      (V5.2.0) "id:plano,..." plano mínimo de cada modelo (padrão: Flash-Lite = FREE; 3.6 Flash = PLUS; 3.8 Flash = PRO)
   FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
   ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
   ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
