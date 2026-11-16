@@ -24,26 +24,28 @@ def make_registry(monkeypatch, models=f"{G38}:G38,{LITE}:Lite,{G36}:G36", defaul
 
 
 def test_catalog_rules():
-    assert plans.model_min_plan(LITE) == "free" and plans.model_min_plan(G36) == "pro" and plans.model_min_plan(G38) == "pro"
+    assert plans.model_min_plan(LITE) == "free" and plans.model_min_plan(G36) == "plus" and plans.model_min_plan(G38) == "pro"
     assert plans.model_min_plan("modelo-desconhecido") == "pro"          # o que não está na lista não é de graça
     assert plans.allows_model("free", LITE) and not plans.allows_model("free", G36) and not plans.allows_model("free", G38)
-    assert plans.allows_model("plus", LITE) and not plans.allows_model("plus", G38)
+    assert plans.allows_model("plus", LITE) and plans.allows_model("plus", G36) and not plans.allows_model("plus", G38)
     assert all(plans.allows_model("pro", m) for m in (LITE, G36, G38))
 
 
 def test_env_overrides_plan_of_a_model(monkeypatch):
-    monkeypatch.setenv("ORION_MODEL_PLANS", f"{G36}:plus, {G38}:invalido")
-    assert plans.model_min_plan(G36) == "plus" and plans.allows_model("plus", G36)
+    monkeypatch.setenv("ORION_MODEL_PLANS", f"{G36}:pro, {G38}:invalido")
+    assert plans.model_min_plan(G36) == "pro" and not plans.allows_model("plus", G36)
     assert plans.model_min_plan(G38) == "pro"                            # plano inexistente na lista é ignorado
 
 
 def test_registry_free_sees_all_but_only_lite_is_unlocked(monkeypatch):
     reg = make_registry(monkeypatch)
     free = {m["id"]: m for m in reg.models_for("free")}
-    assert [m for m in free if not free[m]["locked"]] == [LITE] and free[G38]["min_plan"] == "pro"
+    assert [m for m in free if not free[m]["locked"]] == [LITE] and free[G38]["min_plan"] == "pro" and free[G36]["min_plan"] == "plus"
+    plus = {m["id"]: m["locked"] for m in reg.models_for("plus")}
+    assert plus == {G38: True, LITE: False, G36: False}
     assert reg.default_for("free") == LITE                               # o padrão do FREE é o único liberado
     assert reg.default_for("pro") == G38 and not any(m["locked"] for m in reg.models_for("pro"))
-    assert reg.default_for("plus") == LITE
+    assert reg.default_for("plus") == G36                                # PLUS: o mais forte que o plano libera
 
 
 def test_registry_never_leaves_a_plan_without_a_model(monkeypatch):
