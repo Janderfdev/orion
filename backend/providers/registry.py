@@ -59,9 +59,11 @@ class Registry:
         return plans.allows_model(plan_id, model_id) or plans.get(plans.model_min_plan(model_id)).rank == self._floor()
 
     def default_for(self, plan_id):
+        """Padrão do plano: ORION_DEFAULT_MODEL (ou o 1º da lista) se o plano pode usá-lo; senão, o mais forte que o plano libera."""
         if self.default and self.allowed(plan_id, self.default):
             return self.default
-        return next((k for k in self._entries if self.allowed(plan_id, k)), None)
+        ok = [k for k in self._entries if self.allowed(plan_id, k)]
+        return max(ok, key=lambda k: plans.get(plans.model_min_plan(k)).rank, default=None)   # empate: o primeiro da lista
 
     def models_for(self, plan_id) -> list[dict]:
         return [{"id": k, "label": v["label"], "locked": not self.allowed(plan_id, k), "min_plan": plans.model_min_plan(k)}
