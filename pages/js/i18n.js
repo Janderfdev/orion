@@ -184,6 +184,38 @@ window.ORION_I18N = (() => {
   /* ═══ V5.2.0 — planos e faturamento, ORION API, Resumo do Dia. pt/en completos; es·fr·de·it caem para o inglês (regra do arquivo). ═══ */
   add("plans.title", "Planos e faturamento", "Plans & billing");
   add("plans.sub", "Escolha o plano ideal para você.", "Pick the plan that fits you.");
+  // V5.2.0 — nova apresentação dos planos (sem números de limites; o texto dos benefícios é o oficial)
+  add("plans2.soon", "Disponível em breve", "Coming soon");
+  add("plans2.tier.free", "Básico", "Basic"); add("plans2.tier.plus", "Ampliado", "Extended");
+  add("plans2.tier.pro", "Avançado", "Advanced"); add("plans2.tier.ultra", "Máximo", "Maximum");
+  add("plans2.free.price", "Gratuito", "Free");
+  add("plans2.free.1", "Acesso ao ORION CORE", "Access to ORION CORE");
+  add("plans2.free.2", "Conversas com ORION", "Conversations with ORION");
+  add("plans2.free.3", "Histórico de conversas", "Conversation history");
+  add("plans2.free.4", "Uma opção de voz", "One voice option");
+  add("plans2.free.5", "Acesso à ORION API", "Access to the ORION API");
+  add("plans2.plus.1", "Tudo do ORION FREE", "Everything in ORION FREE");
+  add("plans2.plus.2", "Modelo Gemini 3.6", "Gemini 3.6 model");
+  add("plans2.plus.3", "Maior capacidade de utilização", "Higher usage capacity");
+  add("plans2.plus.4", "Quatro opções de voz", "Four voice options");
+  add("plans2.plus.5", "Acesso ampliado ao Mercado", "Expanded access to Mercado");
+  add("plans2.plus.6", "Recursos adicionais de produtividade e contexto", "Additional productivity and context features");
+  add("plans2.pro.1", "Tudo do ORION PLUS", "Everything in ORION PLUS");
+  add("plans2.pro.2", "Modelo Gemini 3.8", "Gemini 3.8 model");
+  add("plans2.pro.3", "ORION CODE", "ORION CODE");
+  add("plans2.pro.4", "Análise avançada de arquivos e programação", "Advanced file and programming analysis");
+  add("plans2.pro.5", "Memória contextual ampliada", "Expanded contextual memory");
+  add("plans2.pro.6", "Multitarefa avançada", "Advanced multitasking");
+  add("plans2.pro.7", "Recursos avançados do Mercado", "Advanced Mercado features");
+  add("plans2.ultra.1", "Tudo do ORION PRO", "Everything in ORION PRO");
+  add("plans2.ultra.2", "Capacidade máxima do ORION CORE", "Maximum ORION CORE capacity");
+  add("plans2.ultra.3", "Autonomia avançada para projetos complexos", "Advanced autonomy for complex projects");
+  add("plans2.ultra.4", "Maior capacidade de contexto", "Larger context capacity");
+  add("plans2.ultra.5", "Capacidade máxima de execução", "Maximum execution capacity");
+  add("plans2.ultra.6", "Recursos mais avançados do Mercado", "The most advanced Mercado features");
+  add("plans2.ultra.7", "Acesso antecipado a recursos experimentais", "Early access to experimental features");
+  add("plans2.ultra.8", "Prioridade máxima de processamento", "Top processing priority");
+  add("plans2.ultra.9", "Capacidade ampliada para projetos complexos e tarefas simultâneas", "Expanded capacity for complex projects and simultaneous tasks");
   add("plans.badge.free", "Gratuito", "Free");
   add("plans.badge.plus", "Premium", "Premium");
   add("plans.badge.pro", "Profissional", "Professional");
