@@ -45,7 +45,7 @@ texto direto, sem markdown.
 `{"default": "...", "models": [{"id": "...", "label": "...", "locked": false, "min_plan": "free"}]}`
 
 Os modelos dependem do plano (o servidor decide). `locked: true` = o seu plano ainda não inclui esse modelo; `min_plan` diz a partir de qual plano ele é liberado.
-Hoje: **FREE e PLUS** usam o Gemini 3.5 Flash-Lite; **PRO** também usa o Gemini 3.6 Flash e o Gemini 3.8 Flash. O `default` é sempre um modelo liberado para o seu plano.
+Hoje: **FREE** usa o Gemini 3.5 Flash-Lite; **PLUS** também usa o Gemini 3.6 Flash; **PRO** também usa o Gemini 3.8 Flash (cada plano inclui o do anterior). O `default` é sempre um modelo liberado para o seu plano.
 
 ## `GET /v1/usage`
 
