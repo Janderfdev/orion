@@ -204,6 +204,7 @@ window.__orionEnter = enter;
 // dispara no login novo E quando a sessão anterior é restaurada (durante o standby espera)
 onAuthStateChanged(auth, user => {
   window.__orionUser = user;
+  try { if (user) localStorage.setItem('orion_session', '1'); else localStorage.removeItem('orion_session'); } catch (_) {}   // dica para o index.html (quem decide é o Firebase)
   if (user && window.__orionPhase() !== 'standby') enter();
 });
 
