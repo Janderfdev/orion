@@ -59,7 +59,7 @@ body{ transition:opacity .3s ease; }
 html.theme-swap body{ opacity:0; transition-duration:.2s; }
 
 /* ═══════ BOOT ═══════ */
-#boot{ position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .5s ease; }
+#boot{ position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .25s ease; }
 #boot.out{ opacity:0; pointer-events:none; }
 .boot-word{ width:min(190px, 56vw); height:auto; margin-bottom:24px; filter:drop-shadow(0 0 14px rgba(119,112,184,.22)); }
 .boot-ring-wrap{ position:relative; width:76px; height:76px; margin-bottom:46px; }
@@ -68,7 +68,7 @@ html.theme-swap body{ opacity:0; transition-duration:.2s; }
 @keyframes bootspin{ to{ transform:rotate(360deg); } }
 
 /* ═══════ APP ═══════ */
-#app{ position:fixed; inset:0; z-index:2; opacity:0; transition:opacity .75s ease; }
+#app{ position:fixed; inset:0; z-index:2; opacity:0; transition:opacity .35s ease; }
 #app.on{ opacity:1; }
 
 /* canto superior esquerdo: logo + wordmark */
@@ -171,14 +171,14 @@ body.chat-open .hint-text{ opacity:0; }
 
 /* ═══════ DOCK: Chat · Código/API · Multitarefa · Configurações ═══════ */
 .dock{
-  position:fixed; right:var(--corner,14px); bottom:var(--corner,14px); z-index:40; display:flex; align-items:center; gap:2px; padding:5px;   /* V5.2.0: dock compacto no cantinho, na tela normal e com módulo aberto */
+  position:fixed; right:var(--corner,14px); bottom:var(--corner,14px); z-index:40; display:flex; align-items:center; gap:2px; padding:6px;   /* V5.2.0: dock compacto no cantinho, na tela normal e com módulo aberto */
   border-radius:999px; background:rgba(7,7,14,.82); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.55);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   transition:opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1), visibility 0s;
 }
 .dock-sep{ width:1px; height:18px; margin:0 3px; background:var(--line); }
 .dock-btn{
-  width:30px; height:30px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  width:33px; height:33px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
   color:rgba(var(--w),.55); background:transparent; transition:color .2s ease, background .2s ease, transform .2s ease;
 }
 .dock-btn:hover{ color:var(--fg); background:rgba(var(--act-hi),.7); }
@@ -684,7 +684,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 /* ═══════ V5.2.0 (2ª parte) — barra de botões "tipo iPhone", painel da API no layout de referência, Gestos ═══════ */
 /* Com um módulo aberto, a barra de botões vira uma barrinha fina no centro (como o indicador do iPhone) e deixa de cobrir o conteúdo.
    Toque/clique/Enter (ou arrastar para cima) na barrinha mostra a barra de novo; ela se recolhe sozinha depois de alguns segundos. */
-/* Dock compacto (V5.2.0): é o MESMO na tela normal e com módulo aberto — ~180 px, bem no cantinho inferior direito (--corner de folga
+/* Dock compacto (V5.2.0): é o MESMO na tela normal e com módulo aberto — ~196 px, bem no cantinho inferior direito (--corner de folga
    na direita e embaixo). Fica sempre dentro da faixa livre ao lado do painel (telas largas) ou abaixo dele (telas menores, onde o
    painel reserva a faixa de baixo), então nunca cobre o conteúdo. Sem círculo e sem recolher. */
 :root{ --corner:clamp(8px,1.1vw,14px); }
@@ -776,7 +776,7 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
 <div class="orb-bleed" id="bleed"></div>
 
 <!-- BOOT -->
-<div id="boot"></div>   <!-- V5.2.0: só o fundo preto; a interface acende em ≈0,5 s quando a sessão está pronta -->
+<div id="boot"></div>   <!-- V5.2.0: só cobre a tela enquanto a sessão carrega e some NA HORA em que está pronta (sem preto de propósito). O preto de 0,5 s é do index.html, só para quem já está logado. -->
 </div>
 
 <!-- APP -->
@@ -948,12 +948,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=14"></script>
+<script src="js/i18n.js?c=15"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=13"></script>
+<script defer src="js/app.js?c=14"></script>
 <script defer src="js/orion-v5.js?c=11"></script>
-<script defer src="js/orion-v52.js?c=13"></script>
+<script defer src="js/orion-v52.js?c=14"></script>
 </body>
 </html>
