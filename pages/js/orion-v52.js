@@ -184,7 +184,7 @@
           { id: 'plus', n: 6, fallback: 2990 },
           { id: 'pro', n: 7, fallback: 4990, soonItem: 3 },        // item 3 do PRO = ORION CODE (Disponível em breve)
           { id: 'ultra', n: 9, fallback: 9990, soon: true },
-        ];
+        ].filter(def => !def.soon || isOwner);                      // o ORION ULTRA só aparece para o proprietário (decidido pelo servidor, pelo e-mail do token)
         const cards = SHOW.map(def => {
           const p = def.soon ? null : (d.cat.plans.find(x => x.id === def.id) || null);
           const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
@@ -207,7 +207,7 @@
           const cents = p && p.price_cents ? p.price_cents : def.fallback;     // o preço COBRADO é o do servidor; sem ele, mostra o preço de tabela
           const price = def.id === 'free' ? T('plans2.free.price') : T('plans.price', { p: money(cents) });
           return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.soon ? ' ultra' : ''), 'aria-label': name },
-            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T('plans2.soon')) : null),
+            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T('plans2.ownerBadge')) : null),
             h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
