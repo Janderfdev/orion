@@ -808,23 +808,17 @@ const API = (() => {
   const previewOpts = () => Object.assign(voiceOpts(), { lang: convLang() });
 
   /* ── boot (V4.5.5: mais rápido, sem textos de status) ── */
-  /* V5.2.0: sem atraso artificial. A tela preta some (≈0,5 s) assim que a sessão e as fontes estão prontas; se demorar, o CSS mostra um indicador discreto. */
+  /* V5.2.0: sem preto de propósito aqui. A cobertura só existe enquanto a sessão e as fontes carregam e some NA HORA em que estão
+     prontas (a IA aparece junto). O fundo preto de 0,5 s fica no index.html, e só para quem já está logado. */
   const bootReady = Promise.race([
     Promise.all([window.ORION_AUTH_READY || Promise.resolve(), document.fonts ? document.fonts.ready : Promise.resolve()]),
     new Promise(r => setTimeout(r, 6000)),   // rede ruim: não prende o usuário na tela preta
   ]);
-  /* A IA só acende quando a conta está logada, e depois de ≥ 0,5 s de fundo preto contados desde a ENTRADA no site
-     (o index.html marca o instante em sessionStorage quando manda alguém já logado direto para cá). Sem conta: nada acende. */
-  const BLACK_MS = 500;
-  const t0 = (() => {
-    try { const v = Number(sessionStorage.getItem('orion_resume_t')); sessionStorage.removeItem('orion_resume_t'); if (v && Date.now() - v < 15000) return v; } catch (_) {}
-    return Date.now() - performance.now();
-  })();
-  bootReady.then(() => { if (window.ORION_AUTH_READY && !window.ORION_USER) return; return new Promise(r => setTimeout(r, Math.max(0, BLACK_MS - (Date.now() - t0)))); }).then(() => {
+  bootReady.then(() => {
     if (window.ORION_AUTH_READY && !window.ORION_USER) return;      // sem sessão: o orion.html já está indo para o index
-    bootEl.classList.add('out');
+    bootEl.classList.add('out'); appEl.classList.add('on');
     try { SOUND.init(); } catch (err) { console.error('[ORION] SOUND.init failed:', err); }
-    setTimeout(() => { bootEl.style.display = 'none'; appEl.classList.add('on'); flash(t('online'), 3200); }, 500);
+    setTimeout(() => { bootEl.style.display = 'none'; flash(t('online'), 3200); }, 250);
   });
 
   function flash(msg, ms = 2600) {
