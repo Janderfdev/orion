@@ -1,7 +1,7 @@
 /* ORION AI — logos sazonais (V5.2.0). Módulo único para todas as páginas (login.html e pages/orion.html).
 
    Regras (horário de Brasília, America/Fortaleza, UTC-3 fixo, sem horário de verão; NÃO depende do fuso do aparelho):
-     Natal   : 1º de dezembro 00:00  →  1º de janeiro do ano seguinte 00:00 (ativa durante todo o mês de dezembro)
+     Natal   : 16 de novembro 00:00  →  1º de janeiro do ano seguinte 00:00 (todo ano; a logo de Natal sai no dia 1º de janeiro)
      Páscoa  : Domingo de Ramos 00:00 →  segunda-feira após a Páscoa 00:00 (inclui o Domingo de Páscoa)
      Prioridade: Natal → Páscoa → original. A Páscoa é calculada todo ano (calendário gregoriano), nunca fixa.
 
@@ -48,7 +48,7 @@
     const easterMs = brMidnight(year, e.m, e.d);
     return {
       easter:    { start: easterMs - 7 * DAY, end: easterMs + 1 * DAY },        // Domingo de Ramos 00:00 → segunda 00:00
-      christmas: { start: brMidnight(year, 11, 1), end: brMidnight(year + 1, 0, 1) },
+      christmas: { start: brMidnight(year, 10, 16), end: brMidnight(year + 1, 0, 1) },   // 16/11 00:00 → 01/01 00:00
     };
   }
 
