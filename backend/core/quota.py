@@ -38,7 +38,8 @@ PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "orion-ai-b8d39")
 LIMITS = plans.daily_limits()   # V5.2.0: o catálogo (billing/plans.py) é a fonte única; free/plus/pro
 OWNER_EMAIL = os.getenv("ORION_OWNER_EMAIL", "").strip().lower()
 OWNER_ALLOW_UNVERIFIED = os.getenv("ORION_OWNER_ALLOW_UNVERIFIED", "0") == "1"
-OWNER_PLAN = "pro"   # plano padrão do proprietário (o mais alto lançado na V5.2.0; o ULTRA é da V5.5.0)
+OWNER_PLAN = "pro"   # o proprietário usa tudo o que existe (o PRO é o mais alto lançado na V5.2.0). O ORION ULTRA já está INCLUÍDO na conta dele
+                     # (o site mostra isso no cartão do ULTRA); quando o ULTRA existir de verdade (V5.5.0), troque para "ultra" aqui.
 PLAN_TTL = 300   # segundos: de quanto em quanto tempo o plano é relido (mudanças manuais valem sem reiniciar)
 TIMEOUT = 6
 _DOCS = f"projects/{PROJECT_ID}/databases/(default)/documents"
