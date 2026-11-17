@@ -4,18 +4,45 @@
 <meta charset="UTF-8">
 <script src="standby.js" data-mount></script>
 <script>
-/* V5.2.0 — quem entra no site JÁ LOGADO não vê esta página: fundo preto e a IA acende (pages/orion.html; ≥ 0,5 s de preto, depois a IA).
-   Quem não está logado vê esta página normal e o login. "orion_session" é só uma dica guardada por orion.html/login.html; a decisão
-   real é do Firebase (se a dica estiver velha, orion.html a apaga e volta para cá). Para ver esta página mesmo logado: index.html?inicio=1 */
+/* V5.2.0 — quem entra no site JÁ LOGADO na IA não vê esta página: fundo PRETO por 0,5 s e depois a IA (pages/orion.html), que aparece
+   assim que carrega. Quem não está logado vê esta página normal e o login. Como sabemos que a pessoa está logada:
+   1) "orion_session": dica guardada por orion.html e login.html (instantânea);  2) sem a dica, uma conferência rápida (somente leitura)
+   na sessão que o Firebase guarda no navegador. A decisão final é do Firebase: se a dica estiver velha, orion.html a apaga e volta para cá.
+   Para ver esta página mesmo logado: index.html?inicio=1 */
 (function () {
+  var HOLD = 500, t0 = Date.now(), started = false;
+  function enter() {
+    if (started) return; started = true;
+    document.documentElement.style.background = '#000';
+    var st = document.createElement('style'); st.textContent = 'body{visibility:hidden!important}'; (document.head || document.documentElement).appendChild(st);
+    var pf = document.createElement('link'); pf.rel = 'prefetch'; pf.href = 'pages/orion.html'; (document.head || document.documentElement).appendChild(pf);   // adianta a IA durante o preto
+    setTimeout(function () { location.replace('pages/orion.html'); }, Math.max(0, HOLD - (Date.now() - t0)));
+  }
+  function probe(cb) {
+    try {
+      if (!window.indexedDB || !indexedDB.databases) return cb(false);
+      indexedDB.databases().then(function (l) {
+        if (!l.some(function (d) { return d.name === 'firebaseLocalStorageDb'; })) return cb(false);
+        var rq = indexedDB.open('firebaseLocalStorageDb');
+        rq.onerror = function () { cb(false); };
+        rq.onupgradeneeded = function () { try { rq.transaction.abort(); } catch (_) {} };   // nunca cria nada
+        rq.onsuccess = function () {
+          var db = rq.result;
+          try {
+            if (!db.objectStoreNames.contains('firebaseLocalStorage')) { db.close(); return cb(false); }
+            var g = db.transaction('firebaseLocalStorage', 'readonly').objectStore('firebaseLocalStorage').getAllKeys();
+            g.onsuccess = function () { var ok = (g.result || []).some(function (k) { return String(k).indexOf('firebase:authUser:') === 0; }); db.close(); cb(ok); };
+            g.onerror = function () { db.close(); cb(false); };
+          } catch (_) { try { db.close(); } catch (__) {} cb(false); }
+        };
+      }).catch(function () { cb(false); });
+    } catch (_) { cb(false); }
+  }
   try {
     if (/[?&]inicio=1\b/.test(location.search)) return;
     if (window.ORION_STANDBY && window.ORION_STANDBY.active()) return;
-    if (localStorage.getItem('orion_session') !== '1') return;
-    document.documentElement.style.background = '#000';
-    document.write('<style>body{visibility:hidden!important}</style>');
-    try { sessionStorage.setItem('orion_resume_t', String(Date.now())); } catch (_) {}
-    location.replace('pages/orion.html');
+    if (localStorage.getItem('orion_session') === '1') return enter();
+    probe(function (logged) { if (logged) { try { localStorage.setItem('orion_session', '1'); } catch (_) {} t0 = Date.now(); enter(); } });
   } catch (_) {}
 })();
 </script>
