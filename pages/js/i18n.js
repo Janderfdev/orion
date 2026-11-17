@@ -187,6 +187,7 @@ window.ORION_I18N = (() => {
   // V5.2.0 — nova apresentação dos planos (sem números de limites; o texto dos benefícios é o oficial)
   add("plans2.soon", "Disponível em breve", "Coming soon");
   add("plans2.owner", "Incluído na conta de proprietário", "Included with the owner account");
+  add("plans2.ownerBadge", "Acesso do proprietário", "Owner access");
   add("plans2.tier.free", "Básico", "Basic"); add("plans2.tier.plus", "Ampliado", "Extended");
   add("plans2.tier.pro", "Avançado", "Advanced"); add("plans2.tier.ultra", "Máximo", "Maximum");
   add("plans2.free.price", "Gratuito", "Free");
