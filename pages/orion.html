@@ -171,21 +171,21 @@ body.chat-open .hint-text{ opacity:0; }
 
 /* ═══════ DOCK: Chat · Código/API · Multitarefa · Configurações ═══════ */
 .dock{
-  position:fixed; right:clamp(12px,2.4vw,24px); bottom:clamp(14px,2.6vh,22px); z-index:40; display:flex; align-items:center; gap:2px; padding:5px;
+  position:fixed; right:var(--corner,14px); bottom:var(--corner,14px); z-index:40; display:flex; align-items:center; gap:2px; padding:5px;   /* V5.2.0: dock compacto no cantinho, na tela normal e com módulo aberto */
   border-radius:999px; background:rgba(7,7,14,.82); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.55);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   transition:opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1), visibility 0s;
 }
 .dock-sep{ width:1px; height:18px; margin:0 3px; background:var(--line); }
 .dock-btn{
-  width:40px; height:40px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
   color:rgba(var(--w),.55); background:transparent; transition:color .2s ease, background .2s ease, transform .2s ease;
 }
 .dock-btn:hover{ color:var(--fg); background:rgba(var(--act-hi),.7); }
 .dock-btn:active{ transform:scale(.94); }
 .dock-btn.on{ color:var(--fg); background:var(--active); box-shadow:inset 0 0 0 1px rgba(var(--acc),.4); }
 .dock-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-@media (max-width:760px){ .dock-btn{ width:38px; height:38px; } }
+@media (pointer:coarse){ .dock-btn{ width:34px; height:34px; } }   /* toque: alvo um pouco maior */
 
 /* ═══════ legenda de resposta (Chat) ═══════ */
 body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }
@@ -347,7 +347,7 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
 .avatar-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
 .avatar-btn img{ width:100%; height:100%; object-fit:cover; display:block; }
 .set-name{ margin-top:4px; font:600 15px var(--font); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.settings-email{ font-size:12px; color:var(--fg2); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.settings-email{ font-size:12px; line-height:1.5; color:var(--fg2); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .avatar-actions{ width:100%; display:flex; flex-direction:column; gap:8px; margin-top:6px; }
 .avatar-actions .pill-btn[hidden]{ display:none; }
 .avatar-msg{ font-size:11px; color:var(--err); text-align:center; }
@@ -684,12 +684,10 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 /* ═══════ V5.2.0 (2ª parte) — barra de botões "tipo iPhone", painel da API no layout de referência, Gestos ═══════ */
 /* Com um módulo aberto, a barra de botões vira uma barrinha fina no centro (como o indicador do iPhone) e deixa de cobrir o conteúdo.
    Toque/clique/Enter (ou arrastar para cima) na barrinha mostra a barra de novo; ela se recolhe sozinha depois de alguns segundos. */
-/* Dock compacto: com um módulo aberto, o dock continua visível, mais compacto, bem no CANTINHO inferior direito (sem círculo e sem
-   recolher). Os botões ficam de 30 px; a barra tem ~177 px e cabe na faixa livre ao lado do painel (telas largas) ou abaixo dele
-   (telas menores, onde o painel reserva a faixa de baixo), então nunca cobre o conteúdo. */
-body.module-open{ --corner:clamp(8px,1.1vw,14px); }
-body.module-open .dock{ right:var(--corner); bottom:var(--corner); padding:5px; }
-body.module-open .dock-btn{ width:30px; height:30px; }
+/* Dock compacto (V5.2.0): é o MESMO na tela normal e com módulo aberto — ~180 px, bem no cantinho inferior direito (--corner de folga
+   na direita e embaixo). Fica sempre dentro da faixa livre ao lado do painel (telas largas) ou abaixo dele (telas menores, onde o
+   painel reserva a faixa de baixo), então nunca cobre o conteúdo. Sem círculo e sem recolher. */
+:root{ --corner:clamp(8px,1.1vw,14px); }
 @media (prefers-reduced-motion:reduce){ .dock{ transition-duration:.01s !important; } }
 
 /* ═══════ V5.2.0 — Duas abas lado a lado (js/orion-split.js) ═══════
@@ -928,30 +926,34 @@ function leave() {
   setTimeout(() => { location.replace('../index.html'); }, 1000);
 }
 
-let ready;
+let ready, signingOut = false;
 window.ORION_AUTH_READY = new Promise(r => { ready = r; });
 onAuthStateChanged(auth, user => {
   window.ORION_USER = user;
+  /* "orion_session" é só uma DICA para o index.html (quem já entrou antes vai direto para cá, sem passar pela página inicial).
+     Quem decide continua sendo o Firebase: sem usuário, a dica é apagada e o index normal volta a aparecer. */
+  try { if (user) localStorage.setItem('orion_session', '1'); else localStorage.removeItem('orion_session'); } catch (_) {}
   ready();
-  if (!user) leave();
+  if (!user && !signingOut) location.replace('../index.html');   // não está logado: direto para o index (nada de "inicializando")
 });
 window.ORION_GET_TOKEN = async () => {
   await window.ORION_AUTH_READY;
   return auth.currentUser ? auth.currentUser.getIdToken() : '';
 };
 window.ORION_SIGNOUT = async () => {
-  try { localStorage.removeItem('orion_used'); } catch (_) {}   // ao sair, a frase de boas-vindas volta na próxima entrada
+  signingOut = true;                                           // o clique em "Sair da conta" mantém a transição própria (leave)
+  try { localStorage.removeItem('orion_used'); localStorage.removeItem('orion_session'); } catch (_) {}   // ao sair, a frase de boas-vindas volta na próxima entrada
   try { await signOut(auth); } catch (_) {}
   leave();
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=13"></script>
+<script src="js/i18n.js?c=14"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=12"></script>
+<script defer src="js/app.js?c=13"></script>
 <script defer src="js/orion-v5.js?c=11"></script>
-<script defer src="js/orion-v52.js?c=12"></script>
+<script defer src="js/orion-v52.js?c=13"></script>
 </body>
 </html>
