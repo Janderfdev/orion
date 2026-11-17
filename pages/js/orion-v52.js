@@ -184,7 +184,6 @@
           { id: 'plus', n: 6, fallback: 2990 },
           { id: 'pro', n: 7, fallback: 4990, soonItem: 3 },        // item 3 do PRO = ORION CODE (Disponível em breve)
           { id: 'ultra', n: 9, fallback: 9990, soon: true },
-        ].filter(def => !def.soon || isOwner);                      // o ORION ULTRA só aparece para o proprietário (decidido pelo servidor, pelo e-mail do token)
         const cards = SHOW.map(def => {
           const p = def.soon ? null : (d.cat.plans.find(x => x.id === def.id) || null);
           const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
