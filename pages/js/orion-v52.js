@@ -178,7 +178,6 @@
         /* V5.2.0 — apresentação dos planos em 2 colunas × 2 linhas (FREE | PLUS / PRO | ULTRA; empilha em telas estreitas).
            Os textos vêm do i18n (plans2.*). O que o SERVIDOR decide continua vindo dele: preço cobrado, "dá para assinar" e plano atual.
            O ORION ULTRA ainda não existe no servidor: aparece como "Disponível em breve", sem botão de assinatura. */
-        const isOwner = !!(d.cur && d.cur.role === 'owner');       // conta de proprietário (decidido pelo servidor)
         const SHOW = [
           { id: 'free', n: 5 },
           { id: 'plus', n: 6, fallback: 2990 },
