@@ -178,11 +178,13 @@
         /* V5.2.0 — apresentação dos planos em 2 colunas × 2 linhas (FREE | PLUS / PRO | ULTRA; empilha em telas estreitas).
            Os textos vêm do i18n (plans2.*). O que o SERVIDOR decide continua vindo dele: preço cobrado, "dá para assinar" e plano atual.
            O ORION ULTRA ainda não existe no servidor: aparece como "Disponível em breve", sem botão de assinatura. */
+        const isOwner = !!(d.cur && d.cur.role === 'owner');       // conta de proprietário (decidido pelo servidor)
         const SHOW = [
           { id: 'free', n: 5 },
           { id: 'plus', n: 6, fallback: 2990 },
           { id: 'pro', n: 7, fallback: 4990, soonItem: 3 },        // item 3 do PRO = ORION CODE (Disponível em breve)
           { id: 'ultra', n: 9, fallback: 9990, soon: true },
+        ];                                                          // o ORION ULTRA aparece para todos: usuários veem "Disponível em breve"; o proprietário (decidido pelo servidor) vê o acesso dele
         const cards = SHOW.map(def => {
           const p = def.soon ? null : (d.cat.plans.find(x => x.id === def.id) || null);
           const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
@@ -205,7 +207,7 @@
           const cents = p && p.price_cents ? p.price_cents : def.fallback;     // o preço COBRADO é o do servidor; sem ele, mostra o preço de tabela
           const price = def.id === 'free' ? T('plans2.free.price') : T('plans.price', { p: money(cents) });
           return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.soon ? ' ultra' : ''), 'aria-label': name },
-            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T('plans2.ownerBadge')) : null),
+            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T(isOwner ? 'plans2.ownerBadge' : 'plans2.soon')) : null),
             h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
