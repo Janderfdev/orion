@@ -11,7 +11,7 @@
    Só troca a imagem da marca. O wordmark e a cor do Orb não são tocados.
    Se a logo sazonal não carregar, a logo que já está na tela continua.
 
-   Teste local (só localhost / file://):  ?simular=2026-12-10T12:00:00-03:00 */
+   Teste local (só localhost / file://):  ?simular=2026-11-20T00:00:00-03:00 */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;   // testes em Node
