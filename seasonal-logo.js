@@ -48,7 +48,7 @@
     const easterMs = brMidnight(year, e.m, e.d);
     return {
       easter:    { start: easterMs - 7 * DAY, end: easterMs + 1 * DAY },        // Domingo de Ramos 00:00 → segunda 00:00
-      christmas: { start: brMidnight(year, 10, 16), end: brMidnight(year + 1, 0, 1) },   // 16/11 00:00 → 01/01 00:00
+      christmas: { start: brMidnight(year, 10, 16), end: brMidnight(year + 1, 0, 1) },   // 20/11 00:00 → 01/01 00:00
     };
   }
 
