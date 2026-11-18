@@ -10,8 +10,8 @@ test('Páscoa: datas conhecidas (gregoriano)', () => {
 });
 
 test('Natal: fronteiras exatas em Brasília', () => {
-  assert.equal(S.currentTheme(at('2026-11-15T23:59:59-03:00')), 'original');
-  assert.equal(S.currentTheme(at('2026-11-16T00:00:00-03:00')), 'christmas');   // entra em 16/11
+  assert.equal(S.currentTheme(at('2026-11-19T23:59:59-03:00')), 'original');
+  assert.equal(S.currentTheme(at('2026-11-20T00:00:00-03:00')), 'christmas');   // entra em 20/11
   assert.equal(S.currentTheme(at('2026-12-01T00:00:00-03:00')), 'christmas');
   assert.equal(S.currentTheme(at('2026-12-31T23:59:59-03:00')), 'christmas');
   assert.equal(S.currentTheme(at('2027-01-01T00:00:00-03:00')), 'original');    // sai em 01/01
@@ -25,8 +25,8 @@ test('Páscoa 2027: Ramos 21/03 00:00 até segunda 29/03 00:00', () => {
 });
 
 test('não depende do fuso do aparelho', () => {
-  assert.equal(S.currentTheme(at('2026-11-15T22:30:00-05:00')), 'christmas');   // = 16/11 00:30 em Brasília
-  assert.equal(S.currentTheme(at('2026-11-15T21:30:00-05:00')), 'original');    // = 15/11 23:30 em Brasília
+  assert.equal(S.currentTheme(at('2026-11-19T22:30:00-05:00')), 'christmas');   // = 20/11 00:30 em Brasília
+  assert.equal(S.currentTheme(at('2026-11-19T21:30:00-05:00')), 'original');    // = 19/11 23:30 em Brasília
   assert.equal(S.currentTheme(at('2027-01-01T02:30:00Z')), 'christmas');        // = 31/12 23:30 em Brasília
 });
 
@@ -46,7 +46,7 @@ test('períodos nunca se sobrepõem; Ramos é domingo e o fim é segunda (2024�
 });
 
 test('nextChange aponta a próxima fronteira', () => {
-  assert.equal(S.nextChange(at('2026-11-09T12:00:00-03:00')), at('2026-11-16T00:00:00-03:00'));
+  assert.equal(S.nextChange(at('2026-11-09T12:00:00-03:00')), at('2026-11-20T00:00:00-03:00'));
   assert.equal(S.nextChange(at('2026-12-15T12:00:00-03:00')), at('2027-01-01T00:00:00-03:00'));
   assert.equal(S.nextChange(at('2027-01-05T12:00:00-03:00')), at('2027-03-21T00:00:00-03:00'));
 });
