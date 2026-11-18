@@ -11,7 +11,7 @@
    Só troca a imagem da marca. O wordmark e a cor do Orb não são tocados.
    Se a logo sazonal não carregar, a logo que já está na tela continua.
 
-   Teste local (só localhost / file://):  ?simular=2026-11-20T00:00:00-03:00 */
+   Teste local (só localhost / file://):  ?simular=2026-12-10T12:00:00-03:00 */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;   // testes em Node
@@ -48,7 +48,7 @@
     const easterMs = brMidnight(year, e.m, e.d);
     return {
       easter:    { start: easterMs - 7 * DAY, end: easterMs + 1 * DAY },        // Domingo de Ramos 00:00 → segunda 00:00
-      christmas: { start: brMidnight(year, 10, 16), end: brMidnight(year + 1, 0, 1) },   // 20/11 00:00 → 01/01 00:00
+      christmas: { start: brMidnight(year, 10, 20), end: brMidnight(year + 1, 0, 1) },   // 20/11 00:00 → 01/01 00:00
     };
   }
 
