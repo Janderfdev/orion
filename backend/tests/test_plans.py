@@ -68,9 +68,12 @@ def test_catalog_only_claims_what_exists_today():
     assert "api" in plans.public_catalog()[0]["features"]                     # mas tem ORION API (reduzido)
 
 
-def test_ultra_is_not_for_sale_yet(monkeypatch):
-    monkeypatch.setenv("ORION_PRICE_ULTRA", "9990")                            # mesmo com preço no ambiente, o ULTRA não é vendido sem o checkout dele
-    assert plans._build()["ultra"].price_cents is None and not plans.PLANS["ultra"].purchasable
+def test_ultra_is_purchasable_when_it_has_a_price(monkeypatch):
+    monkeypatch.setenv("ORION_PRICE_ULTRA", "9990")
+    u = plans._build()["ultra"]
+    assert u.price_cents == 9990 and u.purchasable
+    monkeypatch.delenv("ORION_PRICE_ULTRA")
+    assert plans._build()["ultra"].price_cents is None                         # sem preço = ainda não à venda (como PLUS e PRO)
 
 
 def test_unknown_feature_is_denied():
