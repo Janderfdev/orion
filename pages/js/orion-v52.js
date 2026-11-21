@@ -185,8 +185,8 @@
           { id: 'free', n: 5 },
           { id: 'plus', n: 6, fallback: 2990 },
           { id: 'pro', n: 7, fallback: 4990 },                     // V5.5.0: o ORION CODE já existe (PRO e ULTRA): sem selo "em breve"
-          { id: 'ultra', n: 9, fallback: 9990, soon: true },
-        ];                                                          // o ORION ULTRA aparece para todos: usuários veem "Disponível em breve"; o proprietário (decidido pelo servidor) vê o acesso dele
+          { id: 'ultra', n: 9, fallback: 9990 },                   // V5.5.0: o ORION ULTRA também pode ser assinado (o preço cobrado é o do servidor)
+        ];
         const cards = SHOW.map(def => {
           const p = d.cat.plans.find(x => x.id === def.id) || null;     // V5.5.0: o ULTRA agora vem no catálogo do servidor (mas ainda não está à venda)
           const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
@@ -198,9 +198,7 @@
           }
 
           let btn = null;
-          if (def.soon && def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
-          else if (def.soon) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T(isOwner ? 'plans2.owner' : 'plans2.soon'));   // ULTRA: ainda não está à venda; a conta de proprietário já o inclui
-          else if (def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
+          if (def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
           else if (def.id !== 'free') {
             const can = !!(p && p.purchasable && billingOn);
             btn = h('button', { class: 'pill-btn primary block', type: 'button', disabled: !can, onclick: () => p && subscribe(p) },
@@ -209,8 +207,8 @@
           }
           const cents = p && p.price_cents ? p.price_cents : def.fallback;     // o preço COBRADO é o do servidor; sem ele, mostra o preço de tabela
           const price = def.id === 'free' ? T('plans2.free.price') : T('plans.price', { p: money(cents) });
-          return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.soon ? ' ultra' : ''), 'aria-label': name },
-            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T(isOwner || def.id === curPlan ? 'plans2.ownerBadge' : 'plans2.soon')) : null),
+          return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.id === 'ultra' ? ' ultra' : ''), 'aria-label': name },
+            h('div', { class: 'v52-head' }, h('h3', {}, name), def.id === 'ultra' && isOwner ? h('span', { class: 'v52-badge soon' }, T('plans2.ownerBadge')) : null),   // conta de proprietário: já inclui o ULTRA
             h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
