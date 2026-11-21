@@ -42,8 +42,8 @@ OK = {"Authorization": "Bearer ok"}
 def test_plans_catalog_is_public_and_has_no_secrets(client):
     c, _ = client
     r = c.get("/plans")
-    assert r.status_code == 200 and [p["id"] for p in r.json()["plans"]] == ["free", "plus", "pro"]   # o ULTRA é da V5.5.0
-    assert "orion_code" not in r.text and "token" not in r.text.lower()
+    assert r.status_code == 200 and [p["id"] for p in r.json()["plans"]] == ["free", "plus", "pro", "ultra"]   # V5.5.0: o ULTRA entrou no catálogo
+    assert "token" not in r.text.lower()
 
 
 def test_billing_routes_require_login(client):
@@ -57,6 +57,7 @@ def test_checkout_uses_email_from_token_and_validates_plan(client):
     c, fb = client
     r = c.post("/billing/checkout", json={"plan": "plus", "email": "hacker@x.com", "price": 1}, headers=OK)
     assert r.status_code == 200 and fb.calls[-1] == ("checkout", "uid1", "user@x.com", "plus")      # e-mail do token; preço ignorado
+    assert c.post("/billing/checkout", json={"plan": "ultra"}, headers=OK).status_code == 200      # V5.5.0: o ULTRA também pode ser assinado
     for bad in ("free", "admin", "", None, 5):
         assert c.post("/billing/checkout", json={"plan": bad}, headers=OK).status_code == 422
 
