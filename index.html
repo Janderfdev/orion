@@ -501,7 +501,7 @@ A('desc',
 
 const KEY = 'orion_settings';
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } };
-const save = l => { try { const s = read(); s.ui = l; if (s.v !== 2 && s.v !== 3) s.v = 3; localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {} };
+const save = l => { try { const s = read(); s.ui = l; s.v = 4; localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) {} };
 const PT_TITLE = document.title, metaDesc = document.querySelector('meta[name="description"]'), PT_DESC = metaDesc.content;
 const tr = (l, k) => (TR[l] && TR[l][k]) || TR.en[k];
 
@@ -536,7 +536,7 @@ langList.addEventListener('keydown', e => {
 });
 document.addEventListener('pointerdown', e => { if (!langList.hidden && !e.target.closest('#langMenu')) closeLang(false); });
 const saved = read().ui, nav2 = ((navigator.language || '').slice(0, 2) || '').toLowerCase();
-setLang(LANGS.includes(saved) ? saved : 'en', true);   // idioma oficial: inglês (EUA); a escolha da pessoa fica salva
+setLang(LANGS.includes(saved) && read().v === 4 ? saved : 'en', true);   /* V5.5.0: escolhas antigas voltam ao inglês uma vez; as novas (v4) valem */   // idioma oficial: inglês (EUA); a escolha da pessoa fica salva
 </script>
 
 </body>
