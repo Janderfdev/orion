@@ -62,7 +62,7 @@
     refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.6L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.6L20 16M20 20v-4h-4"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>', download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>', folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', send: '<path d="M4 12l16-8-6 17-3-7z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', back: '<path d="M15 5l-7 7 7 7"/>', card: '<rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M3 10.5h18M7 15h3"/>', pix: '<path d="M12 3l9 9-9 9-9-9z"/><path d="M9 12l3-3 3 3-3 3z"/>', download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>', folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', send: '<path d="M4 12l16-8-6 17-3-7z"/>',
     play: '<path d="M8 5l11 7-11 7z"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', up: '<path d="M12 19V6M6 11l6-6 6 6"/>',
   };
   const money = cents => new Intl.NumberFormat(LOCALE(), { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
@@ -152,6 +152,144 @@
   /* ═══════════════ PLANOS E FATURAMENTO ═══════════════ */
   const CHECKOUT_HOST = /^https:\/\/([a-z0-9-]+\.)*mercadopago\.com(\.[a-z]{2})?\//i;
 
+  /* ═══════════════ CHECKOUT DENTRO DO ORION (V5.5.0) ═══════════════
+     Cartão: o formulário do Mercado Pago (Card Payment Brick, carregado do domínio dele) gera um TOKEN de uso único no navegador; o ORION nunca vê
+     nem guarda o cartão: só manda o token ao servidor (/billing/subscribe), que cria a assinatura e confirma com o provedor.
+     Pix: pagamento avulso (/billing/pix); o site só pergunta o status, quem libera o plano é o servidor depois que o Mercado Pago confirma.
+     O site NUNCA ativa plano sozinho: mostra "ativo" só quando o servidor responde isso. */
+  const wait = ms => new Promise(res => setTimeout(res, ms));
+  let mpSdk = null;
+  const loadMP = () => mpSdk || (mpSdk = new Promise((res, rej) => {
+    if (window.MercadoPago) return res();
+    const s = document.createElement('script');
+    s.src = 'https://sdk.mercadopago.com/js/v2'; s.async = true;
+    s.onload = () => (window.MercadoPago ? res() : rej(new Error('sdk'))); s.onerror = () => { mpSdk = null; rej(new Error('sdk')); };
+    document.head.appendChild(s);
+  }));
+  const cerr = code => { const k = 'chk.err.' + code; return T(k) !== k ? T(k) : errText('plans', code); };
+
+  async function embeddedCheckout(o) {
+    const { body, alive, plan, cfg, name, cents, features } = o;
+    let method = cfg.card ? 'card' : 'pix', brick = null, pix = null, stopped = false;
+    const live = () => alive() && !stopped;
+    const stop = () => { stopped = true; if (brick) { try { brick.unmount(); } catch (_) { } brick = null; } };
+    const status = h('p', { class: 'v52-msg', role: 'status', 'aria-live': 'polite' });
+    const say = (text, kind) => { status.textContent = text || ''; if (kind) status.dataset.kind = kind; else delete status.dataset.kind; };
+    const pane = h('div', { class: 'v55-pane' });
+    const back = h('button', { class: 'icon-btn', type: 'button', 'aria-label': T('chk.back'), title: T('chk.back'), onclick: () => { stop(); o.back(); } }, svg(ICON.back));
+
+    function success(state) {
+      stop();
+      const note = h('p', { class: 'v52-sub' }, state === 'active' ? T('chk.okText', { name }) : T('chk.pending'));
+      body.replaceChildren(h('div', { class: 'v52-box v55-ok' }, h('div', { class: 'v55-check' }, svg(ICON.check, 26)), h('h3', {}, T('chk.okTitle')), note,
+        h('div', {}, h('button', { class: 'pill-btn primary', type: 'button', onclick: () => o.done() }, T('chk.done')))));
+      if (state !== 'active') (async () => {                        // pagamento em análise: o plano ativa sozinho quando o servidor confirmar
+        for (let i = 0; i < 18 && alive(); i++) {
+          await wait(5000);
+          const me = await call('/billing/me');
+          if (alive() && me.ok && me.data && me.data.plan === plan.id) { note.textContent = T('chk.okText', { name }); if (window.ORION_PLAN_REFRESH) window.ORION_PLAN_REFRESH(); return; }
+        }
+      })();
+      else if (window.ORION_PLAN_REFRESH) window.ORION_PLAN_REFRESH();
+    }
+
+    async function drawCard() {
+      const host = h('div', { id: 'v55-card-brick', class: 'v55-brick' });
+      const spin = spinner(T('chk.loading'));
+      pane.replaceChildren(spin, host);
+      try { await loadMP(); } catch (_) {
+        if (!live() || method !== 'card') return;
+        pane.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('chk.sdkFail')), redirectLink());
+        return;
+      }
+      if (!live() || method !== 'card') return;
+      try {
+        const mp = new window.MercadoPago(cfg.public_key, { locale: LANG() === 'pt' ? 'pt-BR' : 'en-US' });
+        const ctl = await mp.bricks().create('cardPayment', 'v55-card-brick', {
+          initialization: { amount: cents / 100 },
+          customization: { visual: { style: { theme: 'dark' } }, paymentMethods: { maxInstallments: 1 } },
+          callbacks: {
+            onReady: () => spin.remove(),
+            onError: () => say(T('chk.err.generic'), 'err'),
+            onSubmit: async data => {
+              say('');
+              const res = await call('/billing/subscribe', { method: 'POST', body: { plan: plan.id, card_token: data && data.token }, timeout: 60000 });
+              if (!live()) return;
+              if (!res.ok || !res.data) { say(cerr(res.code), 'err'); throw new Error('refused'); }   // o Brick mostra o erro e deixa tentar de novo (novo token)
+              success(res.data.status === 'active' ? 'active' : 'pending');
+            },
+          },
+        });
+        if (!live() || method !== 'card') { try { ctl.unmount(); } catch (_) { } return; }
+        brick = ctl;
+      } catch (_) { if (live() && method === 'card') { spin.remove(); pane.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('chk.sdkFail')), redirectLink()); } }
+    }
+
+    function redirectLink() {
+      return h('div', {}, h('button', { class: 'pill-btn sm', type: 'button', onclick: () => { stop(); o.redirect(); } }, T('chk.redirect')));
+    }
+
+    async function pollPix(id) {
+      for (let i = 0; i < 450 && live() && method === 'pix' && pix && pix.payment_id === id; i++) {   // até 30 min, de 4 em 4 s
+        await wait(4000);
+        if (!(live() && method === 'pix' && pix && pix.payment_id === id)) return;
+        const r = await call('/billing/pix/' + encodeURIComponent(id));
+        if (!live()) return;
+        if (r.ok && r.data && r.data.status === 'approved') return success('active');
+        if (r.ok && r.data && r.data.status === 'failed') { pix = null; say(T('chk.pixExpired'), 'err'); drawPix(); return; }
+      }
+    }
+
+    function drawPix() {
+      if (!pix) {
+        const go = h('button', { class: 'pill-btn primary block', type: 'button' }, T('chk.pixGen'));
+        go.addEventListener('click', async () => {
+          go.disabled = true; say('');
+          const r = await call('/billing/pix', { method: 'POST', body: { plan: plan.id }, timeout: 40000 });
+          if (!live()) return;
+          if (!r.ok || !r.data || !r.data.qr_code) { go.disabled = false; say(cerr(r.ok ? 'provider_error' : r.code), 'err'); return; }
+          pix = r.data; drawPix(); pollPix(pix.payment_id);
+        });
+        pane.replaceChildren(h('p', { class: 'v52-sub' }, T('chk.pixOnce', { d: cfg.pix_days || 31 })), go);
+        return;
+      }
+      const b64 = /^[A-Za-z0-9+\/=]+$/.test(String(pix.qr_code_base64 || '')) ? pix.qr_code_base64 : '';
+      const code = h('input', { class: 'v52-input v55-code', type: 'text', readonly: true, value: String(pix.qr_code), 'aria-label': T('chk.pixCopy') });
+      const copy = h('button', { class: 'pill-btn sm', type: 'button' }, T('chk.pixCopy'));
+      copy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(code.value); } catch (_) { code.select(); try { document.execCommand('copy'); } catch (__) { } }
+        copy.textContent = T('chk.pixCopied'); setTimeout(() => { copy.textContent = T('chk.pixCopy'); }, 2000);
+      });
+      pane.replaceChildren(
+        h('p', { class: 'v52-sub' }, T('chk.pixScan')),
+        b64 ? h('div', { class: 'v55-qr' }, h('img', { src: 'data:image/png;base64,' + b64, alt: 'QR Code Pix', width: 200, height: 200 })) : null,
+        h('div', { class: 'v52-form' }, code, copy),
+        h('div', { class: 'v52-center v55-wait' }, h('div', { class: 'v52-spin' }), T('chk.pixWait')));
+    }
+
+    function drawMethod() {
+      tabs.querySelectorAll('.v55-meth').forEach(b => b.setAttribute('aria-selected', String(b.dataset.m === method)));
+      if (brick) { try { brick.unmount(); } catch (_) { } brick = null; }
+      say('');
+      if (method === 'card') drawCard(); else drawPix();
+    }
+    const tabs = h('div', { class: 'v55-meths', role: 'tablist' }, [['card', cfg.card, 'chk.card', ICON.card], ['pix', cfg.pix, 'chk.pix', ICON.pix]].filter(x => x[1]).map(([m, , key, ic]) =>
+      h('button', { class: 'v55-meth', type: 'button', role: 'tab', 'data-m': m, 'aria-selected': String(m === method), onclick: () => { if (method !== m) { method = m; drawMethod(); } } }, svg(ic, 18), h('span', {}, T(key)))));
+
+    const summary = h('aside', { class: 'v55-sum' },
+      h('h3', {}, name), h('p', { class: 'v52-note' }, T('chk.features')),
+      h('ul', { class: 'v52-list' }, features.slice(0, 5).map(f => h('li', {}, f))),
+      h('div', { class: 'v55-total' }, h('span', {}, T('chk.today')), h('b', {}, money(cents))),
+      h('p', { class: 'v52-note' }, method === 'card' ? T('chk.renews', { p: money(cents) }) : T('chk.pixOnce', { d: cfg.pix_days || 31 })));
+
+    body.replaceChildren(
+      h('div', { class: 'v52-row' }, h('div', { class: 'v55-ttl' }, back, h('h3', {}, T('chk.title', { name })))),
+      h('div', { class: 'v55-chk' }, h('div', { class: 'v55-form' }, h('p', { class: 'v52-note' }, T('chk.method')), tabs, pane, status), summary),
+      h('p', { class: 'v52-note' }, T('chk.secure')));
+    drawMethod();
+    tabs.addEventListener('click', () => { summary.lastChild.textContent = method === 'card' ? T('chk.renews', { p: money(cents) }) : T('chk.pixOnce', { d: cfg.pix_days || 31 }); });
+  }
+
   const plansPanel = makePanel({
     id: 'planPanel', title: () => T('plans.title'), icon: ICON.star,
     build: async ctx => {
@@ -212,7 +350,7 @@
             h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
-        async function subscribe(p) {
+        async function redirectCheckout(p) {           // alternativa: pagar no site do Mercado Pago (quando o checkout embutido não está disponível)
           buttons.forEach(b => { b.disabled = true; });
           setMsg(T('plans.redirecting'));
           const r = await call('/billing/checkout', { method: 'POST', body: { plan: p.id }, timeout: 40000 });
@@ -221,6 +359,22 @@
           if (url && CHECKOUT_HOST.test(url)) { window.location.assign(url); return; }       // só levamos o usuário à página de pagamento do Mercado Pago
           buttons.forEach(b => { b.disabled = false; });
           setMsg(errText('plans', r.ok ? 'provider_error' : r.code), 'err');
+        }
+
+        async function subscribe(p) {
+          buttons.forEach(b => { b.disabled = true; });
+          setMsg(T('chk.loading'));
+          const cfg = await call('/billing/config');
+          if (!alive()) return;
+          buttons.forEach(b => { b.disabled = false; });
+          setMsg('');
+          if (!(cfg.ok && cfg.data && (cfg.data.card || cfg.data.pix))) return redirectCheckout(p);
+          const def = SHOW.find(x => x.id === p.id);
+          const features = [];
+          for (let i = 1; def && i <= def.n; i++) features.push(T('plans2.' + def.id + '.' + i));
+          sub(T('chk.title', { name: p.name }));
+          embeddedCheckout({ body, alive, plan: p, cfg: cfg.data, name: p.name, cents: p.price_cents, features,
+            back: () => { sub(T('plans.sub')); run(); }, done: async () => { sub(T('plans.sub')); await run(); if (window.ORION_PLAN_REFRESH) window.ORION_PLAN_REFRESH(); }, redirect: () => redirectCheckout(p) });
         }
 
         const nodes = [h('div', { class: 'v52-plans' }, cards), h('p', { class: 'v52-note' }, T('plans.secure')), msg];
