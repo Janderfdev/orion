@@ -382,6 +382,7 @@ window.ORION_I18N = (() => {
   add("code.proOnly", "PRO e ULTRA", "PRO and ULTRA");
   add("plans.badge.ultra", "Máximo", "Maximum");
   add("plans.tag.ultra", "A maior capacidade do ORION, com a maior cota no ORION API.", "ORION’s highest capacity, with the biggest ORION API quota.");
+  add("dock.show", "Mostrar o dock", "Show the dock", "Mostrar el dock", "Afficher le dock", "Dock anzeigen", "Mostra il dock");
   add("mkt.aria", "Mercado", "Market");
   add("mkt.title", "Mercado", "Market");
   add("mkt.sub", "Cotações, gráficos e notícias do mercado financeiro", "Quotes, charts and financial market news");
