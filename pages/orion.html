@@ -39,7 +39,7 @@ try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.docu
   --card:rgba(var(--act),.96); --card-solid:var(--surface);
   --panel-bg:rgba(6,6,12,.98); --ask-bg:rgba(7,7,14,.84); --track-b:#0C0C16;
   /* módulos: tamanho do painel em que a Orb se transforma */
-  --mod-s:clamp(10px,3vw,40px); --mod-t:78px; --mod-b:78px; --mod-r:30px; --arc-gap:9px;
+  --mod-s:clamp(10px,3vw,40px); --mod-t:78px; --mod-b:84px; --mod-r:30px; --arc-gap:9px;
 }
 /* Dark Blue (azul escuro / preto) */
 :root[data-theme="midnight"]{
@@ -169,23 +169,28 @@ body.chat-open .hint-text{ opacity:0; }
 .version-tag{ position:fixed; left:clamp(14px,3vw,28px); bottom:clamp(20px,3.4vh,28px); z-index:40; font:500 9px var(--font-mono); letter-spacing:.22em; text-transform:uppercase; color:rgba(var(--w),.4); user-select:none; pointer-events:none; }
 @media (max-width:760px){ .hint{ bottom:84px; } }
 
-/* ═══════ DOCK: Chat · Código/API · Multitarefa · Configurações ═══════ */
+/* ═══════ DOCK (V5.5.0): Chat · Espaço de Trabalho · Mercado · Multitarefa · Resumo do Dia · Configurações — centralizado embaixo ═══════ */
 .dock{
-  position:fixed; right:var(--corner,14px); bottom:var(--corner,14px); z-index:40; display:flex; align-items:center; gap:2px; padding:6px;   /* V5.2.0: dock compacto no cantinho, na tela normal e com módulo aberto */
+  position:fixed; left:50%; right:auto; bottom:var(--corner,14px); transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:6px; padding:7px 10px;   /* V5.5.0: centralizado (era no cantinho direito) */
   border-radius:999px; background:rgba(7,7,14,.82); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.55);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   transition:opacity .28s ease, transform .32s cubic-bezier(.22,1,.36,1), visibility 0s;
 }
 .dock-sep{ width:1px; height:18px; margin:0 3px; background:var(--line); }
 .dock-btn{
-  width:33px; height:33px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  position:relative; width:38px; height:38px; border-radius:50%; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
   color:rgba(var(--w),.55); background:transparent; transition:color .2s ease, background .2s ease, transform .2s ease;
 }
 .dock-btn:hover{ color:var(--fg); background:rgba(var(--act-hi),.7); }
 .dock-btn:active{ transform:scale(.94); }
 .dock-btn.on{ color:var(--fg); background:var(--active); box-shadow:inset 0 0 0 1px rgba(var(--acc),.4); }
 .dock-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-@media (pointer:coarse){ .dock-btn{ width:34px; height:34px; } }   /* toque: alvo um pouco maior */
+@media (pointer:coarse){ .dock-btn{ width:40px; height:40px; } }
+/* nome da ferramenta ao passar o mouse, focar pelo teclado ou tocar (o texto vem de data-tip, preenchido por orion-v52.js a partir do aria-label) */
+.dock-btn[data-tip]::after{ content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 12px); transform:translate(-50%,4px); padding:5px 11px; border-radius:999px; white-space:nowrap;
+  font:500 11px var(--font); letter-spacing:.02em; color:var(--fg); background:rgba(7,7,14,.94); border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; }
+.dock-btn[data-tip]:hover::after, .dock-btn[data-tip]:focus-visible::after, .dock-btn[data-tip].tip::after{ opacity:1; transform:translate(-50%,0); }
+@media (max-width:420px){ .dock{ gap:2px; padding:6px 7px; } .dock-btn{ width:36px; height:36px; } }   /* telas bem estreitas: 6 botões continuam inteiros */   /* toque: alvo um pouco maior */
 
 /* ═══════ legenda de resposta (Chat) ═══════ */
 body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }
@@ -306,7 +311,7 @@ body.module-open .ask, body.module-open .cap{ opacity:0 !important; pointer-even
 /* Desktop: o painel fica entre a logo e a dock (os cantos ficam livres) e ocupa quase toda a altura.
    Telas menores: quase tela cheia, com folga para o cabeçalho e a dock. */
 @media (min-width:1100px){
-  :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:28px; --mod-r:36px; --arc-gap:12px; }
+  :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:84px; --mod-r:36px; --arc-gap:12px; }   /* V5.5.0: base maior, o dock agora fica no centro */
 }
 body:is(.chat-answer,.cap-fade){ --mod-b:92px; }
 @media (max-width:760px){ body:is(.chat-answer,.cap-fade){ --mod-b:140px; } }
@@ -315,11 +320,11 @@ body.chat-answer .stage{ padding-bottom:calc(var(--mod-b) - var(--mod-t)); }   /
 body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é ativado dentro dos módulos */
 
 /* camada de conteúdo: transparente, fica entre a Orb e a dock */
-#settingsPanel, #codePanel, #taskPanel, #planPanel, #apiPanel, #newsPanel{
+#settingsPanel, #codePanel, #taskPanel, #planPanel, #apiPanel, #newsPanel, #marketPanel, #idePanel{
   position:fixed; inset:0; z-index:30; display:block; padding:0; background:transparent;
   opacity:0; pointer-events:none; transition:opacity .25s ease;
 }
-#settingsPanel.open, #codePanel.open, #taskPanel.open, #planPanel.open, #apiPanel.open, #newsPanel.open{ opacity:1; pointer-events:auto; }
+#settingsPanel.open, #codePanel.open, #taskPanel.open, #planPanel.open, #apiPanel.open, #newsPanel.open, #marketPanel.open, #idePanel.open{ opacity:1; pointer-events:auto; }
 .settings-card{
   position:fixed; left:var(--mod-s); right:var(--mod-s); top:var(--mod-t); bottom:var(--mod-b);
   container-type:inline-size; container-name:mod;
@@ -327,7 +332,7 @@ body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é at
   background:transparent; border:0; box-shadow:none;
   opacity:0; transition:opacity .2s ease;
 }
-#settingsPanel.open .settings-card, #codePanel.open .settings-card, #taskPanel.open .settings-card, #planPanel.open .settings-card, #apiPanel.open .settings-card, #newsPanel.open .settings-card{ opacity:1; transition:opacity .35s ease .32s; }
+#settingsPanel.open .settings-card, #codePanel.open .settings-card, #taskPanel.open .settings-card, #planPanel.open .settings-card, #apiPanel.open .settings-card, #newsPanel.open .settings-card, #marketPanel.open .settings-card, #idePanel.open .settings-card{ opacity:1; transition:opacity .35s ease .32s; }
 .set-head, .set-foot, .settings-hint, .settings-note, .code-note, .code-foot{ flex:none; }
 .set-body, .orb-frame-body, .code-grid{ flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(var(--acc),.35) transparent; }
 .code-grid{ align-content:start; }
@@ -701,7 +706,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 @keyframes splitMenuIn{ from{ opacity:0; transform:translateY(-4px); } }
 .split-item{ height:38px; padding:0 14px; border:0; border-radius:11px; background:transparent; color:var(--fg); font:500 13px var(--font); text-align:left; cursor:pointer; transition:background .2s ease; }
 .split-item:hover, .split-item:focus-visible{ background:rgba(var(--act-hi),.9); outline:none; }
-body.split-view{ --mod-s:28px; --mod-t:78px; --mod-b:78px; --mod-r:30px; }
+body.split-view{ --mod-s:28px; --mod-t:78px; --mod-b:84px; --mod-r:30px; }
 body.split-view .orb.module{ opacity:0; transition:opacity .3s ease; }
 body.split-view .orb-zone .orb-arc{ opacity:0; }
 body.split-view [data-split]{ pointer-events:none !important; }
@@ -768,6 +773,56 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
   .v52-usage{ grid-template-columns:1fr; justify-items:center; } .v52-usage .v52-stats, .v52-usage .v52-planmini{ width:100%; }
   .v52-keyrow > .pill-btn{ flex:1 1 100%; }
 }
+
+/* ═══════ V5.5.0 — Mercado e ORION CODE (mesmos tokens dos outros painéis) ═══════ */
+.v55-demo{ padding:10px 14px; border-radius:12px; border:1px solid rgba(201,178,106,.35); background:rgba(201,178,106,.07); color:#C9B26A !important; }
+.v55-assets{ display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:12px; }
+.v55-asset{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:14px; text-align:left; cursor:pointer; color:var(--fg); font:inherit;
+  border-radius:var(--r-md); border:1px solid var(--line); background:var(--surface); transition:border-color .2s ease, background .2s ease; }
+.v55-asset:hover{ background:rgba(var(--act-hi),.5); }
+.v55-asset[aria-pressed="true"]{ border-color:rgba(var(--acc),.6); }
+.v55-asset:focus-visible, .v55-rank button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.v55-asset .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; }
+.v55-asset .sym{ font:600 11px var(--font-mono); letter-spacing:.08em; color:var(--fg2); }
+.v55-asset b{ font:600 20px var(--font); font-variant-numeric:tabular-nums; }
+.chg{ font:600 12px var(--font-mono); font-variant-numeric:tabular-nums; }
+.chg.up{ color:#7DD3A8; } .chg.down{ color:#F87171; } .chg.flat{ color:var(--fg2); }
+.v55-spark{ width:100%; height:36px; display:block; }
+.v55-spark.big{ height:clamp(120px,22vh,190px); }
+.v55-spark .ln{ fill:none; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.v55-spark .ln.up{ stroke:#7DD3A8; } .v55-spark .ln.down{ stroke:#F87171; } .v55-spark .ln.flat{ stroke:var(--accent-soft); }
+.v55-two{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@container mod (max-width:640px){ .v55-two{ grid-template-columns:1fr; } }
+.v55-rank{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+.v55-rank button{ width:100%; display:flex; justify-content:space-between; gap:10px; padding:8px 10px; border:0; border-radius:10px; background:transparent; color:var(--fg); font:500 13px var(--font-mono); cursor:pointer; }
+.v55-rank button:hover{ background:rgba(var(--act-hi),.5); }
+.v52-input[type="search"]{ flex:0 1 260px; }
+
+.v55-ide{ display:grid; grid-template-columns:200px minmax(0,1fr) minmax(260px,.9fr); gap:14px; align-items:start; }
+@container mod (max-width:980px){ .v55-ide{ grid-template-columns:180px minmax(0,1fr); } .v55-ai{ grid-column:1 / -1; } }
+@container mod (max-width:640px){ .v55-ide{ grid-template-columns:1fr; } }
+.v55-side, .v55-ai{ display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:var(--r-md); border:1px solid var(--line); background:var(--surface); min-width:0; }
+.v55-side h3{ font:600 13px var(--font); }
+.v55-files{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; max-height:220px; overflow-y:auto; }
+.v55-files button{ width:100%; text-align:left; padding:7px 10px; border:0; border-radius:10px; background:transparent; color:var(--fg2); font:500 12px var(--font-mono); cursor:pointer; overflow-wrap:anywhere; }
+.v55-files button:hover{ background:rgba(var(--act-hi),.5); color:var(--fg); }
+.v55-files button.on{ color:var(--fg); background:var(--active); box-shadow:inset 0 0 0 1px rgba(var(--acc),.4); }
+.v55-main{ display:flex; flex-direction:column; gap:8px; min-width:0; }
+.v55-editor{ display:flex; border-radius:12px; border:1px solid var(--line); background:#05050A; height:clamp(260px,46vh,520px); overflow:hidden; }
+.v55-gut{ flex:0 0 auto; min-width:3.2ch; padding:14px 8px 14px 12px; overflow:hidden; text-align:right; white-space:pre; user-select:none; font:500 12.5px/1.7 var(--font-mono); color:rgba(var(--w),.28); }
+.v55-ta{ flex:1; min-width:0; padding:14px 14px 14px 6px; border:0; outline:0; resize:none; background:transparent; color:#C9C7DC; font:500 12.5px/1.7 var(--font-mono); tab-size:2; white-space:pre; overflow:auto; }
+.v55-ta:disabled{ opacity:.5; }
+.v55-editor:focus-within{ border-color:rgba(var(--acc),.6); box-shadow:0 0 0 3px rgba(var(--act-hi),.6); }
+.v55-ask{ border-radius:14px; min-height:64px; padding:10px 14px; resize:vertical; line-height:1.5; }
+.v55-out{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+.v55-out h4{ font:600 12px var(--font); color:var(--fg2); }
+.v55-expl{ font-size:13px; line-height:1.7; color:rgba(var(--w),.9); white-space:pre-wrap; overflow-wrap:anywhere; }
+.v55-diff{ max-height:260px; overflow:auto; padding:10px 0; }
+.v55-diff .dl{ display:block; padding:0 14px; white-space:pre; }
+.v55-diff .dl.add{ background:rgba(125,211,168,.12); color:#7DD3A8; }
+.v55-diff .dl.del{ background:rgba(248,113,113,.12); color:#F87171; }
+.v55-diff .dl.ctx{ color:rgba(var(--w),.45); }
+@media (prefers-reduced-motion:reduce){ .dock-btn[data-tip]::after{ transition:none; } }
 </style>
 </head>
 <body>
@@ -889,14 +944,14 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
 </section>
 
 <nav class="dock" aria-label="ORION">
-  <button class="dock-btn" id="chatBtn" aria-label="Perguntar ao ORION" aria-pressed="false" title="Perguntar ao ORION ( / )" data-i18n-aria="chat.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></button>
-  <button class="dock-btn" id="codeBtn" aria-label="ORION CODE e ORION API" title="ORION CODE e ORION API" data-i18n-aria="code.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5L3 12l5.5 5.5M15.5 6.5L21 12l-5.5 5.5M13.5 4.5l-3 15"/></svg></button>
-  <button class="dock-btn" id="taskBtn" aria-label="Multitarefa" aria-pressed="false" title="Multitarefa"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></button>
-  <button class="dock-btn" id="newsBtn" aria-label="Resumo do Dia" aria-pressed="false" title="Resumo do Dia" data-i18n-aria="news.title"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13a1 1 0 0 1 1 1v13H6a2 2 0 0 1-2-2V5z"/><path d="M18 9h2a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2h-1"/><path d="M8 9h6M8 13h6M8 16h3"/></svg></button>
-  <span class="dock-sep" aria-hidden="true"></span>
-  <button class="dock-btn" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <button class="dock-btn" id="chatBtn" aria-label="Perguntar ao ORION" aria-pressed="false" title="Perguntar ao ORION ( / )" data-i18n-aria="chat.aria"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg></button>
+    <button class="dock-btn" id="codeBtn" aria-label="Espaço de Trabalho" title="Espaço de Trabalho" aria-pressed="false" data-i18n-aria="code.aria"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2.5"/><path d="M9.5 9.5L7.5 11.5l2 2M14.5 9.5l2 2-2 2M8 21h8"/></svg></button>
+    <button class="dock-btn" id="marketBtn" aria-label="Mercado" title="Mercado" aria-pressed="false" data-i18n-aria="mkt.aria"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><path d="M13 7l3-3 3 3"/></svg></button>
+  <button class="dock-btn" id="taskBtn" aria-label="Multitarefa" aria-pressed="false" title="Multitarefa"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg></button>
+  <button class="dock-btn" id="newsBtn" aria-label="Resumo do Dia" aria-pressed="false" title="Resumo do Dia" data-i18n-aria="news.title"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13a1 1 0 0 1 1 1v13H6a2 2 0 0 1-2-2V5z"/><path d="M18 9h2a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2h-1"/><path d="M8 9h6M8 13h6M8 16h3"/></svg></button>
+  <button class="dock-btn" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
-<div class="version-tag" id="versionTag" data-i18n="version">VERSÃO V5.2.0</div>
+<div class="version-tag" id="versionTag" data-i18n="version">VERSÃO V5.5.0</div>
 
 
 <script type="module">
@@ -948,12 +1003,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=15"></script>
+<script src="js/i18n.js?c=16"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=14"></script>
-<script defer src="js/orion-v5.js?c=11"></script>
-<script defer src="js/orion-v52.js?c=16"></script>
+<script defer src="js/app.js?c=15"></script>
+<script defer src="js/orion-v5.js?c=12"></script>
+<script defer src="js/orion-v52.js?c=17"></script>
 </body>
 </html>
