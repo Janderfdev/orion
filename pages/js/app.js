@@ -28,7 +28,7 @@ const I18N = (() => {
   const D = window.ORION_I18N || {};
   const LANGS = D.langs || ['pt', 'en'];
   const LOCALES = D.locales || { pt: 'pt-BR', en: 'en-US' };
-  let cur = 'pt';
+  let cur = 'en';
   const t = (k, v) => {
     let s = (D[cur] && D[cur][k]) || (D.en && D.en[k]) || k;
     if (v) for (const x in v) s = s.split('{' + x + '}').join(v[x]);
@@ -41,7 +41,7 @@ const I18N = (() => {
     document.querySelectorAll('[data-i18n-label]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nLabel)); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { const s = t(el.dataset.i18nAria); el.setAttribute('aria-label', s); if (el.tagName === 'BUTTON') el.title = s; });
   }
-  return { t, apply, langs: LANGS, get: () => cur, locale: () => LOCALES[cur], set: l => { cur = LANGS.includes(l) ? l : 'pt'; } };
+  return { t, apply, langs: LANGS, get: () => cur, locale: () => LOCALES[cur], set: l => { cur = LANGS.includes(l) ? l : 'en'; } };
 })();
 const t = I18N.t;
 
@@ -738,15 +738,15 @@ const API = (() => {
   const prefs = Object.assign({
     voice: true,            // falar as respostas
     sound: true, wake: true, clap: false, model: null,   // wake: "Hey ORION" ligado por padrão na V4.5.0 · clap (V5.2.0): duas palmas, desligado até a pessoa ligar
-    ui: 'pt',               // idioma ÚNICO (interface + reconhecimento de fala + prévia): pt · en · es · fr · de · it
+    ui: 'en',               // idioma OFICIAL: inglês (EUA) · idioma ÚNICO (interface + reconhecimento de fala + prévia): pt · en · es · fr · de · it
     slot: 1, pace: 1, expr: 0.5,
   }, stored);
-  if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'pt';   // preferências da beta antiga: volta ao português
+  if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'en';   // preferências da beta antiga: volta ao idioma oficial (inglês)
   if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
   prefs.v = 3;
   delete prefs.used;
   delete prefs.lang;
-  prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'pt';
+  prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'en';
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
   delete prefs.calm;
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
@@ -1412,7 +1412,6 @@ const API = (() => {
       if (!panel) return;
       const user = window.ORION_USER;
       panel.querySelector('#setEmail').textContent = (user && (user.email || user.displayName)) || t('set.none');
-      panel.querySelector('#setCore').textContent = coreLabel();
       // V5.0: foto de perfil (escolhida pelo usuário, só neste navegador) e plano/uso do dia
       const avBtn = panel.querySelector('#avatarBtn'), av = AVATAR.get();
       avBtn.textContent = '';
@@ -1466,8 +1465,6 @@ const API = (() => {
               <div class="side-info">
                 <div class="mini-row"><span>${t('set.plan')}</span><span class="plan-chip" id="setPlan">—</span></div>
                 <div class="mini-row"><span>${t('set.history')}</span><button id="clearChat" class="pill-btn" type="button">${t('set.clear')}</button></div>
-                <div class="mini-row"><span>${t('set.core')}</span><span class="settings-email" id="setCore">—</span></div>
-                <p class="side-note">${t('set.photoNote')}</p>
               </div>
             </aside>
             <div class="set-list">
@@ -1485,7 +1482,7 @@ const API = (() => {
             <button id="signOutBtn" class="pill-btn danger grow" type="button">${IC.out}${t('set.signout')}</button>
             <button id="upgradeBtn" class="pill-btn primary grow" type="button">${IC.star}${t('set.upgrade')}</button>
           </div>
-          <p class="settings-hint" id="settingsHint">ORION AI V5.2.0</p>
+          <p class="settings-hint" id="settingsHint">ORION AI V5.5.0</p>
           <p class="settings-note upgrade-note" id="upgradeNote" role="status" hidden></p>
         </div>`;
       document.body.appendChild(panel);
@@ -1521,7 +1518,7 @@ const API = (() => {
         prefs.theme = THEMES.includes(b.dataset.k) ? b.dataset.k : 'indigo'; savePrefs(); applyTheme(true); sync();
       });
       panel.querySelector('#uiSelect').addEventListener('change', e => {
-        prefs.ui = I18N.langs.includes(e.target.value) ? e.target.value : 'pt'; savePrefs();
+        prefs.ui = I18N.langs.includes(e.target.value) ? e.target.value : 'en'; savePrefs();
         I18N.set(prefs.ui); I18N.apply(); applyLang(); vs.sync();
         panel.remove(); panel = null; build(); panel.classList.add('open'); sync();   // reconstrói o painel no novo idioma
         syncWake();
