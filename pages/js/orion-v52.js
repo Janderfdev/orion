@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    ORION AI V5.2.0 — Planos e faturamento · ORION API · Resumo do Dia   (pages/js/orion-v52.js)
+   V5.5.0 (no mesmo arquivo): window.ORION_MARKET (Mercado) · window.ORION_CODE (ORION CODE) · plano ORION ULTRA · nomes do dock
 
    Três painéis no mesmo padrão dos outros módulos (a Orb vira painel; orion-v5.js observa #planPanel, #apiPanel e #newsPanel):
      window.ORION_PLANS      → Planos e faturamento (abre pelo botão Upgrade das Configurações ou por uma voz de plano pago)
@@ -61,6 +62,7 @@
     refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.6L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.6L20 16M20 20v-4h-4"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>', folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', send: '<path d="M4 12l16-8-6 17-3-7z"/>',
     play: '<path d="M8 5l11 7-11 7z"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', up: '<path d="M12 19V6M6 11l6-6 6 6"/>',
   };
   const money = cents => new Intl.NumberFormat(LOCALE(), { style: 'currency', currency: 'BRL' }).format((Number(cents) || 0) / 100);
@@ -145,7 +147,7 @@
   }
   const closeAll = () => { if (window.ORION_SPLIT && window.ORION_SPLIT.opening) return; panels.forEach(p => p.isOpen() && p.close(false)); };   // V5.2.0: não fecha ao abrir "ao lado"
   document.addEventListener('keydown', e => { if (e.key === 'Escape') panels.forEach(p => p.isOpen() && p.close()); });
-  ['chatBtn', 'gearBtn', 'codeBtn', 'taskBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', closeAll, true); });   // abrir outro módulo fecha estes
+  ['chatBtn', 'gearBtn', 'codeBtn', 'taskBtn', 'marketBtn'].forEach(id => { const b = $(id); if (b) b.addEventListener('click', closeAll, true); });   // abrir outro módulo fecha estes
 
   /* ═══════════════ PLANOS E FATURAMENTO ═══════════════ */
   const CHECKOUT_HOST = /^https:\/\/([a-z0-9-]+\.)*mercadopago\.com(\.[a-z]{2})?\//i;
@@ -182,11 +184,11 @@
         const SHOW = [
           { id: 'free', n: 5 },
           { id: 'plus', n: 6, fallback: 2990 },
-          { id: 'pro', n: 7, fallback: 4990, soonItem: 3 },        // item 3 do PRO = ORION CODE (Disponível em breve)
+          { id: 'pro', n: 7, fallback: 4990 },                     // V5.5.0: o ORION CODE já existe (PRO e ULTRA): sem selo "em breve"
           { id: 'ultra', n: 9, fallback: 9990, soon: true },
         ];                                                          // o ORION ULTRA aparece para todos: usuários veem "Disponível em breve"; o proprietário (decidido pelo servidor) vê o acesso dele
         const cards = SHOW.map(def => {
-          const p = def.soon ? null : (d.cat.plans.find(x => x.id === def.id) || null);
+          const p = d.cat.plans.find(x => x.id === def.id) || null;     // V5.5.0: o ULTRA agora vem no catálogo do servidor (mas ainda não está à venda)
           const name = p ? p.name : 'ORION ' + def.id.toUpperCase();
           const items = [];
           for (let i = 1; i <= def.n; i++) {
@@ -196,7 +198,8 @@
           }
 
           let btn = null;
-          if (def.soon) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T(isOwner ? 'plans2.owner' : 'plans2.soon'));   // ULTRA: ninguém contrata; a conta de proprietário já o inclui
+          if (def.soon && def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
+          else if (def.soon) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T(isOwner ? 'plans2.owner' : 'plans2.soon'));   // ULTRA: ainda não está à venda; a conta de proprietário já o inclui
           else if (def.id === curPlan) btn = h('button', { class: 'pill-btn block', type: 'button', disabled: true }, T('plans.current'));
           else if (def.id !== 'free') {
             const can = !!(p && p.purchasable && billingOn);
@@ -207,7 +210,7 @@
           const cents = p && p.price_cents ? p.price_cents : def.fallback;     // o preço COBRADO é o do servidor; sem ele, mostra o preço de tabela
           const price = def.id === 'free' ? T('plans2.free.price') : T('plans.price', { p: money(cents) });
           return h('section', { class: 'v52-plan' + (def.id === curPlan ? ' cur' : '') + (def.soon ? ' ultra' : ''), 'aria-label': name },
-            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T(isOwner ? 'plans2.ownerBadge' : 'plans2.soon')) : null),
+            h('div', { class: 'v52-head' }, h('h3', {}, name), def.soon ? h('span', { class: 'v52-badge soon' }, T(isOwner || def.id === curPlan ? 'plans2.ownerBadge' : 'plans2.soon')) : null),
             h('p', { class: 'v52-tier' }, T('plans2.tier.' + def.id)), h('div', { class: 'v52-price' }, price), h('ul', { class: 'v52-list' }, items), btn);
         });
 
@@ -556,6 +559,286 @@
     },
   });
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
+
+  /* ═══════════════ MERCADO (V5.5.0) ═══════════════
+     O site NUNCA inventa cotação: mostra o que /market/overview devolve. Enquanto o servidor responder demo=true, tudo aparece com o aviso
+     "dados demonstrativos" e o selo em cada ativo (os ativos de demonstração são fictícios). As notícias são as reais de Economia e Negócios
+     do Resumo do Dia (/news/daily). */
+  const marketBtn = $('marketBtn');
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const sgn = n => (n > 0 ? '+' : '') + new Intl.NumberFormat(LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + '%';
+  const px = n => new Intl.NumberFormat(LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+  const dir = n => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat');
+  /* gráfico de linha em SVG (só DOM): tamanho e rótulos simples; sem dependências */
+  function chart(series, { w = 120, hgt = 36, big = false } = {}) {
+    const s = (Array.isArray(series) ? series : []).map(Number).filter(Number.isFinite);
+    const el = document.createElementNS(SVGNS, 'svg');
+    el.setAttribute('viewBox', '0 0 ' + w + ' ' + hgt); el.setAttribute('class', 'v55-spark' + (big ? ' big' : '')); el.setAttribute('preserveAspectRatio', 'none'); el.setAttribute('aria-hidden', 'true');
+    if (s.length < 2) return el;
+    const lo = Math.min(...s), hi = Math.max(...s), span = hi - lo || 1, pad = 3;
+    const pts = s.map((v, i) => [(i / (s.length - 1)) * w, hgt - pad - ((v - lo) / span) * (hgt - pad * 2)]);
+    const line = document.createElementNS(SVGNS, 'polyline');
+    line.setAttribute('points', pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')); line.setAttribute('class', 'ln ' + dir(s[s.length - 1] - s[0]));
+    el.append(line);
+    return el;
+  }
+  const marketPanel = makePanel({
+    id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn,
+    build: async ctx => {
+      const { body, sub, alive } = ctx;
+      let ov = null, news = null, tab = 'overview', query = '', picked = null;
+      sub(T('mkt.sub'));
+      const all = () => ov ? [...(ov.indices || []).map(x => Object.assign({ kind: 'index' }, x)), ...[...(ov.gainers || []), ...(ov.losers || [])].map(x => Object.assign({ kind: 'stock' }, x))] : [];
+      const match = a => { const q = query.trim().toLowerCase(); return !q || String(a.name).toLowerCase().includes(q) || String(a.symbol).toLowerCase().includes(q); };
+      const demo = () => !!(ov && ov.demo !== false);
+
+      const assetCard = a => h('button', { class: 'v55-asset', type: 'button', 'aria-pressed': String(picked && picked.symbol === a.symbol), onclick: () => { picked = a; draw(); } },
+        h('div', { class: 'top' }, h('span', { class: 'sym' }, String(a.symbol)), demo() ? h('span', { class: 'v52-soon' }, T('mkt.demoBadge')) : null),
+        h('b', {}, px(a.value)), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct)), chart(a.series));
+      const rankList = (title, list) => h('div', { class: 'v52-box' }, h('h3', {}, title),
+        list.length ? h('ul', { class: 'v55-rank' }, list.map(a => h('li', {}, h('button', { type: 'button', onclick: () => { picked = Object.assign({ kind: 'stock' }, a); draw(); } }, h('span', {}, String(a.symbol)), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct)))))) : h('p', { class: 'v52-sub' }, '—'));
+      const bigChart = () => {
+        const a = picked || (ov.indices || [])[0];
+        if (!a) return null;
+        return h('div', { class: 'v52-box' }, h('div', { class: 'v52-row' }, h('h3', {}, T('mkt.chartOf', { n: a.name })), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct))),
+          chart(a.series, { w: 600, hgt: 160, big: true }), h('p', { class: 'v52-note' }, demo() ? T('mkt.chartNote') : ''));
+      };
+      const newsList = n => {
+        const items = (n || []).slice(0, 8);
+        if (!items.length) return h('div', { class: 'v52-center' }, T('mkt.newsEmpty'));
+        return h('ul', { class: 'v52-news' }, items.map(it => {
+          const href = safeHref(it.url);
+          return h('li', { class: 'v52-new' }, href ? h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, String(it.title || '')) : h('span', {}, String(it.title || '')),
+            it.summary ? h('p', {}, String(it.summary)) : null, h('div', { class: 'v52-meta' }, h('span', {}, String(it.source || '')), h('span', {}, fmtWhen(it.published))));
+        }));
+      };
+
+      function draw() {
+        if (!ov) return;
+        const idx = (ov.indices || []).filter(match), stk = [...(ov.gainers || []), ...(ov.losers || [])].filter(match);
+        const search = h('input', { class: 'v52-input', type: 'search', maxlength: 40, value: query, placeholder: T('mkt.search'), 'aria-label': T('mkt.search'),
+          oninput: e => { query = e.target.value; const pos = e.target.selectionStart; draw(); const n = body.querySelector('.v52-input'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } });
+        const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'indices', 'news'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { tab = k; draw(); } }, T('mkt.tab.' + k))));
+        let main;
+        if (tab === 'news') main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))];
+        else if (tab === 'indices') main = idx.length ? [h('div', { class: 'v55-assets' }, idx.map(assetCard)), bigChart()] : [h('div', { class: 'v52-center' }, T('mkt.noMatch'))];
+        else if (tab === 'stocks') main = stk.length ? [h('div', { class: 'v55-assets' }, stk.map(assetCard)), bigChart()] : [h('div', { class: 'v52-center' }, T('mkt.noMatch'))];
+        else main = [h('div', { class: 'v55-assets' }, idx.map(assetCard)), bigChart(),
+          h('div', { class: 'v55-two' }, rankList(T('mkt.gainers'), ov.gainers || []), rankList(T('mkt.losers'), ov.losers || [])),
+          h('div', { class: 'v52-box' }, h('h3', {}, T('mkt.tab.news')), newsList((news || []).slice(0, 3)))];
+        const stamp = !demo() && ov.source && ov.as_of ? h('p', { class: 'v52-note' }, T('mkt.source', { s: String(ov.source), t: fmtWhen(ov.as_of) })) : null;
+        body.replaceChildren(
+          demo() ? h('p', { class: 'v52-msg v55-demo', role: 'status', 'data-kind': 'err' }, T('mkt.demo')) : null,
+          h('div', { class: 'v52-row' }, tabs, search), ...main.filter(Boolean), stamp);
+      }
+      async function load() {
+        body.replaceChildren(spinner(T('plans.loading')));
+        const [o, n] = await Promise.all([call('/market/overview'), call('/news/daily')]);
+        if (!alive()) return;
+        if (!o.ok || !o.data || !Array.isArray(o.data.indices)) {
+          body.replaceChildren(h('div', { class: 'v52-center' }, errText('mkt', o.code), h('button', { class: 'pill-btn sm', type: 'button', onclick: () => load() }, T('mkt.retry'))));
+          return;
+        }
+        ov = o.data;
+        const cats = n.ok && n.data && Array.isArray(n.data.categories) ? n.data.categories : [];
+        const seen = new Set();   // Economia + Negócios, mais recentes primeiro, sem repetir link
+        news = cats.filter(c => c.id === 'economia' || c.id === 'negocios').flatMap(c => c.items || []).sort((a, b) => String(b.published).localeCompare(String(a.published))).filter(i => (seen.has(i.url) ? false : seen.add(i.url)));
+        draw();
+      }
+      await load();
+    },
+  });
+  if (marketBtn) marketBtn.addEventListener('click', () => { if (marketPanel.isOpen()) marketPanel.close(); else marketPanel.open(); });
+  window.ORION_MARKET = { open: () => marketPanel.open() };
+
+  /* ═══════════════ ORION CODE (V5.5.0) ═══════════════
+     O projeto fica no NAVEGADOR (localStorage, uma cópia por conta). O servidor (/code/assist) só devolve explicação, problemas e alterações
+     PROPOSTAS. Nada é alterado sem a aprovação da pessoa, arquivo por arquivo, e nada é executado: não existe botão "rodar". */
+  const IDE_MAX_FILES = 12, IDE_MAX_CHARS = 20000;
+  const IDE_PATH = /^[A-Za-z0-9_.\-]+(\/[A-Za-z0-9_.\-]+){0,5}$/;
+  const ideKey = () => 'orion_code_' + ((window.ORION_USER && window.ORION_USER.uid) || 'anon');
+  const ideLoad = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(ideKey()));
+      if (!v || !Array.isArray(v.files)) return { files: [], active: '' };
+      const files = v.files.slice(0, IDE_MAX_FILES).filter(f => f && IDE_PATH.test(String(f.path || '')) && f.path.length <= 120).map(f => ({ path: String(f.path), content: String(f.content || '').slice(0, IDE_MAX_CHARS) }));
+      return { files, active: files.some(f => f.path === v.active) ? v.active : (files[0] ? files[0].path : '') };
+    } catch (_) { return { files: [], active: '' }; }
+  };
+  /* diferença linha a linha (LCS) para mostrar o que vai mudar ANTES de aplicar; limitada para não travar a página */
+  function lineDiff(a, b) {
+    const A = a.split('\n'), B = b.split('\n');
+    if (A.length * B.length > 160000) return null;
+    const m = A.length, n = B.length, L = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) for (let k = n - 1; k >= 0; k--) L[i][k] = A[i] === B[k] ? L[i + 1][k + 1] + 1 : Math.max(L[i + 1][k], L[i][k + 1]);
+    const out = []; let i = 0, k = 0;
+    while (i < m && k < n) { if (A[i] === B[k]) { out.push([' ', A[i]]); i++; k++; } else if (L[i + 1][k] >= L[i][k + 1]) out.push(['-', A[i++]]); else out.push(['+', B[k++]]); }
+    while (i < m) out.push(['-', A[i++]]); while (k < n) out.push(['+', B[k++]]);
+    return out;
+  }
+  const ideFetchPlan = async () => { const r = await call('/plan'); return r.ok && r.data ? r.data.plan : null; };
+
+  const idePanel = makePanel({
+    id: 'idePanel', title: () => T('ide.title'), icon: ICON.code, opener: $('codeBtn'),
+    build: async ctx => {
+      const { body, sub, alive } = ctx;
+      sub(T('ide.sub'));
+      body.replaceChildren(spinner(T('plans.loading')));
+      const plan = await ideFetchPlan();
+      if (!alive()) return;
+      if (plan !== 'pro' && plan !== 'ultra') {      // a regra real é do servidor (403 plan:code_locked); aqui só evitamos mostrar um editor que não poderia pedir ajuda
+        body.replaceChildren(h('div', { class: 'v52-box' }, h('h3', {}, 'ORION CODE'), h('p', { class: 'v52-sub' }, T('ide.locked')),
+          h('div', {}, h('button', { class: 'pill-btn primary', type: 'button', onclick: () => plansPanel.open() }, T('ide.seePlans')))));
+        return;
+      }
+      const st = ideLoad();
+      let busy = false, result = null, confirmDel = false, delTimer = 0, saveNote = null;
+      const cur = () => st.files.find(f => f.path === st.active) || null;
+      const save = () => { try { localStorage.setItem(ideKey(), JSON.stringify(st)); } catch (_) {} };
+
+      const gutter = h('div', { class: 'v55-gut', 'aria-hidden': 'true' });
+      const area = h('textarea', { class: 'v55-ta', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', wrap: 'off', 'aria-label': T('ide.editor'), maxlength: IDE_MAX_CHARS });
+      const paintGutter = () => { const n = area.value.split('\n').length; gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n'); };
+      area.addEventListener('input', () => {
+        const f = cur(); if (!f) return;
+        f.content = area.value; paintGutter(); save();
+        if (saveNote) saveNote.textContent = T('ide.saved');
+      });
+      area.addEventListener('scroll', () => { gutter.scrollTop = area.scrollTop; });
+      area.addEventListener('keydown', e => {   // Tab insere dois espaços (Esc depois Tab sai do editor, como em outros editores)
+        if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+        e.preventDefault();
+        const s = area.selectionStart; area.setRangeText('  ', s, area.selectionEnd, 'end'); area.dispatchEvent(new Event('input'));
+      });
+
+      const askBox = h('textarea', { class: 'v52-input v55-ask', rows: 2, maxlength: 2000, placeholder: T('ide.ask'), 'aria-label': T('ide.ask') });
+      const out = h('div', { class: 'v55-out', 'aria-live': 'polite' });
+      const sendBtn = h('button', { class: 'pill-btn primary', type: 'button' }, svg(ICON.send, 15), h('span', {}, T('ide.send')));
+
+      function drawFiles() {
+        const list = h('ul', { class: 'v55-files' }, st.files.map(f => h('li', {}, h('button', { type: 'button', class: f.path === st.active ? 'on' : '', 'aria-current': f.path === st.active ? 'true' : null,
+          onclick: () => { st.active = f.path; save(); drawAll(); } }, f.path))));
+        const name = h('input', { class: 'v52-input', type: 'text', maxlength: 120, placeholder: T('ide.filePh'), 'aria-label': T('ide.newFile') });
+        const form = h('form', { class: 'v52-form', onsubmit: e => {
+          e.preventDefault();
+          const p = name.value.trim();
+          if (!IDE_PATH.test(p) || p.length > 120 || st.files.some(f => f.path === p)) { name.focus(); return; }
+          if (st.files.length >= IDE_MAX_FILES) { out.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('ide.noRoom'))); return; }
+          st.files.push({ path: p, content: '' }); st.active = p; save(); drawAll(); area.focus();
+        } }, name, h('button', { class: 'pill-btn sm', type: 'submit', 'aria-label': T('ide.newFile'), title: T('ide.newFile') }, svg(ICON.plus, 15)));
+        const pick = h('input', { type: 'file', hidden: true, accept: '.txt,.md,.py,.js,.ts,.json,.html,.css,.java,.c,.cpp,.cs,.go,.rs,.php,.rb,.sh,.sql,.yml,.yaml,.xml,.csv', onchange: async e => {
+          const file = e.target.files && e.target.files[0]; e.target.value = '';
+          if (!file) return;
+          const p = file.name.replace(/[^A-Za-z0-9_.\-]/g, '_').slice(0, 100);
+          if (!IDE_PATH.test(p) || file.size > IDE_MAX_CHARS * 4) return;
+          if (st.files.length >= IDE_MAX_FILES && !st.files.some(f => f.path === p)) { out.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('ide.noRoom'))); return; }
+          const text = (await file.text()).slice(0, IDE_MAX_CHARS);
+          const ex = st.files.find(f => f.path === p);
+          if (ex) ex.content = text; else st.files.push({ path: p, content: text });
+          st.active = p; save(); drawAll();
+        } });
+        const f = cur();
+        const dl = h('button', { class: 'pill-btn sm', type: 'button', disabled: !f, title: T('ide.download'), onclick: () => {
+          const a = h('a', { href: URL.createObjectURL(new Blob([f.content], { type: 'text/plain;charset=utf-8' })), download: f.path.split('/').pop() });
+          document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        } }, svg(ICON.download, 15), h('span', {}, T('ide.download')));
+        let delLabel = T('ide.delete');
+        const del = h('button', { class: 'pill-btn sm danger', type: 'button', disabled: !f, title: delLabel }, svg(ICON.trash, 15), h('span', {}, delLabel));
+        del.addEventListener('click', () => {
+          if (!f) return;
+          if (!confirmDel) { confirmDel = true; del.lastChild.textContent = T('ide.deleteSure'); clearTimeout(delTimer); delTimer = setTimeout(() => { confirmDel = false; del.lastChild.textContent = delLabel; }, 5000); return; }
+          confirmDel = false; st.files = st.files.filter(x => x.path !== f.path); st.active = st.files[0] ? st.files[0].path : ''; save(); drawAll();
+        });
+        return h('aside', { class: 'v55-side' }, h('h3', {}, T('ide.files')), st.files.length ? list : h('p', { class: 'v52-sub' }, T('ide.empty')), form, pick,
+          h('div', { class: 'v52-actions' }, h('button', { class: 'pill-btn sm', type: 'button', onclick: () => pick.click() }, svg(ICON.folder, 15), h('span', {}, T('ide.open'))), dl, del));
+      }
+
+      function drawResult() {
+        if (!result) { out.replaceChildren(); return; }
+        const nodes = [];
+        if (result.explanation) nodes.push(h('p', { class: 'v55-expl' }, result.explanation));
+        if (result.issues.length) nodes.push(h('div', {}, h('h4', {}, T('ide.issues')), h('ul', { class: 'v52-list' }, result.issues.map(i => h('li', {}, i)))));
+        if (result.changes.length) {
+          nodes.push(h('h4', {}, T('ide.proposed')));
+          result.changes.forEach(ch => {
+            const exists = st.files.find(f => f.path === ch.path);
+            const stale = ch.state === 'pending' && ch.base !== (exists ? exists.content : null);   // o arquivo mudou depois da proposta
+            const d = ch.state === 'pending' ? (exists ? lineDiff(exists.content, ch.content) : lineDiff('', ch.content)) : null;
+            const diff = ch.state !== 'pending' ? null : d === null ? h('p', { class: 'v52-sub' }, T('ide.diffBig'))
+              : !d.some(x => x[0] !== ' ') ? h('p', { class: 'v52-sub' }, T('ide.diffSame'))
+                : h('pre', { class: 'v52-code v55-diff', tabindex: '0' }, d.filter((x, i) => x[0] !== ' ' || d.slice(Math.max(0, i - 2), i + 3).some(y => y[0] !== ' ')).map(x => h('span', { class: 'dl ' + (x[0] === '+' ? 'add' : x[0] === '-' ? 'del' : 'ctx') }, x[0] + ' ' + x[1])));
+            const act = ch.state === 'pending' ? h('div', { class: 'v52-actions' },
+              h('button', { class: 'pill-btn primary sm', type: 'button', disabled: stale, onclick: () => {
+                const e2 = st.files.find(f => f.path === ch.path);
+                if (e2) e2.content = ch.content.slice(0, IDE_MAX_CHARS);
+                else if (st.files.length < IDE_MAX_FILES) st.files.push({ path: ch.path, content: ch.content.slice(0, IDE_MAX_CHARS) });
+                else { out.prepend(h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('ide.noRoom'))); return; }
+                ch.state = 'applied'; st.active = ch.path; save(); drawAll();
+              } }, svg(ICON.check, 15), h('span', {}, T('ide.approve'))),
+              h('button', { class: 'pill-btn sm', type: 'button', onclick: () => { ch.state = 'rejected'; drawResult(); } }, h('span', {}, T('ide.reject')))) : h('span', { class: 'v52-soon' }, T(ch.state === 'applied' ? 'ide.applied' : 'ide.rejected'));
+            nodes.push(h('div', { class: 'v52-box' }, h('div', { class: 'v52-row' }, h('b', { class: 'v52-mono' }, ch.path), h('span', { class: 'v52-badge' }, T(ch.action === 'create' && !exists ? 'ide.create' : 'ide.update'))),
+              stale ? h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('ide.stale')) : null, diff, act));
+          });
+        } else if (!result.explanation) nodes.push(h('p', { class: 'v52-sub' }, T('ide.noChanges')));
+        if (result.dropped) nodes.push(h('p', { class: 'v52-note' }, T('ide.dropped', { n: result.dropped })));
+        out.replaceChildren(...nodes);
+      }
+
+      async function ask(text) {
+        text = String(text || '').trim();
+        if (!text || busy) return;
+        busy = true; sendBtn.disabled = true; result = null;
+        out.replaceChildren(spinner(T('ide.thinking')));
+        const r = await call('/code/assist', { method: 'POST', body: { request: text, active: st.active, files: st.files.map(f => ({ path: f.path, content: f.content })) }, timeout: 70000 });
+        busy = false; sendBtn.disabled = false;
+        if (!alive()) return;
+        if (!r.ok || !r.data) { out.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err' }, errText('ide', r.code))); return; }
+        const d = r.data;
+        result = {
+          explanation: String(d.explanation || ''), issues: (d.issues || []).map(String), dropped: Number(d.dropped) || 0,
+          changes: (d.changes || []).map(c => { const ex = st.files.find(f => f.path === c.path); return { path: String(c.path), action: c.action, content: String(c.content), state: 'pending', base: ex ? ex.content : null }; }),
+        };
+        askBox.value = ''; drawResult();
+      }
+      sendBtn.addEventListener('click', () => ask(askBox.value));
+      askBox.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ask(askBox.value); } });
+
+      function drawAll() {
+        const f = cur();
+        saveNote = h('span', { class: 'v52-note' }, T('ide.saved'));
+        area.disabled = !f; area.value = f ? f.content : ''; paintGutter();
+        const quick = ['explain', 'improve', 'bugs'].map(k => h('button', { class: 'pill-btn sm', type: 'button', disabled: !f || busy, onclick: () => ask(T('ide.p.' + k)) }, T('ide.q.' + k)));
+        body.replaceChildren(
+          h('div', { class: 'v55-ide' },
+            drawFiles(),
+            h('section', { class: 'v55-main' }, h('div', { class: 'v52-row' }, h('b', { class: 'v52-mono' }, f ? f.path : '—'), saveNote),
+              h('div', { class: 'v55-editor' }, gutter, area)),
+            h('section', { class: 'v55-ai' }, h('div', { class: 'v52-actions' }, quick), askBox, h('div', { class: 'v52-actions' }, sendBtn), out)),
+          h('p', { class: 'v52-note' }, T('ide.noRun')));
+        drawResult();
+      }
+      drawAll();
+    },
+  });
+  window.ORION_CODE = { open: () => idePanel.open() };
+
+  /* ── nomes do dock (V5.5.0): cada botão mostra o nome da ferramenta ao passar o mouse, focar ou tocar ── */
+  (function dockTips() {
+    const dock = document.querySelector('.dock');
+    if (!dock) return;
+    const sync = () => dock.querySelectorAll('.dock-btn').forEach(b => { const n = b.getAttribute('aria-label') || ''; b.dataset.tip = n; if (b.title !== n && b.id !== 'chatBtn' && b.id !== 'gearBtn') b.title = n; });
+    sync();
+    new MutationObserver(sync).observe(dock, { subtree: true, attributes: true, attributeFilter: ['aria-label'] });
+    new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+    document.addEventListener('DOMContentLoaded', sync);
+    let tipTimer = 0;
+    dock.addEventListener('pointerdown', e => {   // toque: mostra o nome por um instante
+      const b = e.target.closest && e.target.closest('.dock-btn');
+      if (!b || e.pointerType === 'mouse') return;
+      dock.querySelectorAll('.tip').forEach(x => x.classList.remove('tip')); b.classList.add('tip');
+      clearTimeout(tipTimer); tipTimer = setTimeout(() => b.classList.remove('tip'), 1400);
+    });
+  })();
 
   /* ═══════════════ DOCK COMPACTO ═══════════════
      Com um módulo aberto (body.module-open, marcado por orion-v5.js) o dock continua visível, mais compacto, no cantinho inferior
