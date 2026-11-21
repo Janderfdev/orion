@@ -1,644 +1,477 @@
-"""ORION AI — backend (V5.0).
-
-Rodar local:  uvicorn main:app --reload
-Anexos (V5.0): POST /ask aceita "image" {mime, data(base64)} e "file" {name, text}; inválidos → 422 "anexo:<código>" sem gastar cota.
-Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
-V5.2.0 (Resumo do Dia): GET /news/daily?refresh=1
-V5.5.0 (ORION CODE): POST /code/assist (só PRO e ULTRA; propõe, nunca altera arquivos)
-V5.2.0 (ORION API): POST /v1/chat · GET /v1/models · GET /v1/usage (chave de API) · GET|POST /api/keys · POST /api/keys/{id}/revoke|rotate · GET /api/usage (login)
-V5.2.0 (planos e assinaturas): GET /plan · GET /plans · GET /billing/me · POST /billing/checkout · POST /billing/cancel · POST /billing/webhook/mercadopago
-Variáveis:
-  GEMINI_API_KEY         chave do Google AI Studio (modelos gemini-*)  — ao menos UMA chave é obrigatória
-  ANTHROPIC_API_KEY      chave da API do Claude (modelos claude-*)
-  ORION_ALLOWED_EMAILS   (recomendada) e-mails com acesso, separados por vírgula.
-                         Vazio = qualquer conta criada no Firebase pode usar (e gastar seu crédito!)
-  ORION_MAX_DAILY_USERS  (300) máximo de contas DIFERENTES que usam a ORION por dia (freio contra criação em massa
-                         de contas). 0 = sem limite. Não vale quando ORION_ALLOWED_EMAILS está preenchida.
-  ORION_REQUIRE_VERIFIED "1" exige e-mail verificado no token (padrão: desligado; o login atual não envia verificação)
-  ORION_AGENT            "1" liga o Agent Engine (padrão: desligado). O /ask passa a devolver "agent" quando ele respondeu.
-  ORION_MODELS           "id:Rótulo,id2:Rótulo2" (padrão: Gemini e Claude); ORION_DEFAULT_MODEL
-  ORION_MODEL_PLANS      (V5.2.0) "id:plano,..." plano mínimo de cada modelo (padrão: Flash-Lite = FREE; 3.6 Flash = PLUS; 3.8 Flash = PRO)
-  FIREBASE_PROJECT_ID    padrão: orion-ai-b8d39
-  ORION_ALLOWED_ORIGIN   padrão: https://janderfdev.github.io
-  ORION_MAX_TOKENS, ORION_PER_MINUTE (15), ORION_PER_DAY (200)
-  Imagens: toda resposta recebe 2–3 fotos da Wikipédia/Wikimedia (core/images.py, sem chave); só upload.wikimedia.org
-  ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID_1 … _4   (opcionais) ligam as vozes do ElevenLabs
-                         (o slot 1 aceita também o nome antigo ELEVENLABS_VOICE_ID); ELEVENLABS_MODEL (padrão eleven_flash_v2_5),
-                         ORION_TTS_DAILY_CHARS (4000 por usuário por dia; a prévia de voz também conta)
-  ORION_DIAG             "1" liga o /speak/diag (padrão: desligado; exige ORION_ALLOWED_EMAILS preenchida)
-  FIREBASE_SERVICE_ACCOUNT  JSON da service account (cota diária e planos gravados só pelo servidor)
-  ORION_LIMIT_FREE (10), ORION_LIMIT_PLUS (100), ORION_LIMIT_PRO (500)   perguntas por dia em cada plano
-  ORION_OWNER_EMAIL      (V5.2.0) e-mail do proprietário: papel "owner" decidido no servidor (ver core/quota.py);
-                         ORION_OWNER_ALLOW_UNVERIFIED=1 aceita e-mail e senha sem verificação
-  ORION_THINKING         raciocínio dos modelos Gemini 3.x: off | minimal (padrão) | low | medium | high
-  ORION_MEMORY           "firestore" (padrão) ou "local" (memória do processo)
-  V5.2.0: ORION_MP_ACCESS_TOKEN · ORION_MP_WEBHOOK_SECRET · ORION_MP_TEST_PAYER_EMAIL · ORION_PRICE_PLUS|PRO ·
-          ORION_API_KEY_PEPPER (opcional: segredo do hash das chaves de API) · ORION_API_MONTHLY_PLUS|PRO · ORION_API_RPM_PLUS|PRO ·
-          ORION_BILLING_GRACE_DAYS · ORION_BILLING_RETURN_URL · limites em billing/plans.py (docs/BILLING.md explica tudo)
-"""
-import asyncio, datetime, logging, os, re, secrets, time
-from collections import deque
-from typing import Literal
-
-from fastapi import FastAPI, Header, HTTPException, Path, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel, Field
-
-from api import keys as api_keys
-from api.errors import ApiError, body as api_error_body
-from api.service import ApiService
-from api.store import ApiStore
-from auth.firebase import verify
-from billing import plans, service as billing_service
-from core import attachments, code_assist, images
-from core.orchestrator import Orchestrator
-from core.quota import Quota, PROJECT_ID as FIREBASE_PROJECT
-from memory.store import Memory
-from news.service import NewsService, NewsUnavailable
-from providers.registry import Registry
-from voice import elevenlabs
-
-log = logging.getLogger("orion")
-ORIGINS = [o.strip() for o in os.getenv("ORION_ALLOWED_ORIGIN", "https://janderfdev.github.io").split(",")]
-ALLOWED = {e.strip().lower() for e in os.getenv("ORION_ALLOWED_EMAILS", "").split(",") if e.strip()}
-PER_MINUTE = int(os.getenv("ORION_PER_MINUTE", "15"))
-PER_DAY = int(os.getenv("ORION_PER_DAY", "200"))
-TTS_DAILY_CHARS = int(os.getenv("ORION_TTS_DAILY_CHARS", "4000"))   # limite de caracteres falados por usuário por dia
-DIAG_ENABLED = os.getenv("ORION_DIAG", "0") == "1"                   # diagnóstico de voz: desligado por padrão
-DIAG_TEXT = "Teste de voz do ORION."
-MAX_DAILY_USERS = int(os.getenv("ORION_MAX_DAILY_USERS", "300"))     # contas diferentes por dia (0 = sem limite)
-REQUIRE_VERIFIED = os.getenv("ORION_REQUIRE_VERIFIED", "0") == "1"
-PRUNE_AT = 2000                                                       # tamanho a partir do qual os mapas em memória são limpos
-
-# Frase fixa da prévia de voz (o site não envia texto: ninguém usa a prévia para falar o que quiser)
-PREVIEW_TEXT = {"en": "Hi, I'm ORION. This is how I sound.", "pt": "Olá, eu sou o ORION. É assim que eu falo."}
-
-if not ALLOWED:
-    log.warning("ORION_ALLOWED_EMAILS vazio: qualquer conta Firebase pode usar a ORION (e gastar créditos). Defina a lista no Render.")
-
-app = FastAPI(title="ORION AI", docs_url=None, redoc_url=None)
-app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
-                   allow_headers=["Authorization", "Content-Type"])
-
-registry = Registry()
-orchestrator = Orchestrator(Memory())
-quota = Quota()   # cota diária por plano (free/plus/pro)
-billing = billing_service.build(quota._admin, FIREBASE_PROJECT, on_plan_change=quota.invalidate_plan)   # V5.2.0: assinaturas (Mercado Pago)
-news = NewsService()   # V5.2.0: Resumo do Dia (RSS de fontes reais, com cache)
-orion_api = ApiService(ApiStore(quota._admin, FIREBASE_PROJECT), plan_of=lambda uid: quota.status(uid)["plan"])   # V5.2.0: ORION API
-_hits: dict[str, deque] = {}  # limite de uso por usuário (em memória)
-_tts_used: dict[str, tuple] = {}  # uid -> (dia, caracteres falados hoje)
-_seen: dict = {"day": None, "uids": set()}   # contas que usaram a ORION hoje
-
-
-def _user_ok(uid: str) -> bool:
-    """Freio contra criação em massa de contas: no máximo MAX_DAILY_USERS contas diferentes por dia.
-    Quem já usou hoje continua passando. Zera à meia-noite e quando o servidor reinicia."""
-    today = datetime.date.today()
-    if _seen["day"] != today:
-        _seen["day"], _seen["uids"] = today, set()
-    if uid in _seen["uids"]:
-        return True
-    if MAX_DAILY_USERS and len(_seen["uids"]) >= MAX_DAILY_USERS:
-        return False
-    _seen["uids"].add(uid)
-    return True
-
-
-def _rate_ok(uid: str) -> bool:
-    now = time.time()
-    if len(_hits) >= PRUNE_AT:   # poda: tira quem não pergunta há mais de um dia
-        for k in [k for k, d in _hits.items() if not d or d[-1] < now - 86400]:
-            del _hits[k]
-    q = _hits.setdefault(uid, deque())
-    while q and q[0] < now - 86400:
-        q.popleft()
-    if len(q) >= PER_DAY or sum(1 for t in q if t > now - 60) >= PER_MINUTE:
-        return False
-    q.append(now)
-    return True
-
-
-def _tts_ok(uid: str, n: int) -> bool:
-    """Controla os créditos do ElevenLabs: cada usuário tem um limite diário de caracteres falados."""
-    today = datetime.date.today()
-    if len(_tts_used) >= PRUNE_AT:   # poda: tira registros de dias anteriores
-        for k in [k for k, (d, _) in _tts_used.items() if d != today]:
-            del _tts_used[k]
-    day, used = _tts_used.get(uid, (today, 0))
-    if day != today:
-        used = 0
-    if used + n > TTS_DAILY_CHARS:
-        return False
-    _tts_used[uid] = (today, used + n)
-    return True
-
-
-def _tts_refund(uid: str, n: int) -> None:
-    """Devolve a cota quando a geração da voz falha (não cobra por áudio que não existiu)."""
-    day, used = _tts_used.get(uid, (datetime.date.today(), 0))
-    _tts_used[uid] = (day, max(0, used - n))
-
-
-class VoiceOpts(BaseModel):
-    """Escolhas de voz vindas do site. Tudo validado aqui: o site nunca manda Voice ID, só o slot."""
-    voice: int = Field(default=1, ge=1, le=4)                                                   # slot da voz (1 a 4)
-    pace: float = Field(default=elevenlabs.PACE_DEFAULT, ge=elevenlabs.PACE_MIN, le=elevenlabs.PACE_MAX)
-    expressivity: float = Field(default=elevenlabs.EXPR_DEFAULT, ge=elevenlabs.EXPR_MIN, le=elevenlabs.EXPR_MAX)
-
-
-class SpeakIn(VoiceOpts):
-    text: str = Field(min_length=1, max_length=2000)
-
-
-class PreviewIn(VoiceOpts):
-    lang: Literal["en", "pt"] = "en"
-
-
-class ImageIn(BaseModel):
-    mime: Literal["image/jpeg", "image/png", "image/webp"]
-    data: str = Field(min_length=100, max_length=attachments.MAX_IMAGE_B64)   # base64; o servidor confere de novo os bytes
-
-
-class FileIn(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
-    text: str = Field(min_length=1, max_length=attachments.MAX_FILE_CHARS)
-
-
-class AskIn(BaseModel):
-    text: str = Field(min_length=1, max_length=2000)
-    model: str | None = Field(default=None, max_length=80)  # id vindo de GET /models
-    lang: Literal["pt", "en"] = "en"                          # idioma da conversa (busca das imagens)
-    image: ImageIn | None = None                              # V5.0: UMA imagem anexada (jpeg/png/webp)
-    file: FileIn | None = None                                # V5.0: UM arquivo de texto anexado
-
-
-async def _no_images():
-    return None
-
-
-async def _with_images(sources, task):
-    """Garante 2 a 3 imagens por resposta: se a resposta já trouxe ao menos 2, não faz nada; senão completa com fotos da Wikipédia."""
-    srcs = list(sources) if isinstance(sources, list) else []
-    have = 0
-    for s in srcs:
-        if isinstance(s, dict):
-            have += len(s.get("images") or ([s["image"]] if s.get("image") else []))
-    if have >= 2:
-        task.cancel()
-        return srcs
-    try:
-        extra = await asyncio.wait_for(asyncio.shield(task), timeout=4)
-    except Exception:
-        return srcs                                    # imagens são um extra: sem elas a resposta segue normal
-    if extra and extra.get("images"):
-        srcs.append({"url": extra["url"], "title": extra["title"], "images": extra["images"][:max(1, 3 - have)]})
-    return srcs
-
-
-async def _auth(authorization: str, count: bool = False, with_email: bool = False):
-    """Valida o login do Firebase, a lista de e-mails e o limite de contas por dia. Devolve (uid, token).
-    count=True também aplica o limite de uso (perguntas ao modelo)."""
-    token = authorization.removeprefix("Bearer ").strip()
-    claims = await asyncio.to_thread(verify, token)
-    if not claims:
-        raise HTTPException(401, "Não autorizado.")
-    if ALLOWED and (claims.get("email") or "").lower() not in ALLOWED:
-        raise HTTPException(403, "Conta sem acesso.")
-    if REQUIRE_VERIFIED and not claims.get("email_verified"):
-        raise HTTPException(403, "Conta sem acesso.")
-    uid = claims.get("sub", "?")
-    quota.note_login(uid, claims)                      # V5.2.0: proprietário pelo e-mail do TOKEN (nunca pelo que o site diz)
-    if not ALLOWED and not _user_ok(uid):
-        raise HTTPException(429, "Muitos usuários agora. Tente mais tarde.")
-    if count and not _rate_ok(uid):
-        raise HTTPException(429, "Muitas solicitações. Aguarde um instante.")
-    if with_email:                                     # V5.2.0: o checkout precisa do e-mail VERIFICADO PELO TOKEN (nunca do corpo da requisição)
-        return uid, token, (claims.get("email") or "").strip()
-    return uid, token
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "name": "ORION AI"}
-
-
-@app.get("/models")
-async def models(authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
-    voices = [dict(v, locked=not plans.allows_voice(plan, v.get("slot"))) for v in elevenlabs.voices()]   # V5.2.0: FREE = 1 voz; PLUS/PRO = 4
-    return {"default": registry.default_for(plan), "models": registry.models_for(plan), "tts": elevenlabs.configured(), "plan": plan,
-            "voices": voices,   # [{slot, label, locked}] — nunca os Voice IDs
-            "voice_limits": {"pace": [elevenlabs.PACE_MIN, elevenlabs.PACE_MAX, elevenlabs.PACE_DEFAULT],
-                             "expressivity": [elevenlabs.EXPR_MIN, elevenlabs.EXPR_MAX, elevenlabs.EXPR_DEFAULT]}}
-
-
-@app.post("/ask")
-async def ask(body: AskIn, authorization: str = Header(default="")):
-    uid, token = await _auth(authorization, count=True)
-    if not registry.models():
-        raise HTTPException(503, "Nenhum modelo configurado no servidor.")
-    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
-    wanted = body.model
-    if wanted and registry.has(wanted) and not registry.allowed(plan, wanted):
-        wanted = registry.default_for(plan)            # V5.2.0: modelo fora do plano (ex.: escolha antiga após um downgrade) -> o do plano
-    model_id, provider = registry.get(wanted or registry.default_for(plan))
-    if not provider:
-        raise HTTPException(400, "Modelo indisponível.")
-    try:                                               # anexo inválido NÃO gasta cota
-        image = attachments.check_image(body.image.mime, body.image.data) if body.image else None
-        file = attachments.clean_file(body.file.name, body.file.text) if body.file else None
-    except attachments.AttachmentError as e:
-        raise HTTPException(422, f"anexo:{e}")
-    q = await asyncio.to_thread(quota.consume, uid)
-    if not q["ok"]:                                    # 402: o site mostra "faça upgrade para continuar"
-        raise HTTPException(402, "Limite diário de perguntas atingido.")
-    # busca as fotos da Wikipédia enquanto o modelo responde (com anexo do usuário, não: as fotos não combinariam)
-    img_task = asyncio.create_task(_no_images() if (image or file) else asyncio.to_thread(images.find, body.text, body.lang))
-    try:
-        result = await orchestrator.ask(body.text, uid, token, provider, image=image, file=file)
-    except Exception as e:
-        await asyncio.to_thread(quota.refund, uid)     # a pergunta não deu resposta: devolve a cota
-        log.exception("Falha ao consultar o modelo")  # detalhes só no log do servidor
-        status = getattr(e, "status_code", None)
-        if status == 429:                              # limite de uso do provedor (ex.: plano gratuito)
-            raise HTTPException(429, "O modelo atingiu o limite de uso agora.")
-        if status in (403, 404):                       # modelo inexistente/aposentado ou sem permissão para esta chave
-            raise HTTPException(503, "Modelo indisponível para esta chave.")
-        raise HTTPException(502, "Falha ao consultar o modelo.")
-    return {"reply": result["reply"], "model": model_id, "sources": await _with_images(result["sources"], img_task), "understood": result["understood"], "agent": result.get("agent"),
-            "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}}
-
-
-class CheckoutIn(BaseModel):
-    plan: Literal["plus", "pro", "ultra"]             # o preço NÃO vem do site: o servidor usa o do catálogo
-
-
-def _billing_http(e: "billing_service.BillingError") -> HTTPException:
-    return HTTPException(e.status, f"billing:{e.code}")   # o site traduz "billing:<código>"
-
-
-@app.get("/plan")
-async def my_plan(authorization: str = Header(default="")):
-    """Plano e uso de hoje (não gasta pergunta). O site usa para o chip do plano e para liberar/travar recursos."""
-    uid, _ = await _auth(authorization)
-    st = await asyncio.to_thread(quota.status, uid)
-    return {"plan": st["plan"], "used": st["used"], "limit": st["limit"],
-            "voices": list(plans.get(st["plan"]).voice_slots), "api": plans.can(st["plan"], "api"),
-            "role": quota.role(uid)}
-
-
-@app.get("/plans")
-def plans_catalog():
-    """Catálogo público dos planos (sem segredos e sem recursos ainda não lançados)."""
-    return {"plans": plans.public_catalog(), "billing": billing.configured}
-
-
-@app.get("/billing/me")
-async def billing_me(authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    try:
-        return await asyncio.to_thread(billing.me, uid)
-    except billing_service.BillingError as e:
-        raise _billing_http(e)
-
-
-@app.post("/billing/checkout")
-async def billing_checkout(body: CheckoutIn, authorization: str = Header(default="")):
-    uid, _, email = await _auth(authorization, with_email=True)
-    try:
-        return await asyncio.to_thread(billing.checkout, uid, email, body.plan)
-    except billing_service.BillingError as e:
-        raise _billing_http(e)
-
-
-@app.post("/billing/cancel")
-async def billing_cancel(authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    try:
-        return await asyncio.to_thread(billing.cancel, uid)
-    except billing_service.BillingError as e:
-        raise _billing_http(e)
-
-
-@app.post("/billing/webhook/mercadopago")
-async def mercadopago_webhook(request: Request):
-    """Chamado pelo Mercado Pago (não pelo site): sem login; a prova de origem é a assinatura x-signature.
-    401 = assinatura inválida · 200 = tratado ou ignorado de propósito · 5xx = falhou de verdade (o Mercado Pago tenta de novo)."""
-    try:
-        raw = await request.json()
-    except Exception:
-        raw = {}
-    body = raw if isinstance(raw, dict) else {}
-    headers = {k.lower(): v for k, v in request.headers.items()}
-    try:
-        res = await asyncio.to_thread(billing.handle_webhook, headers, dict(request.query_params), body)
-    except billing_service.InvalidSignature:
-        raise HTTPException(401, "Assinatura inválida.")
-    except billing_service.BillingError as e:
-        raise _billing_http(e)
-    except Exception:
-        log.exception("Falha ao processar o webhook do Mercado Pago")
-        raise HTTPException(500, "Falha ao processar.")
-    return {"ok": True, **res}
-
-
-# ═══ ORION API (V5.2.0) ═══
-# Dois públicos: a pessoa logada gerencia as chaves (/api/*, login do Firebase) e o programa dela usa a chave (/v1/*).
-# Todo erro dessas rotas tem o formato {"error": {"code", "message", "request_id"}} (ver api/errors.py).
-V1_MAX_BODY = 32_768
-V1_TIMEOUT = 45
-
-
-def _rid() -> str:
-    return "req_" + secrets.token_hex(6)
-
-
-@app.exception_handler(ApiError)
-async def _api_error(request: Request, exc: ApiError):
-    rid = _rid()
-    headers = {"X-Request-Id": rid}
-    if exc.retry_after:
-        headers["Retry-After"] = str(exc.retry_after)
-    return JSONResponse(api_error_body(exc, rid), status_code=exc.status, headers=headers)
-
-
-@app.exception_handler(Exception)
-async def _unhandled(request: Request, exc: Exception):
-    log.exception("Erro não tratado em %s", request.url.path)             # detalhes só no log do servidor
-    if request.url.path.startswith(("/v1/", "/api/")):
-        rid = _rid()
-        return JSONResponse(api_error_body(ApiError(500, "internal_error", "Erro interno."), rid), status_code=500, headers={"X-Request-Id": rid})
-    return PlainTextResponse("Internal Server Error", status_code=500)
-
-
-class KeyIn(BaseModel):
-    name: str = Field(default="", max_length=60)
-
-
-KEY_ID = Path(..., pattern="^[0-9a-f]{8}$")
-
-
-@app.get("/api/keys")
-async def api_list_keys(authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    return {"keys": await asyncio.to_thread(orion_api.list_keys, uid)}
-
-
-@app.post("/api/keys")
-async def api_create_key(body: KeyIn, authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    return await asyncio.to_thread(orion_api.create_key, uid, body.name)   # a chave completa só vem nesta resposta
-
-
-@app.post("/api/keys/{key_id}/revoke")
-async def api_revoke_key(key_id: str = KEY_ID, authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    return await asyncio.to_thread(orion_api.revoke, uid, key_id)
-
-
-@app.post("/api/keys/{key_id}/rotate")
-async def api_rotate_key(key_id: str = KEY_ID, authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    return await asyncio.to_thread(orion_api.rotate, uid, key_id)
-
-
-@app.get("/api/usage")
-async def api_usage(authorization: str = Header(default="")):
-    uid, _ = await _auth(authorization)
-    return await asyncio.to_thread(orion_api.usage, uid)
-
-
-async def _v1_who(authorization: str) -> dict:
-    return await asyncio.to_thread(orion_api.authenticate, api_keys.from_header(authorization))
-
-
-@app.get("/v1/models")
-async def v1_models(response: Response, authorization: str = Header(default="")):
-    who = await _v1_who(authorization)
-    response.headers["X-Request-Id"] = _rid()
-    plan = await asyncio.to_thread(orion_api.plan, who["uid"])
-    return {"default": registry.default_for(plan), "models": registry.models_for(plan)}
-
-
-@app.get("/v1/usage")
-async def v1_usage(response: Response, authorization: str = Header(default="")):
-    who = await _v1_who(authorization)
-    response.headers["X-Request-Id"] = _rid()
-    return await asyncio.to_thread(orion_api.usage, who["uid"])
-
-
-@app.post("/v1/chat")
-async def v1_chat(request: Request, response: Response, authorization: str = Header(default="")):
-    """Uma pergunta ao ORION. Corpo: {"message": "...", "model": "<id de GET /v1/models>" (opcional)}."""
-    rid = _rid()
-    response.headers["X-Request-Id"] = rid
-    who = await _v1_who(authorization)
-    try:
-        if int(request.headers.get("content-length") or 0) > V1_MAX_BODY:
-            raise ApiError(413, "payload_too_large", "Corpo grande demais.")
-    except ValueError:
-        raise ApiError(400, "invalid_request", "Cabeçalho Content-Length inválido.")
-    raw = await request.body()
-    if len(raw) > V1_MAX_BODY:
-        raise ApiError(413, "payload_too_large", "Corpo grande demais.")
-    try:
-        data = await request.json()
-    except Exception:
-        raise ApiError(400, "invalid_request", "O corpo precisa ser um JSON.")
-    msg = data.get("message") if isinstance(data, dict) else None
-    mdl = data.get("model") if isinstance(data, dict) else None
-    if not isinstance(msg, str) or not msg.strip() or len(msg) > 4000:
-        raise ApiError(400, "invalid_request", '"message" deve ser um texto de 1 a 4000 caracteres.')
-    if mdl is not None and (not isinstance(mdl, str) or len(mdl) > 80):
-        raise ApiError(400, "invalid_request", '"model" deve ser um texto.')
-    if not registry.models():
-        raise ApiError(503, "model_unavailable", "Nenhum modelo configurado no servidor.")
-    plan = await asyncio.to_thread(orion_api.plan, who["uid"])
-    if mdl and registry.has(mdl) and not registry.allowed(plan, mdl):
-        raise ApiError(403, "model_not_in_plan", "Este modelo não está incluído no seu plano. Veja GET /v1/models.")
-    model_id, provider = registry.get(mdl or registry.default_for(plan))
-    if not provider:
-        raise ApiError(400, "model_unavailable", "Modelo indisponível. Veja GET /v1/models.")
-    use = await asyncio.to_thread(orion_api.begin, who["uid"], who["key_id"])    # plano, limite por minuto e cota do mês
-    try:
-        result = await asyncio.wait_for(orchestrator.ask_stateless(msg.strip(), provider), timeout=V1_TIMEOUT)
-    except asyncio.TimeoutError:
-        await asyncio.to_thread(orion_api.refund, who["uid"], who["key_id"])
-        raise ApiError(504, "timeout", "O modelo demorou demais.")
-    except Exception as e:
-        await asyncio.to_thread(orion_api.refund, who["uid"], who["key_id"])     # sem resposta, sem cobrança
-        log.exception("ORION API: falha ao consultar o modelo")
-        status = getattr(e, "status_code", None)
-        if status == 429:
-            raise ApiError(503, "provider_busy", "O modelo está no limite de uso agora. Tente em instantes.", retry_after=10)
-        if status in (403, 404):
-            raise ApiError(503, "model_unavailable", "Modelo indisponível no momento.")
-        raise ApiError(502, "provider_error", "Falha ao consultar o modelo.")
-    sources = [{"title": s.get("title"), "url": s.get("url")} for s in result["sources"] if isinstance(s, dict) and s.get("url")]
-    return {"id": rid, "reply": result["reply"], "model": model_id, "sources": sources, "usage": use}
-
-
-@app.get("/news/daily")
-async def news_daily(refresh: bool = False, authorization: str = Header(default="")):
-    """Resumo do Dia: notícias reais (RSS de veículos reconhecidos), por categoria, sem repetição. Ver news/service.py."""
-    await _auth(authorization)
-    try:
-        return await asyncio.to_thread(news.get, refresh)
-    except NewsUnavailable:
-        raise HTTPException(503, "news:unavailable")
-
-
-# ── V5.5.0: ORION CODE ──
-class CodeFileIn(BaseModel):
-    path: str = Field(min_length=1, max_length=120)
-    content: str = Field(default="", max_length=code_assist.MAX_FILE_CHARS)
-
-
-class CodeIn(BaseModel):
-    request: str = Field(min_length=1, max_length=code_assist.MAX_REQUEST)
-    files: list[CodeFileIn] = Field(default_factory=list, max_length=code_assist.MAX_FILES)
-    active: str = Field(default="", max_length=120)
-    model: str | None = Field(default=None, max_length=80)
-
-
-@app.post("/code/assist")
-async def code_assist_route(body: CodeIn, authorization: str = Header(default="")):
-    """Assistente do ORION CODE. Só PRO e ULTRA. Devolve explicação, problemas e ALTERAÇÕES PROPOSTAS: o servidor nunca altera nem executa nada;
-    o site pede a aprovação da pessoa antes de mexer em qualquer arquivo. Cada pedido gasta uma pergunta da cota diária."""
-    uid, _ = await _auth(authorization, count=True)
-    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
-    if not plans.can(plan, "orion_code"):
-        raise HTTPException(403, "plan:code_locked")
-    if not registry.models():
-        raise HTTPException(503, "Nenhum modelo configurado no servidor.")
-    try:
-        files = code_assist.check_files([f.model_dump() for f in body.files])
-        active = code_assist.clean_path(body.active) if body.active else ""
-    except code_assist.CodeError as e:
-        raise HTTPException(422, f"code:{e}")
-    wanted = body.model
-    if wanted and registry.has(wanted) and not registry.allowed(plan, wanted):
-        wanted = registry.default_for(plan)
-    model_id, provider = registry.get(wanted or registry.default_for(plan))
-    if not provider:
-        raise HTTPException(400, "Modelo indisponível.")
-    q = await asyncio.to_thread(quota.consume, uid)
-    if not q["ok"]:
-        raise HTTPException(402, "Limite diário de perguntas atingido.")
-    try:
-        raw = await asyncio.wait_for(provider.generate(code_assist.SYSTEM, [{"role": "user", "content": code_assist.build_prompt(body.request, files, active)}], None, None), timeout=60)
-    except Exception as e:
-        await asyncio.to_thread(quota.refund, uid)
-        log.exception("Falha no ORION CODE")
-        status = getattr(e, "status_code", None)
-        if status == 429:
-            raise HTTPException(429, "O modelo atingiu o limite de uso agora.")
-        if status in (403, 404):
-            raise HTTPException(503, "Modelo indisponível para esta chave.")
-        raise HTTPException(502, "Falha ao consultar o modelo.")
-    out = code_assist.parse_reply(raw)
-    out.update({"model": model_id, "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}})
-    return out
-
-
-@app.post("/memory/clear")
-async def clear_memory(authorization: str = Header(default="")):
-    uid, token = await _auth(authorization)
-    await orchestrator.clear(uid, token)
-    return {"ok": True}
-
-
-async def _speak(uid: str, text: str, opts: VoiceOpts) -> Response:
-    """Gera o áudio (voz + pace + expressividade) respeitando a cota diária. Usado por /speak e /speak/preview."""
-    if not elevenlabs.configured():
-        raise HTTPException(503, "Voz não configurada.")
-    if not elevenlabs.voice_id(opts.voice):
-        raise HTTPException(400, "Essa voz não está configurada no servidor.")
-    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
-    if not plans.allows_voice(plan, opts.voice):       # V5.2.0: voz 2 a 4 só nos planos pagos (validado aqui, não no site)
-        raise HTTPException(403, "plan:voice_locked")
-    text = elevenlabs.clean(text)
-    if not _tts_ok(uid, len(text)):
-        raise HTTPException(429, "Limite diário de voz atingido.")
-    try:
-        audio = await asyncio.to_thread(elevenlabs.synthesize, text, opts.voice, opts.pace, opts.expressivity)
-    except Exception as e:
-        # o log do servidor (Render → Logs) mostra o status e o motivo exato recusado pelo ElevenLabs
-        status = getattr(e, "status_code", None)
-        log.error("Falha ao gerar a voz: slot=%s status=%s detalhe=%s", opts.voice, status, str(e)[:300])
-        _tts_refund(uid, len(text))
-        kw = re.search(r'"status"\s*:\s*"([a-z_]{1,40})"', str(e))
-        reason = kw.group(1) if kw else ""
-        low = str(e).lower()
-        if "exceeds your quota" in low or "credits remaining" in low or "quota_exceeded" in low:
-            reason = "quota_exceeded"   # créditos do ElevenLabs esgotados (às vezes vêm como 401, às vezes como 429)
-        # "tts:<status do ElevenLabs>:<palavra-chave>" — o site traduz isso numa mensagem clara (sem expor texto bruto nem chaves)
-        raise HTTPException(429 if status == 429 else 502, f"tts:{status if isinstance(status, int) else 0}:{reason}")
-    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
-
-
-@app.post("/speak")
-async def speak(body: SpeakIn, authorization: str = Header(default="")):
-    """Fala da resposta com a voz escolhida. Qualquer falha aqui faz o site voltar à voz do navegador."""
-    uid, _ = await _auth(authorization)
-    return await _speak(uid, body.text, body)
-
-
-@app.post("/speak/preview")
-async def speak_preview(body: PreviewIn, authorization: str = Header(default="")):
-    """Prévia curta de uma voz (frase fixa). Conta na cota diária de voz, como qualquer fala."""
-    uid, _ = await _auth(authorization)
-    return await _speak(uid, PREVIEW_TEXT[body.lang], body)
-
-
-@app.get("/speak/diag")
-async def speak_diag(voice: int = 1, authorization: str = Header(default="")):
-    """Diagnóstico da voz do ElevenLabs. Desligado por padrão: exige ORION_DIAG=1 e ORION_ALLOWED_EMAILS preenchida.
-    Conta na cota de voz e nunca devolve o texto bruto do erro (ele vai só para o log do servidor).
-    ?voice=1..4 testa o slot escolhido; 'slots' mostra quais estão configurados."""
-    uid, _ = await _auth(authorization)
-    if not DIAG_ENABLED or not ALLOWED:
-        raise HTTPException(404, "Not found")
-    slots = {s: bool(elevenlabs.voice_id(s)) for s in elevenlabs.SLOTS}
-    if not os.getenv("ELEVENLABS_API_KEY", "").strip():
-        return {"ok": False, "slots": slots, "motivo": "ELEVENLABS_API_KEY não chegou ao servidor (confira o nome no Render e faça redeploy)."}
-    if voice not in elevenlabs.SLOTS or not slots[voice]:
-        return {"ok": False, "slots": slots, "motivo": f"ELEVENLABS_VOICE_ID_{voice} não chegou ao servidor (confira o nome no Render e faça redeploy)."}
-    vid = elevenlabs.voice_id(voice)
-    info = {"slot": voice, "slots": slots, "voice_id_tamanho": len(vid), "modelo": os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")}
-    if not _tts_ok(uid, len(DIAG_TEXT)):
-        raise HTTPException(429, "Limite diário de voz atingido.")
-    try:
-        audio = await asyncio.to_thread(elevenlabs.synthesize, DIAG_TEXT, voice)
-        return {"ok": True, "bytes": len(audio), **info}
-    except Exception as e:
-        _tts_refund(uid, len(DIAG_TEXT))
-        status, det = getattr(e, "status_code", None), str(e)[:400]
-        log.error("Diag de voz: slot=%s status=%s detalhe=%s", voice, status, det)   # detalhe só no log
-        low = det.lower()
-        mm = re.search(r'"message"\s*:\s*"([^"]+)', det)
-        msg = mm.group(1) if mm else det.split(": ", 1)[-1]   # mensagem real do ElevenLabs
-        if status == 401 and ("unusual" in low or "free tier" in low or "abuse" in low or "proxy" in low or "vpn" in low):
-            dica = "O ElevenLabs bloqueou o plano gratuito por vir de um servidor em nuvem (Render). Só um plano pago libera."
-        elif status == 401:
-            dica = "Chave do ElevenLabs inválida ou sem permissão de Text to Speech."
-        elif status == 402 or "paid_plan_required" in low or "library" in low:
-            dica = "O plano não permite essa voz (voz da Voice Library). Adicione-a em My Voices ou use uma voz padrão (premade)."
-        elif status == 403:
-            dica = "Sem permissão para essa voz ou recurso. Adicione a voz em My Voices e use o ID de lá."
-        elif status == 404:
-            dica = "Voice ID não existe. Copie o ID (não o nome) em My Voices."
-        elif status == 429:
-            dica = "Limite de uso ou créditos do ElevenLabs esgotados."
-        elif status == 400 and ("voice" in low or "uid" in low):
-            dica = f"Voice ID inválido (o seu tem {len(vid)} caracteres; o normal é 20, sem aspas nem espaços)."
-        elif status == 400 and "model" in low:
-            dica = "Modelo recusado: apague ELEVENLABS_MODEL no Render ou use eleven_flash_v2_5."
-        elif status == 400:
-            dica = f"ElevenLabs recusou (400): {msg[:220]}"
-        else:
-            dica = f"Erro {status}: {msg[:220]}"
-        return {"ok": False, "status": status, "dica": dica, **info}   # sem "detalhe": o texto bruto fica só no log
+/* ═══════════════════════════════════════════════════════════════
+   ORION AI V5.2.0 — Textos da interface em 6 idiomas (pages/js/i18n.js)
+   Ordem em cada linha: Português · English · Español · Français · Deutsch · Italiano
+   Carregar ANTES do app.js. Marcas (ORION AI, ORION Core, Hey ORION) nunca são traduzidas.
+   Chaves que faltam em um idioma caem para o inglês.
+   ═══════════════════════════════════════════════════════════════ */
+window.ORION_I18N = (() => {
+  const LANGS = ['pt', 'en', 'es', 'fr', 'de', 'it'];
+  const D = {}; LANGS.forEach(l => { D[l] = {}; });
+  const add = (key, ...v) => { LANGS.forEach((l, i) => { D[l][key] = v[i] !== undefined ? v[i] : v[1]; }); };
+  const same = (key, v) => add(key, v, v, v, v, v, v);
+
+  same('online', 'ORION ONLINE');
+  add("version", "VERSÃO V5.5.0", "VERSION V5.5.0", "VERSIÓN V5.5.0", "VERSION V5.5.0", "VERSION V5.5.0", "VERSIONE V5.5.0");
+  add('status.listening', 'Ouvindo…', 'Listening…', 'Escuchando…', 'J’écoute…', 'Ich höre zu…', 'In ascolto…');
+  add('status.processing', 'Processando…', 'Processing…', 'Procesando…', 'Traitement…', 'Verarbeitung…', 'Elaborazione…');
+  add('status.responding', 'Respondendo…', 'Responding…', 'Respondiendo…', 'Réponse…', 'Antwort…', 'Risposta…');
+  add('status.unheard', 'Não entendi. Tente de novo.', 'I didn’t understand. Please try again.', 'No entendí. Inténtalo de nuevo.', 'Je n’ai pas compris. Réessayez.', 'Ich habe das nicht verstanden. Versuch es noch einmal.', 'Non ho capito. Riprova.');
+  add('hint.first', 'Olá! Como posso ajudar?', 'Hello! How can I help?', '¡Hola! ¿En qué puedo ayudarte?', 'Bonjour ! Comment puis-je vous aider ?', 'Hallo! Wie kann ich helfen?', 'Ciao! Come posso aiutarti?');
+  add('hint.next', 'Qual é o próximo projeto?', 'What’s the next project?', '¿Cuál es el próximo proyecto?', 'Quel est le prochain projet ?', 'Was ist das nächste Projekt?', 'Qual è il prossimo progetto?');
+  add('ask.ph', 'Pergunte ou dê um comando ao ORION', 'Ask or give ORION a command', 'Pregunta o da una orden a ORION', 'Posez une question ou donnez une commande à ORION', 'Frag ORION etwas oder gib einen Befehl', 'Chiedi o dai un comando a ORION');
+  add('ask.aria', 'Pergunta ao ORION', 'Question for ORION', 'Pregunta para ORION', 'Question pour ORION', 'Frage an ORION', 'Domanda per ORION');
+  add('mic.aria', 'Falar', 'Speak', 'Hablar', 'Parler', 'Sprechen', 'Parla');
+  add('send.aria', 'Enviar', 'Send', 'Enviar', 'Envoyer', 'Senden', 'Invia');
+  add('chat.aria', 'Perguntar ao ORION', 'Ask ORION', 'Preguntar a ORION', 'Interroger ORION', 'ORION fragen', 'Chiedi a ORION');
+  add('gear.aria', 'Configurações', 'Settings', 'Configuración', 'Réglages', 'Einstellungen', 'Impostazioni');
+
+  add('err.mic_unavailable', 'Microfone indisponível.', 'Microphone unavailable.', 'Micrófono no disponible.', 'Microphone indisponible.', 'Mikrofon nicht verfügbar.', 'Microfono non disponibile.');
+  add('err.stt_unavailable', 'Reconhecimento de voz indisponível neste navegador.', 'Speech recognition isn’t available in this browser.', 'El reconocimiento de voz no está disponible en este navegador.', 'La reconnaissance vocale n’est pas disponible dans ce navigateur.', 'Die Spracherkennung ist in diesem Browser nicht verfügbar.', 'Il riconoscimento vocale non è disponibile in questo browser.');
+  add('err.model_unavailable', 'Não consegui acessar o modelo.', 'I couldn’t reach the model.', 'No pude acceder al modelo.', 'Je n’ai pas pu joindre le modèle.', 'Ich konnte das Modell nicht erreichen.', 'Non sono riuscito a raggiungere il modello.');
+  add('err.timeout', 'A resposta demorou demais.', 'The response took too long.', 'La respuesta tardó demasiado.', 'La réponse a pris trop de temps.', 'Die Antwort hat zu lange gedauert.', 'La risposta ha impiegato troppo tempo.');
+  add('err.api_error', 'Falha ao comunicar com o serviço.', 'Couldn’t reach the service.', 'No se pudo conectar con el servicio.', 'Impossible de joindre le service.', 'Der Dienst ist nicht erreichbar.', 'Impossibile raggiungere il servizio.');
+  add('err.invalid_response', 'Recebi uma resposta inválida.', 'I received an invalid response.', 'Recibí una respuesta no válida.', 'J’ai reçu une réponse invalide.', 'Ich habe eine ungültige Antwort erhalten.', 'Ho ricevuto una risposta non valida.');
+  add('err.tool_unavailable', 'Essa ferramenta ainda não está disponível.', 'That tool isn’t available yet.', 'Esa herramienta aún no está disponible.', 'Cet outil n’est pas encore disponible.', 'Dieses Werkzeug ist noch nicht verfügbar.', 'Questo strumento non è ancora disponibile.');
+  add('err.offline', 'Sem conexão com a internet.', 'No internet connection.', 'Sin conexión a internet.', 'Pas de connexion internet.', 'Keine Internetverbindung.', 'Nessuna connessione a internet.');
+  add('err.tts_unavailable', 'Não consigo falar a resposta agora.', 'I can’t speak the answer right now.', 'Ahora no puedo decir la respuesta en voz alta.', 'Je ne peux pas dire la réponse à voix haute pour l’instant.', 'Ich kann die Antwort gerade nicht sprechen.', 'Al momento non posso pronunciare la risposta.');
+  add('err.unexpected_input', 'Não entendi. Tente de novo.', 'I didn’t understand. Please try again.', 'No entendí. Inténtalo de nuevo.', 'Je n’ai pas compris. Réessayez.', 'Ich habe das nicht verstanden. Versuch es noch einmal.', 'Non ho capito. Riprova.');
+  add('err.forbidden', 'Esta conta não tem acesso ao ORION.', 'This account doesn’t have access to ORION.', 'Esta cuenta no tiene acceso a ORION.', 'Ce compte n’a pas accès à ORION.', 'Dieses Konto hat keinen Zugriff auf ORION.', 'Questo account non ha accesso a ORION.');
+  add('err.rate_limited', 'Muitas solicitações. Aguarde um instante.', 'Too many requests. Please wait a moment.', 'Demasiadas solicitudes. Espera un momento.', 'Trop de requêtes. Patientez un instant.', 'Zu viele Anfragen. Bitte warte einen Moment.', 'Troppe richieste. Attendi un momento.');
+  add('err.quota_exceeded', 'Você atingiu o limite de perguntas. Faça upgrade para continuar usando a IA em breve.', 'You’ve reached your question limit. Upgrade to keep using the AI soon.', 'Has alcanzado tu límite de preguntas. Pronto podrás mejorar tu plan para seguir usando la IA.', 'Vous avez atteint votre limite de questions. Vous pourrez bientôt passer à un plan supérieur.', 'Du hast dein Fragenlimit erreicht. Bald kannst du upgraden, um die KI weiter zu nutzen.', 'Hai raggiunto il limite di domande. Presto potrai fare l’upgrade per continuare a usare l’IA.');
+  add('err.core_unavailable', 'Não consegui falar com o núcleo do ORION.', 'I couldn’t reach the ORION core.', 'No pude comunicarme con el núcleo de ORION.', 'Je n’ai pas pu joindre le cœur d’ORION.', 'Ich konnte den ORION-Kern nicht erreichen.', 'Non sono riuscito a raggiungere il nucleo di ORION.');
+  add('err.voice_disabled', 'Voz desativada nas configurações.', 'Voice is turned off in settings.', 'La voz está desactivada en la configuración.', 'La voix est désactivée dans les réglages.', 'Die Stimme ist in den Einstellungen deaktiviert.', 'La voce è disattivata nelle impostazioni.');
+  add('err.voice_unavailable', 'Essa voz não está disponível.', 'That voice isn’t available.', 'Esa voz no está disponible.', 'Cette voix n’est pas disponible.', 'Diese Stimme ist nicht verfügbar.', 'Questa voce non è disponibile.');
+  add('err.unknown', 'Não consegui processar.', 'I couldn’t process that.', 'No pude procesar eso.', 'Je n’ai pas pu traiter cela.', 'Das konnte ich nicht verarbeiten.', 'Non sono riuscito a elaborarlo.');
+  add('err.attachment_invalid', 'Não consegui usar esse anexo.', 'I couldn’t use that attachment.', 'No pude usar ese adjunto.', 'Je n’ai pas pu utiliser cette pièce jointe.', 'Ich konnte diesen Anhang nicht verwenden.', 'Non sono riuscito a usare questo allegato.');
+
+  add('wiki.read', 'Ler na Wikipédia ↗', 'Read on Wikipedia ↗', 'Leer en Wikipedia ↗', 'Lire sur Wikipédia ↗', 'Auf Wikipedia lesen ↗', 'Leggi su Wikipedia ↗');
+  add('wiki.search', 'Pesquisar na Wikipédia ↗', 'Search Wikipedia ↗', 'Buscar en Wikipedia ↗', 'Rechercher sur Wikipédia ↗', 'Auf Wikipedia suchen ↗', 'Cerca su Wikipedia ↗');
+  add('wiki.title', 'Pesquisar “{q}” na Wikipédia', 'Search “{q}” on Wikipedia', 'Buscar «{q}» en Wikipedia', 'Rechercher « {q} » sur Wikipédia', '„{q}“ auf Wikipedia suchen', 'Cerca “{q}” su Wikipedia');
+
+  add('set.title', 'Configurações', 'Settings', 'Configuración', 'Réglages', 'Einstellungen', 'Impostazioni');
+  add('set.sub', 'Personalize sua experiência', 'Personalize your experience', 'Personaliza tu experiencia', 'Personnalisez votre expérience', 'Passe dein Erlebnis an', 'Personalizza la tua esperienza');
+  add('set.modelD', 'Escolha o modelo de IA para suas conversas.', 'Choose the AI model for your conversations.', 'Elige el modelo de IA para tus conversaciones.', 'Choisissez le modèle d’IA pour vos conversations.', 'Wähle das KI-Modell für deine Unterhaltungen.', 'Scegli il modello di IA per le tue conversazioni.');
+  add('set.voiceD', 'Escolha a voz do ORION e ajuste o ritmo e a expressividade.', 'Pick ORION’s voice and adjust its pace and expressivity.', 'Elige la voz de ORION y ajusta el ritmo y la expresividad.', 'Choisissez la voix d’ORION et réglez le rythme et l’expressivité.', 'Wähle die Stimme von ORION und passe Tempo und Ausdruck an.', 'Scegli la voce di ORION e regola ritmo ed espressività.');
+  add('set.soundD', 'Ative ou desative os sons da interface.', 'Turn interface sounds on or off.', 'Activa o desactiva los sonidos de la interfaz.', 'Activez ou désactivez les sons de l’interface.', 'Schalte die Oberflächentöne ein oder aus.', 'Attiva o disattiva i suoni dell’interfaccia.');
+  add('set.themeD', 'Escolha a cor de destaque da interface.', 'Choose the interface accent color.', 'Elige el color de acento de la interfaz.', 'Choisissez la couleur d’accent de l’interface.', 'Wähle die Akzentfarbe der Oberfläche.', 'Scegli il colore d’accento dell’interfaccia.');
+  add('set.uiD', 'Defina o idioma da interface.', 'Set the interface language.', 'Define el idioma de la interfaz.', 'Définissez la langue de l’interface.', 'Lege die Sprache der Oberfläche fest.', 'Imposta la lingua dell’interfaccia.');
+  add('set.wakeD', 'Ative o ORION dizendo o nome dele.', 'Wake ORION by saying its name.', 'Activa a ORION diciendo su nombre.', 'Activez ORION en prononçant son nom.', 'Aktiviere ORION, indem du seinen Namen sagst.', 'Attiva ORION dicendo il suo nome.');
+  add('set.model', 'Modelo', 'Model', 'Modelo', 'Modèle', 'Modell', 'Modello');
+  add('set.voice', 'Voz e Fala', 'Voice & Speech', 'Voz y habla', 'Voix et parole', 'Stimme & Sprache', 'Voce e parlato');
+  add('set.open', 'Abrir', 'Open', 'Abrir', 'Ouvrir', 'Öffnen', 'Apri');
+  add('set.sound', 'Sons', 'Sounds', 'Sonidos', 'Sons', 'Töne', 'Suoni');
+  add('set.ui', 'Idioma', 'Language', 'Idioma', 'Langue', 'Sprache', 'Lingua');
+  same('set.wake', 'Hey ORION');
+  add('set.history', 'Histórico', 'History', 'Historial', 'Historique', 'Verlauf', 'Cronologia');
+  add('set.clear', 'Limpar', 'Clear', 'Borrar', 'Effacer', 'Löschen', 'Cancella');
+  add('set.cleared', 'Limpo', 'Cleared', 'Borrado', 'Effacé', 'Gelöscht', 'Cancellato');
+  add('set.failed', 'Falhou', 'Failed', 'Falló', 'Échec', 'Fehlgeschlagen', 'Non riuscito');
+  add('set.photo', 'Foto de perfil', 'Profile photo', 'Foto de perfil', 'Photo de profil', 'Profilbild', 'Foto del profilo');
+  add('set.photoPick', 'Escolher', 'Choose', 'Elegir', 'Choisir', 'Auswählen', 'Scegli');
+  add('set.photoDel', 'Remover', 'Remove', 'Quitar', 'Supprimer', 'Entfernen', 'Rimuovi');
+  add('set.photoNote', 'Sua foto fica só neste aparelho.', 'Your photo stays on this device only.', 'Tu foto se queda solo en este dispositivo.', 'Votre photo reste uniquement sur cet appareil.', 'Dein Foto bleibt nur auf diesem Gerät.', 'La tua foto resta solo su questo dispositivo.');
+  add('set.photoType', 'Use uma imagem JPG, PNG ou WebP.', 'Use a JPG, PNG or WebP image.', 'Usa una imagen JPG, PNG o WebP.', 'Utilisez une image JPG, PNG ou WebP.', 'Verwende ein JPG-, PNG- oder WebP-Bild.', 'Usa un’immagine JPG, PNG o WebP.');
+  add('set.photoBig', 'Essa imagem é grande demais (máx. 8 MB).', 'That image is too large (max 8 MB).', 'Esa imagen es demasiado grande (máx. 8 MB).', 'Cette image est trop volumineuse (8 Mo max).', 'Das Bild ist zu groß (max. 8 MB).', 'L’immagine è troppo grande (max 8 MB).');
+  add('set.photoSave', 'Não consegui salvar a foto.', 'Couldn’t save the photo.', 'No pude guardar la foto.', 'Impossible d’enregistrer la photo.', 'Das Foto konnte nicht gespeichert werden.', 'Impossibile salvare la foto.');
+  add('set.plan', 'Plano', 'Plan', 'Plan', 'Forfait', 'Tarif', 'Piano');
+  add('set.upgrade', 'Upgrade', 'Upgrade', 'Mejorar', 'Améliorer', 'Upgrade', 'Upgrade');
+  add('set.upgradeSoon', 'Em breve você poderá fazer upgrade.', 'You’ll be able to upgrade soon.', 'Pronto podrás mejorar tu plan.', 'Vous pourrez bientôt passer à un plan supérieur.', 'Bald kannst du upgraden.', 'Presto potrai fare l’upgrade.');
+  add('set.theme', 'Cor do sistema', 'System color', 'Color del sistema', 'Couleur du système', 'Systemfarbe', 'Colore del sistema');
+  add('set.core', 'Núcleo', 'Core', 'Núcleo', 'Cœur', 'Kern', 'Nucleo');
+  add('set.signout', 'Sair da conta', 'Sign out', 'Cerrar sesión', 'Se déconnecter', 'Abmelden', 'Esci');
+  add('set.none', 'Não conectada', 'Not signed in', 'Sin sesión', 'Non connecté', 'Nicht angemeldet', 'Non connesso');
+  add('set.nomodel', 'Sem modelo', 'No model', 'Sin modelo', 'Aucun modèle', 'Kein Modell', 'Nessun modello');
+  add('set.unavail', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
+
+  add('code.aria', 'Espaço de Trabalho', 'Workspace', 'Espacio de trabajo', 'Espace de travail', 'Arbeitsbereich', 'Spazio di lavoro');
+  add('code.title', 'Espaço de Trabalho', 'Workspace', 'Espacio de trabajo', 'Espace de travail', 'Arbeitsbereich', 'Spazio di lavoro');
+  add('code.soon', 'Em breve', 'Coming soon', 'Próximamente', 'Bientôt', 'Demnächst', 'Prossimamente');
+  add('code.codeDesc', 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.', 'A programming assistant: it reads your project, proposes changes and only applies what you approve.', 'Un asistente de programación: lee tu proyecto, propone cambios y solo aplica lo que apruebes.', 'Un assistant de programmation : il lit votre projet, propose des modifications et n’applique que ce que vous approuvez.', 'Ein Programmierassistent: Er liest dein Projekt, schlägt Änderungen vor und wendet nur an, was du genehmigst.', 'Un assistente di programmazione: legge il tuo progetto, propone modifiche e applica solo ciò che approvi.');
+  add('code.apiDesc', 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.', 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.', 'Usa la inteligencia de ORION en tus propias apps, con clave de API y límites por plan.', 'Utilisez l’intelligence d’ORION dans vos propres applications, avec une clé d’API et des limites selon le forfait.', 'Nutze die Intelligenz von ORION in deinen eigenen Apps – mit API-Schlüssel und Limits je nach Tarif.', 'Usa l’intelligenza di ORION nelle tue app, con chiave API e limiti per piano.');
+  add('code.planned', 'Previsto: {v}', 'Planned: {v}', 'Previsto: {v}', 'Prévu : {v}', 'Geplant: {v}', 'Previsto: {v}');
+  add('code.note', 'O ORION CODE lê, explica e propõe mudanças, e só altera seus arquivos depois da sua aprovação. Ele não executa código.', 'ORION CODE reads, explains and proposes changes, and only edits your files after you approve. It does not run code.');
+  add('code.close', 'Fechar', 'Close', 'Cerrar', 'Fermer', 'Schließen', 'Chiudi');
+
+  same('theme.indigo', 'Cosmic Indigo'); same('theme.midnight', 'Dark Blue'); same('theme.purple', 'Deep Purple');
+  add('vs.voiceN', 'Voz {n}', 'Voice {n}', 'Voz {n}', 'Voix {n}', 'Stimme {n}', 'Voce {n}');
+
+  add('attach.aria', 'Anexar imagem ou arquivo', 'Attach an image or file', 'Adjuntar imagen o archivo', 'Joindre une image ou un fichier', 'Bild oder Datei anhängen', 'Allega immagine o file');
+  add('attach.default', 'Descreva este anexo.', 'Describe this attachment.', 'Describe este adjunto.', 'Décrivez cette pièce jointe.', 'Beschreibe diesen Anhang.', 'Descrivi questo allegato.');
+  add('attach.remove', 'Remover anexo', 'Remove attachment', 'Quitar adjunto', 'Retirer la pièce jointe', 'Anhang entfernen', 'Rimuovi allegato');
+  add('attach.errType', 'Use uma imagem JPG, PNG ou WebP, ou um arquivo de texto (.txt, .md, .csv, .json, código).', 'Use a JPG, PNG or WebP image, or a text file (.txt, .md, .csv, .json, code).', 'Usa una imagen JPG, PNG o WebP, o un archivo de texto (.txt, .md, .csv, .json, código).', 'Utilisez une image JPG, PNG ou WebP, ou un fichier texte (.txt, .md, .csv, .json, code).', 'Verwende ein JPG-, PNG- oder WebP-Bild oder eine Textdatei (.txt, .md, .csv, .json, Code).', 'Usa un’immagine JPG, PNG o WebP, oppure un file di testo (.txt, .md, .csv, .json, codice).');
+  add('attach.errSize', 'Esse arquivo é grande demais.', 'That file is too large.', 'Ese archivo es demasiado grande.', 'Ce fichier est trop volumineux.', 'Die Datei ist zu groß.', 'Il file è troppo grande.');
+  add('attach.errRead', 'Não consegui ler esse arquivo.', 'I couldn’t read that file.', 'No pude leer ese archivo.', 'Je n’ai pas pu lire ce fichier.', 'Ich konnte die Datei nicht lesen.', 'Non sono riuscito a leggere il file.');
+  add('toast.model', 'Modelo: {m}', 'Model: {m}', 'Modelo: {m}', 'Modèle : {m}', 'Modell: {m}', 'Modello: {m}');
+
+  add('core.none', 'Backend não configurado', 'Backend not configured', 'Backend sin configurar', 'Backend non configuré', 'Backend nicht konfiguriert', 'Backend non configurato');
+  add('core.connecting', 'Conectando…', 'Connecting…', 'Conectando…', 'Connexion…', 'Verbinde…', 'Connessione…');
+  add('core.ok', 'Conectado', 'Connected', 'Conectado', 'Connecté', 'Verbunden', 'Connesso');
+  add('core.nomodel', 'Sem chave de modelo no servidor', 'No model key on the server', 'Sin clave de modelo en el servidor', 'Aucune clé de modèle sur le serveur', 'Kein Modellschlüssel auf dem Server', 'Nessuna chiave del modello sul server');
+  add('core.forbidden', 'E-mail sem acesso', 'E-mail without access', 'Correo sin acceso', 'E-mail sans accès', 'E-Mail ohne Zugriff', 'E-mail senza accesso');
+  add('core.timeout', 'Servidor demorou a responder', 'Server took too long', 'El servidor tardó demasiado', 'Le serveur a mis trop de temps', 'Der Server hat zu lange gebraucht', 'Il server ha impiegato troppo tempo');
+  add('core.unreach', 'Sem resposta do servidor', 'Server not responding', 'El servidor no responde', 'Le serveur ne répond pas', 'Server antwortet nicht', 'Il server non risponde');
+  add('core.err', 'Erro no servidor', 'Server error', 'Error del servidor', 'Erreur du serveur', 'Serverfehler', 'Errore del server');
+  add('core.down', 'Servidor indisponível', 'Server unavailable', 'Servidor no disponible', 'Serveur indisponible', 'Server nicht verfügbar', 'Server non disponibile');
+
+  same('lang.pt', 'Português'); same('lang.en', 'English'); same('lang.es', 'Español'); same('lang.fr', 'Français'); same('lang.de', 'Deutsch'); same('lang.it', 'Italiano');
+
+  add('vs.title', 'Voz e Fala', 'Voice & Speech', 'Voz y habla', 'Voix et parole', 'Stimme & Sprache', 'Voce e parlato');
+  add('vs.back', 'Voltar às configurações', 'Back to settings', 'Volver a la configuración', 'Retour aux réglages', 'Zurück zu den Einstellungen', 'Torna alle impostazioni');
+  add('vs.voice', 'Voz', 'Voice', 'Voz', 'Voix', 'Stimme', 'Voce');
+  add('vs.orbAria', 'Ouvir prévia da voz', 'Preview voice', 'Escuchar vista previa de la voz', 'Écouter un aperçu de la voix', 'Stimme probehören', 'Ascolta l’anteprima della voce');
+  add('vs.unavailWake', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
+  add('vs.wakeMic', 'Sem microfone', 'No microphone', 'Sin micrófono', 'Pas de microphone', 'Kein Mikrofon', 'Nessun microfono');
+  add('vs.pace', 'Ritmo', 'Pace', 'Ritmo', 'Rythme', 'Tempo', 'Ritmo');
+  add('vs.expr', 'Expressividade', 'Expressivity', 'Expresividad', 'Expressivité', 'Ausdruck', 'Espressività');
+  add('vs.intensity', 'Intensidade da voz', 'Voice intensity', 'Intensidad de la voz', 'Intensité de la voix', 'Stimmintensität', 'Intensità della voce');
+  add('vs.rhythm', 'Ritmo da fala', 'Speech rhythm', 'Ritmo del habla', 'Rythme de la parole', 'Sprechrhythmus', 'Ritmo del parlato');
+  add('wake.say', 'Diga “Hey ORION” para falar', 'Say “Hey ORION” to talk', 'Di «Hey ORION» para hablar', 'Dites « Hey ORION » pour parler', 'Sag „Hey ORION“, um zu sprechen', 'Di’ “Hey ORION” per parlare');
+  add('wake.mic', 'Microfone bloqueado: “Hey ORION” desligado', 'Microphone blocked: wake word turned off', 'Micrófono bloqueado: «Hey ORION» desactivado', 'Microphone bloqué : « Hey ORION » désactivé', 'Mikrofon blockiert: „Hey ORION“ ist aus', 'Microfono bloccato: “Hey ORION” disattivato');
+  add('wake.unstable', '“Hey ORION” instável: desligado', 'Wake word unstable: turned off', '«Hey ORION» inestable: desactivado', '« Hey ORION » instable : désactivé', '„Hey ORION“ instabil: ausgeschaltet', '“Hey ORION” instabile: disattivato');
+
+  /* Multitarefa */
+  add('task.name', 'Multitarefa', 'Multitasking', 'Multitarea', 'Multitâche', 'Multitasking', 'Multitasking');
+  add('task.sub', 'Várias tarefas. Um só ORION.', 'Many tasks. One ORION.', 'Muchas tareas. Un solo ORION.', 'Plusieurs tâches. Un seul ORION.', 'Viele Aufgaben. Ein ORION.', 'Tante attività. Un solo ORION.');
+  add('task.active1', '1 tarefa ativa', '1 active task', '1 tarea activa', '1 tâche active', '1 aktive Aufgabe', '1 attività attiva');
+  add('task.activeN', '{n} tarefas ativas', '{n} active tasks', '{n} tareas activas', '{n} tâches actives', '{n} aktive Aufgaben', '{n} attività attive');
+  add('task.newTask', 'Nova tarefa', 'New task', 'Nueva tarea', 'Nouvelle tâche', 'Neue Aufgabe', 'Nuova attività');
+  add('task.nTitle', 'Título da tarefa', 'Task title', 'Título de la tarea', 'Titre de la tâche', 'Titel der Aufgabe', 'Titolo dell’attività');
+  add('task.nNote', 'Objetivo (opcional)', 'Goal (optional)', 'Objetivo (opcional)', 'Objectif (facultatif)', 'Ziel (optional)', 'Obiettivo (facoltativo)');
+  add('task.nSteps', 'Passos, um por linha (opcional)', 'Steps, one per line (optional)', 'Pasos, uno por línea (opcional)', 'Étapes, une par ligne (facultatif)', 'Schritte, einer pro Zeile (optional)', 'Passaggi, uno per riga (facoltativo)');
+  add('task.create', 'Criar tarefa', 'Create task', 'Crear tarea', 'Créer la tâche', 'Aufgabe erstellen', 'Crea attività');
+  add('task.cancel', 'Cancelar', 'Cancel', 'Cancelar', 'Annuler', 'Abbrechen', 'Annulla');
+  add('task.quick', 'Adicione uma tarefa e pressione Enter', 'Add a task and press Enter', 'Añade una tarea y pulsa Intro', 'Ajoutez une tâche et appuyez sur Entrée', 'Aufgabe hinzufügen und Enter drücken', 'Aggiungi un’attività e premi Invio');
+  add('task.add', 'Adicionar', 'Add', 'Añadir', 'Ajouter', 'Hinzufügen', 'Aggiungi');
+  add('task.st.running', 'Em andamento', 'In progress', 'En curso', 'En cours', 'In Arbeit', 'In corso');
+  add('task.st.paused', 'Pausada', 'Paused', 'En pausa', 'En pause', 'Pausiert', 'In pausa');
+  add('task.st.done', 'Concluída', 'Done', 'Completada', 'Terminée', 'Erledigt', 'Completata');
+  add('task.pause', 'Pausar', 'Pause', 'Pausar', 'Mettre en pause', 'Pausieren', 'Metti in pausa');
+  add('task.resume', 'Retomar', 'Resume', 'Reanudar', 'Reprendre', 'Fortsetzen', 'Riprendi');
+  add('task.complete', 'Concluir', 'Complete', 'Completar', 'Terminer', 'Abschließen', 'Completa');
+  add('task.reopen', 'Reabrir', 'Reopen', 'Reabrir', 'Rouvrir', 'Wieder öffnen', 'Riapri');
+  add('task.del', 'Excluir', 'Delete', 'Eliminar', 'Supprimer', 'Löschen', 'Elimina');
+  add('task.delAsk', 'Excluir esta tarefa?', 'Delete this task?', '¿Eliminar esta tarea?', 'Supprimer cette tâche ?', 'Diese Aufgabe löschen?', 'Eliminare questa attività?');
+  add('task.details', 'Detalhes', 'Details', 'Detalles', 'Détails', 'Details', 'Dettagli');
+  add('task.activity', 'Atividade', 'Activity', 'Actividad', 'Activité', 'Aktivität', 'Attività');
+  add('task.goal', 'Objetivo', 'Goal', 'Objetivo', 'Objectif', 'Ziel', 'Obiettivo');
+  add('task.noGoal', 'Sem objetivo descrito.', 'No goal described.', 'Sin objetivo descrito.', 'Aucun objectif décrit.', 'Kein Ziel beschrieben.', 'Nessun obiettivo descritto.');
+  add('task.steps', 'Passos', 'Steps', 'Pasos', 'Étapes', 'Schritte', 'Passaggi');
+  add('task.noSteps', 'Nenhum passo ainda.', 'No steps yet.', 'Aún no hay pasos.', 'Aucune étape pour l’instant.', 'Noch keine Schritte.', 'Ancora nessun passaggio.');
+  add('task.stepPh', 'Novo passo', 'New step', 'Nuevo paso', 'Nouvelle étape', 'Neuer Schritt', 'Nuovo passaggio');
+  add('task.stepAdd', 'Adicionar passo', 'Add step', 'Añadir paso', 'Ajouter l’étape', 'Schritt hinzufügen', 'Aggiungi passaggio');
+  add('task.created', 'Criada', 'Created', 'Creada', 'Créée', 'Erstellt', 'Creata');
+  add('task.today', 'Hoje às', 'Today at', 'Hoy a las', 'Aujourd’hui à', 'Heute um', 'Oggi alle');
+  add('task.summary', 'Resumo', 'Summary', 'Resumen', 'Résumé', 'Übersicht', 'Riepilogo');
+  add('task.sActive', 'Tarefas ativas', 'Active tasks', 'Tareas activas', 'Tâches actives', 'Aktive Aufgaben', 'Attività attive');
+  add('task.sDone', 'Concluídas hoje', 'Done today', 'Completadas hoy', 'Terminées aujourd’hui', 'Heute erledigt', 'Completate oggi');
+  add('task.sPaused', 'Em pausa', 'Paused', 'En pausa', 'En pause', 'Pausiert', 'In pausa');
+  add('task.shortcuts', 'Atalhos', 'Shortcuts', 'Atajos', 'Raccourcis', 'Kürzel', 'Scorciatoie');
+  add('task.clearDone', 'Limpar concluídas', 'Clear completed', 'Borrar completadas', 'Effacer les terminées', 'Erledigte entfernen', 'Cancella completate');
+  add('task.infoT', 'Organize e acompanhe', 'Organize and track', 'Organiza y sigue', 'Organisez et suivez', 'Organisieren und verfolgen', 'Organizza e monitora');
+  add('task.info', 'As tarefas ficam salvas neste navegador. O ORION ainda não executa tarefas sozinho.', 'Tasks are saved in this browser. ORION does not run tasks on its own yet.', 'Las tareas se guardan en este navegador. ORION aún no ejecuta tareas por sí solo.', 'Les tâches sont enregistrées dans ce navigateur. ORION n’exécute pas encore de tâches seul.', 'Aufgaben werden in diesem Browser gespeichert. ORION führt Aufgaben noch nicht selbstständig aus.', 'Le attività sono salvate in questo browser. ORION non esegue ancora attività da solo.');
+  add('task.empty', 'Nenhuma tarefa ainda. Crie a primeira em “Nova tarefa”.', 'No tasks yet. Create the first one with “New task”.', 'Aún no hay tareas. Crea la primera con «Nueva tarea».', 'Aucune tâche pour l’instant. Créez la première avec « Nouvelle tâche ».', 'Noch keine Aufgaben. Erstelle die erste mit „Neue Aufgabe“.', 'Ancora nessuna attività. Crea la prima con “Nuova attività”.');
+  add('task.lNew', 'Tarefa criada', 'Task created', 'Tarea creada', 'Tâche créée', 'Aufgabe erstellt', 'Attività creata');
+  add('task.lPause', 'Pausada', 'Paused', 'Pausada', 'Mise en pause', 'Pausiert', 'Messa in pausa');
+  add('task.lResume', 'Retomada', 'Resumed', 'Reanudada', 'Reprise', 'Fortgesetzt', 'Ripresa');
+  add('task.lDone', 'Concluída', 'Completed', 'Completada', 'Terminée', 'Abgeschlossen', 'Completata');
+  add('task.lReopen', 'Reaberta', 'Reopened', 'Reabierta', 'Rouverte', 'Wieder geöffnet', 'Riaperta');
+  add('task.lStepOn', 'Passo concluído: ', 'Step done: ', 'Paso completado: ', 'Étape terminée : ', 'Schritt erledigt: ', 'Passaggio completato: ');
+  add('task.lStepOff', 'Passo reaberto: ', 'Step reopened: ', 'Paso reabierto: ', 'Étape rouverte : ', 'Schritt wieder geöffnet: ', 'Passaggio riaperto: ');
+  add('task.lStepAdd', 'Passo adicionado: ', 'Step added: ', 'Paso añadido: ', 'Étape ajoutée : ', 'Schritt hinzugefügt: ', 'Passaggio aggiunto: ');
+  add('task.progress', 'Progresso', 'Progress', 'Progreso', 'Progression', 'Fortschritt', 'Avanzamento');
+
+
+  /* ═══ V5.2.0 — planos e faturamento, ORION API, Resumo do Dia. pt/en completos; es·fr·de·it caem para o inglês (regra do arquivo). ═══ */
+  add("plans.title", "Planos e faturamento", "Plans & billing");
+  add("plans.sub", "Escolha o plano ideal para você.", "Pick the plan that fits you.");
+  // V5.2.0 — nova apresentação dos planos (sem números de limites; o texto dos benefícios é o oficial)
+  add("plans2.soon", "Disponível em breve", "Coming soon");
+  add("plans2.owner", "Incluído na conta de proprietário", "Included with the owner account");
+  add("plans2.ownerBadge", "Acesso do proprietário", "Owner access");
+  add("plans2.tier.free", "Básico", "Basic"); add("plans2.tier.plus", "Ampliado", "Extended");
+  add("plans2.tier.pro", "Avançado", "Advanced"); add("plans2.tier.ultra", "Máximo", "Maximum");
+  add("plans2.free.price", "Gratuito", "Free");
+  add("plans2.free.1", "Acesso ao ORION CORE", "Access to ORION CORE");
+  add("plans2.free.2", "Conversas com ORION", "Conversations with ORION");
+  add("plans2.free.3", "Histórico de conversas", "Conversation history");
+  add("plans2.free.4", "Uma opção de voz", "One voice option");
+  add("plans2.free.5", "Acesso à ORION API", "Access to the ORION API");
+  add("plans2.plus.1", "Tudo do ORION FREE", "Everything in ORION FREE");
+  add("plans2.plus.2", "Modelo Gemini 3.6", "Gemini 3.6 model");
+  add("plans2.plus.3", "Maior capacidade de utilização", "Higher usage capacity");
+  add("plans2.plus.4", "Quatro opções de voz", "Four voice options");
+  add("plans2.plus.5", "Acesso ampliado ao Mercado", "Expanded access to Mercado");
+  add("plans2.plus.6", "Recursos adicionais de produtividade e contexto", "Additional productivity and context features");
+  add("plans2.pro.1", "Tudo do ORION PLUS", "Everything in ORION PLUS");
+  add("plans2.pro.2", "Modelo Gemini 3.8", "Gemini 3.8 model");
+  add("plans2.pro.3", "ORION CODE", "ORION CODE");
+  add("plans2.pro.4", "Análise avançada de arquivos e programação", "Advanced file and programming analysis");
+  add("plans2.pro.5", "Memória contextual ampliada", "Expanded contextual memory");
+  add("plans2.pro.6", "Multitarefa avançada", "Advanced multitasking");
+  add("plans2.pro.7", "Recursos avançados do Mercado", "Advanced Mercado features");
+  add("plans2.ultra.1", "Tudo do ORION PRO", "Everything in ORION PRO");
+  add("plans2.ultra.2", "Capacidade máxima do ORION CORE", "Maximum ORION CORE capacity");
+  add("plans2.ultra.3", "Autonomia avançada para projetos complexos", "Advanced autonomy for complex projects");
+  add("plans2.ultra.4", "Maior capacidade de contexto", "Larger context capacity");
+  add("plans2.ultra.5", "Capacidade máxima de execução", "Maximum execution capacity");
+  add("plans2.ultra.6", "Recursos mais avançados do Mercado", "The most advanced Mercado features");
+  add("plans2.ultra.7", "Acesso antecipado a recursos experimentais", "Early access to experimental features");
+  add("plans2.ultra.8", "Prioridade máxima de processamento", "Top processing priority");
+  add("plans2.ultra.9", "Capacidade ampliada para projetos complexos e tarefas simultâneas", "Expanded capacity for complex projects and simultaneous tasks");
+  add("plans.badge.free", "Gratuito", "Free");
+  add("plans.badge.plus", "Premium", "Premium");
+  add("plans.badge.pro", "Profissional", "Professional");
+  add("plans.tag.free", "A experiência essencial do ORION, com ORION API em cota reduzida.", "The essential ORION experience, with a reduced ORION API quota.");
+  add("plans.tag.plus", "Mais capacidade, mais vozes e acesso ao ORION API.", "More capacity, more voices and ORION API access.");
+  add("plans.tag.pro", "Limites maiores e mais cota no ORION API.", "Higher limits and a bigger ORION API quota.");
+  add("plans.chat", "Conversas com o ORION", "Chat with ORION");
+  add("plans.perDay", "{n} perguntas por dia", "{n} questions per day");
+  add("plans.voice1", "1 opção de voz", "1 voice option");
+  add("plans.voiceN", "{n} opções de voz", "{n} voice options");
+  add("plans.history", "Histórico de conversas", "Conversation history");
+  add("plans.apiNo", "Sem acesso ao ORION API", "No ORION API access");
+  add("plans.apiYes", "ORION API: {m} requisições por mês", "ORION API: {m} requests per month");
+  add("plans.apiRpm", "Até {n} requisições por minuto", "Up to {n} requests per minute");
+  add("plans.price", "{p}/mês", "{p}/month");
+  add("plans.free0", "Grátis", "Free");
+  add("plans.noPrice", "Preço em breve", "Price coming soon");
+  add("plans.current", "Plano atual", "Current plan");
+  add("plans.subscribe", "Assinar {name}", "Subscribe to {name}");
+  add("plans.soon", "Em breve", "Coming soon");
+  add("plans.unavailable", "Pagamentos indisponíveis agora", "Payments unavailable right now");
+  add("plans.redirecting", "Abrindo o pagamento…", "Opening checkout…");
+  add("plans.secure", "O pagamento é feito no Mercado Pago. O ORION não recebe nem guarda os dados do seu cartão.", "Payment is handled by Mercado Pago. ORION never receives or stores your card details.");
+  add("plans.confirming", "Confirmando o pagamento…", "Confirming your payment…");
+  add("plans.confirmed", "Plano {name} ativo!", "{name} plan is active!");
+  add("plans.notYet", "Ainda não recebemos a confirmação. Pode levar alguns minutos; volte aqui depois.", "We haven’t received the confirmation yet. It can take a few minutes; check back soon.");
+  add("plans.mine", "Minha assinatura", "My subscription");
+  add("plans.st.none", "Sem assinatura ativa", "No active subscription");
+  add("plans.st.authorized", "Ativa", "Active");
+  add("plans.st.paused", "Pausada", "Paused");
+  add("plans.st.cancelled", "Cancelada", "Canceled");
+  add("plans.until", "Acesso até {d}", "Access until {d}");
+  add("plans.cancelEnd", "Cancelada: o acesso continua até {d}.", "Canceled: access continues until {d}.");
+  add("plans.cancel", "Cancelar assinatura", "Cancel subscription");
+  add("plans.cancelSure", "Confirmar cancelamento", "Confirm cancellation");
+  add("plans.cancelDone", "Assinatura cancelada. O acesso continua até o fim do período pago.", "Subscription canceled. Access continues until the end of the paid period.");
+  add("plans.hist", "Histórico de pagamentos", "Payment history");
+  add("plans.noHist", "Nenhum lançamento ainda.", "No transactions yet.");
+  add("plans.tx.charge", "Pagamento", "Payment");
+  add("plans.tx.charge_failed", "Pagamento recusado", "Payment declined");
+  add("plans.tx.refund", "Reembolso", "Refund");
+  add("plans.tx.cancel", "Cancelamento", "Cancellation");
+  add("plans.err.billing_unavailable", "Pagamentos indisponíveis agora.", "Payments are unavailable right now.");
+  add("plans.err.plan_unavailable", "Este plano ainda não está à venda.", "This plan isn’t for sale yet.");
+  add("plans.err.email_required", "Sua conta precisa de um e-mail para assinar.", "Your account needs an email to subscribe.");
+  add("plans.err.too_many_checkouts", "Muitas tentativas. Aguarde um pouco.", "Too many attempts. Please wait a bit.");
+  add("plans.err.already_subscribed", "Você já assina este plano.", "You already subscribe to this plan.");
+  add("plans.err.no_active_subscription", "Você não tem uma assinatura ativa.", "You have no active subscription.");
+  add("plans.err.provider_error", "O Mercado Pago não respondeu. Tente de novo.", "Mercado Pago didn’t respond. Please try again.");
+  add("plans.err.generic", "Algo deu errado. Tente de novo.", "Something went wrong. Please try again.");
+  add("plans.loading", "Carregando…", "Loading…");
+  add("api.title", "ORION API", "ORION API");
+  add("api.sub", "Use o ORION nos seus próprios projetos.", "Use ORION in your own projects.");
+  add("api.needPlan", "O seu plano atual não inclui o ORION API.", "Your current plan doesn’t include ORION API.");
+  add("api.seePlans", "Ver planos", "See plans");
+  add("api.usage", "Uso da API", "API usage");
+  add("api.usageSub", "Requisições deste mês", "Requests this month");
+  add("api.used", "{u} de {l}", "{u} of {l}");
+  add("api.perMin", "Limite: {n} por minuto", "Limit: {n} per minute");
+  add("api.resets", "A cota renova em {d}", "Quota resets on {d}");
+  add("api.plan", "Plano {name}", "{name} plan");
+  add("api.keys", "Chaves de API", "API keys");
+  add("api.keysSub", "A chave aparece completa só uma vez, quando é criada. O ORION guarda apenas uma impressão digital dela.", "The full key is shown only once, when it’s created. ORION stores only a fingerprint of it.");
+  add("api.noKeys", "Você ainda não criou nenhuma chave.", "You haven’t created any key yet.");
+  add("api.namePh", "Nome da chave (ex.: meu app)", "Key name (e.g. my app)");
+  add("api.create", "Criar chave", "Create key");
+  add("api.createdOn", "Criada em {d}", "Created on {d}");
+  add("api.revoke", "Revogar", "Revoke");
+  add("api.rotate", "Girar", "Rotate");
+  add("api.revokeSure", "Confirmar revogação", "Confirm revoke");
+  add("api.rotateSure", "Confirmar rotação", "Confirm rotate");
+  add("api.newKey", "Sua nova chave", "Your new key");
+  add("api.copyNow", "Copie agora: por segurança, ela não será mostrada de novo.", "Copy it now: for security, it won’t be shown again.");
+  add("api.copy", "Copiar", "Copy");
+  add("api.copied", "Copiado!", "Copied!");
+  add("api.gotIt", "Já copiei", "I copied it");
+  add("api.keyLimit", "Limite de {n} chave(s) no seu plano. Revogue uma para criar outra.", "Limit of {n} key(s) on your plan. Revoke one to create another.");
+  add("api.example", "Exemplo de requisição", "Request example");
+  add("api.docs", "Documentação", "Documentation");
+  add("api.docsIntro", "Todos os endpoints usam HTTPS e JSON. Envie a chave no cabeçalho Authorization: Bearer.", "All endpoints use HTTPS and JSON. Send the key in the Authorization: Bearer header.");
+  add("api.docsErrors", "Erros: sempre {\"error\": {\"code\", \"message\", \"request_id\"}}", "Errors: always {\"error\": {\"code\", \"message\", \"request_id\"}}");
+  add("api.docsSecurity", "Use a chave só no seu servidor. Nunca a coloque em código de site ou de app público.", "Use the key only on your server. Never put it in website or public app code.");
+  add("api.docsFull", "Abrir a documentação completa", "Open the full documentation");
+  add("api.err.plan_required", "O seu plano atual não inclui o ORION API.", "Your current plan doesn’t include ORION API.");
+  add("api.err.key_limit", "Você atingiu o limite de chaves.", "You reached the key limit.");
+  add("api.err.key_not_found", "Chave não encontrada.", "Key not found.");
+  add("api.err.api_unavailable", "O ORION API está indisponível agora.", "ORION API is unavailable right now.");
+  add("api.err.generic", "Algo deu errado. Tente de novo.", "Something went wrong. Please try again.");
+  add("code.apiOpen", "Abrir o ORION API", "Open ORION API");
+  add("code.available", "Disponível", "Available");
+  add("news.title", "Resumo do Dia", "Daily Brief");
+  add("news.refresh", "Atualizar", "Refresh");
+  add("news.updated", "Atualizado às {t}", "Updated at {t}");
+  add("news.loading", "Buscando as notícias…", "Fetching the news…");
+  add("news.error", "Não consegui buscar as notícias agora. Tente de novo em instantes.", "I couldn’t fetch the news right now. Please try again shortly.");
+  add("news.empty", "Sem notícias recentes nesta categoria.", "No recent news in this category.");
+  add("news.stale", "Mostrando o último resumo salvo: as fontes não responderam agora.", "Showing the last saved brief: the sources didn’t respond just now.");
+  add("news.srcFail", "{n} fonte(s) não responderam.", "{n} source(s) didn’t respond.");
+  add("news.note", "Títulos, trechos e datas vêm das próprias fontes. “Confirmado” significa que mais de um veículo publicou a notícia; não é checagem de fatos.", "Headlines, snippets and dates come from the sources themselves. “Confirmed” means more than one outlet published the story; it is not fact-checking.");
+  add("news.st.confirmed", "Confirmado por {n} fontes", "Confirmed by {n} sources");
+  add("news.st.developing", "Em desenvolvimento", "Developing");
+  add("news.st.single", "Fonte única", "Single source");
+  add("news.cat.mundo", "Mundo", "World");
+  add("news.cat.tecnologia", "Tecnologia", "Technology");
+  add("news.cat.ia", "IA", "AI");
+  add("news.cat.ciencia", "Ciência", "Science");
+  add("news.cat.economia", "Economia", "Economy");
+  add("news.cat.negocios", "Negócios", "Business");
+  add("news.cat.atualidades", "Atualidades", "Current affairs");
+  add("news.read", "Ler na fonte", "Read at source");
+  add("news.langEn", "Em inglês", "In English");
+  add("vs.locked", "Voz do plano PLUS", "PLUS plan voice");
+
+  /* ═══ V5.2.0 (2ª parte) — Gestos (palmas), Resumo do Dia falado, barra de botões, painel do ORION API ═══ */
+  add("set.gestures", "Gestos", "Gestures");
+  add("set.gesturesD", "Acorde o ORION sem tocar na tela.", "Wake ORION without touching the screen.");
+  add("set.gWake", "Dizer “Hey ORION”", "Say “Hey ORION”");
+  add("set.gClap", "Bater palmas", "Clap");
+  add("set.gClapD", "Duas palmas seguidas acordam o ORION. O som é analisado só no aparelho: nada é gravado nem enviado.", "Two claps in a row wake ORION. Sound is analyzed on your device only: nothing is recorded or sent.");
+  add("clap.say", "Bata duas palmas para me chamar.", "Clap twice to call me.");
+  add("clap.denied", "Permita o microfone para usar as palmas.", "Allow the microphone to use claps.");
+  add("clap.mic", "Não consegui usar o microfone para ouvir as palmas.", "I couldn’t use the microphone to listen for claps.");
+  add("clap.unavail", "Este navegador não permite detectar palmas.", "This browser can’t detect claps.");
+  add("news.listen", "Ouvir resumo", "Listen to the brief");
+  add("news.stop", "Parar", "Stop");
+  add("news.say.intro", "Resumo do dia, {d}.", "Daily brief, {d}.");
+  add("news.say.foreign", "Uma manchete em outro idioma:", "A headline in another language:");
+  add("news.say.dev", "Ainda em desenvolvimento.", "Still developing.");
+  add("ask.close", "Fechar o chat", "Close chat", "Cerrar el chat", "Fermer le chat", "Chat schließen", "Chiudi la chat");
+  add("dock.show", "Mostrar a barra de botões", "Show the button bar");
+  add("split.open", "Abrir ao lado", "Open side by side", "Abrir al lado", "Ouvrir côte à côte", "Daneben öffnen", "Apri affiancato");
+  add("split.swap", "Trocar de lado", "Swap sides", "Intercambiar lados", "Échanger les côtés", "Seiten tauschen", "Scambia i lati");
+  add("split.resize", "Ajustar o tamanho (arraste ou use as setas; clique duplo restaura)", "Resize (drag or use arrow keys; double-click resets)", "Ajustar el tamaño (arrastra o usa las flechas; doble clic restablece)", "Redimensionner (glisser ou flèches ; double-clic réinitialise)", "Größe ändern (ziehen oder Pfeiltasten; Doppelklick setzt zurück)", "Ridimensiona (trascina o usa le frecce; doppio clic ripristina)");
+  add("api.hero", "Integre o poder do ORION em seus projetos, apps e soluções.", "Bring the power of ORION to your projects, apps and solutions.");
+  add("api.yourKey", "Sua API Key", "Your API key");
+  add("api.yourKeySub", "Use sua chave para acessar o ORION API com segurança.", "Use your key to access ORION API securely.");
+  add("api.regen", "Regenerar chave", "Regenerate key");
+  add("api.regenSure", "Confirmar regeneração", "Confirm regenerate");
+  add("api.revokeKey", "Revogar chave", "Revoke key");
+  add("api.eyeShow", "Mostrar chave", "Show key");
+  add("api.eyeHide", "Ocultar chave", "Hide key");
+  add("api.copyHint", "A chave completa só aparece quando é criada. Para ter uma nova, use “Regenerar chave”.", "The full key is only shown when it’s created. To get a new one, use “Regenerate key”.");
+  add("api.used2", "Utilizado", "Used");
+  add("api.reqMonth", "Requisições este mês", "Requests this month");
+  add("api.renewal", "Renovação", "Renewal");
+  add("api.planDetails", "Ver detalhes do plano", "See plan details");
+  add("api.docsCard", "Aprenda a usar o ORION API com exemplos, erros e limites.", "Learn to use ORION API with examples, errors and limits.");
+  add("api.docsGo", "Acessar Docs", "Open docs");
+  add("api.quick", "Referência rápida", "Quick reference");
+  add("api.resTitle", "Recursos do ORION API", "ORION API features");
+  add("api.res1", "O mesmo ORION Core do app: identidade e ferramentas", "The same ORION Core as the app: identity and tools");
+  add("api.res2", "Chaves guardadas só como hash e mostradas uma única vez", "Keys stored only as a hash and shown once");
+  add("api.res3", "Limite por minuto e cota mensal do seu plano", "Per-minute limit and monthly quota for your plan");
+  add("api.res4", "Erros padronizados com request_id", "Standardized errors with request_id");
+  add("api.res5", "Documentação completa", "Full documentation");
+  add("api.online", "API online", "API online");
+  add("api.others", "Outras chaves", "Other keys");
+  add("api.addKey", "Adicionar chave", "Add a key");
+  add("api.firstKey", "Crie sua primeira chave para começar.", "Create your first key to get started.");
+
+  /* ═══ V5.5.0 — Espaço de Trabalho · Mercado · ORION CODE · ORION ULTRA (demais idiomas caem para o inglês) ═══ */
+  add("code.codeOpen", "Abrir o ORION CODE", "Open ORION CODE");
+  add("code.proOnly", "PRO e ULTRA", "PRO and ULTRA");
+  add("plans.badge.ultra", "Máximo", "Maximum");
+  add("plans.tag.ultra", "A maior capacidade do ORION, com a maior cota no ORION API.", "ORION’s highest capacity, with the biggest ORION API quota.");
+  add("dock.show", "Mostrar o dock", "Show the dock", "Mostrar el dock", "Afficher le dock", "Dock anzeigen", "Mostra il dock");
+  add("mkt.aria", "Mercado", "Market");
+  add("mkt.title", "Mercado", "Market");
+  add("mkt.sub", "Cotações, gráficos e notícias do mercado financeiro", "Quotes, charts and financial market news");
+  add("mkt.credit", "Cotações e gráficos por TradingView. Alguns mercados podem ter atraso.", "Quotes and charts by TradingView. Some markets may be delayed.");
+  add("mkt.tvFail", "Não foi possível carregar os dados do TradingView. Verifique a conexão ou se algum bloqueador de conteúdo está ativo.", "Couldn’t load TradingView data. Check your connection or any content blocker.");
+  add("mkt.demoBadge", "Demonstrativo", "Demo");
+  add("mkt.demo", "Dados demonstrativos: os ativos abaixo são fictícios e não representam o mercado real. Ainda não há uma fonte de cotações conectada.", "Demo data: the assets below are fictional and do not represent the real market. No quotes source is connected yet.");
+  add("mkt.source", "Fonte: {s} · atualizado {t}", "Source: {s} · updated {t}");
+  add("mkt.tab.overview", "Visão geral", "Overview"); add("mkt.tab.stocks", "Ações", "Stocks");
+  add("mkt.tab.chart", "Gráfico", "Chart"); add("mkt.tab.news", "Notícias", "News");
+  add("mkt.search", "Pesquisar ativo", "Search asset");
+  add("mkt.noMatch", "Nenhum ativo encontrado.", "No asset found.");
+  add("mkt.gainers", "Maiores altas", "Top gainers"); add("mkt.losers", "Maiores baixas", "Top losers");
+  add("mkt.chartOf", "Histórico de {n}", "History of {n}");
+  add("mkt.chartNote", "Série de exemplo, sem datas reais.", "Sample series, without real dates.");
+  add("mkt.newsNote", "Notícias reais de Economia e Negócios, como publicadas pelas fontes.", "Real Economy and Business news, as published by the sources.");
+  add("mkt.newsEmpty", "Sem notícias financeiras agora.", "No financial news right now.");
+  add("mkt.error", "Não foi possível carregar o Mercado agora.", "Couldn’t load the Market right now.");
+  add("mkt.err.generic", "Não foi possível carregar o Mercado agora.", "Couldn’t load the Market right now.");
+  add("mkt.retry", "Tentar de novo", "Try again");
+  add("ide.title", "ORION CODE", "ORION CODE");
+  add("ide.sub", "Editor, projeto e assistente de programação", "Editor, project and programming assistant");
+  add("ide.locked", "O ORION CODE faz parte dos planos PRO e ULTRA.", "ORION CODE is part of the PRO and ULTRA plans.");
+  add("ide.seePlans", "Ver planos", "See plans");
+  add("ide.files", "Arquivos", "Files"); add("ide.newFile", "Novo arquivo", "New file"); add("ide.filePh", "nome.ext ou pasta/nome.ext", "name.ext or folder/name.ext");
+  add("ide.open", "Abrir do computador", "Open from computer"); add("ide.download", "Baixar arquivo", "Download file");
+  add("ide.delete", "Excluir arquivo", "Delete file"); add("ide.deleteSure", "Clique de novo para excluir", "Click again to delete");
+  add("ide.empty", "Crie ou abra um arquivo para começar.", "Create or open a file to start.");
+  add("ide.editor", "Editor de código", "Code editor");
+  add("ide.saved", "Salvo neste navegador", "Saved in this browser");
+  add("ide.noRun", "O ORION CODE não executa código: ele lê, explica e propõe mudanças. O projeto fica neste navegador.", "ORION CODE does not run code: it reads, explains and proposes changes. The project stays in this browser.");
+  add("ide.ask", "Peça ajuda ao ORION CODE", "Ask ORION CODE for help"); add("ide.send", "Enviar", "Send");
+  add("ide.q.explain", "Explique este código", "Explain this code"); add("ide.q.improve", "Sugira melhorias", "Suggest improvements"); add("ide.q.bugs", "Procure possíveis erros", "Look for possible errors");
+  add("ide.p.explain", "Explique o arquivo aberto no editor.", "Explain the file open in the editor.");
+  add("ide.p.improve", "Sugira melhorias para o arquivo aberto e proponha as alterações.", "Suggest improvements for the open file and propose the changes.");
+  add("ide.p.bugs", "Procure possíveis erros no arquivo aberto. Se tiver certeza de uma correção, proponha-a.", "Look for possible errors in the open file. If you are sure of a fix, propose it.");
+  add("ide.thinking", "Lendo o projeto…", "Reading the project…");
+  add("ide.issues", "Possíveis problemas", "Possible issues");
+  add("ide.proposed", "Alterações propostas — nada foi alterado ainda", "Proposed changes — nothing has been changed yet");
+  add("ide.noChanges", "Sem alterações propostas.", "No changes proposed.");
+  add("ide.dropped", "{n} alteração(ões) inválida(s) foi(ram) descartada(s).", "{n} invalid change(s) were discarded.");
+  add("ide.create", "Criar arquivo", "Create file"); add("ide.update", "Alterar arquivo", "Edit file");
+  add("ide.approve", "Aprovar e aplicar", "Approve and apply"); add("ide.reject", "Rejeitar", "Reject");
+  add("ide.applied", "Aplicado", "Applied"); add("ide.rejected", "Rejeitado", "Rejected");
+  add("ide.stale", "O arquivo mudou depois da proposta. Peça de novo antes de aplicar.", "The file changed after the proposal. Ask again before applying.");
+  add("ide.noRoom", "O projeto atingiu o limite de arquivos.", "The project reached the file limit.");
+  add("ide.diffSame", "Sem diferença de conteúdo.", "No difference in content.");
+  add("ide.diffBig", "Arquivo grande demais para mostrar a diferença linha a linha.", "File too large to show a line-by-line diff.");
+  add("ide.err.generic", "Não foi possível consultar o ORION CODE agora.", "Couldn’t reach ORION CODE right now.");
+  add("ide.err.code_locked", "O ORION CODE faz parte dos planos PRO e ULTRA.", "ORION CODE is part of the PRO and ULTRA plans.");
+  add("ide.err.projeto_grande", "O projeto é grande demais para enviar (até 12 arquivos e 20 mil caracteres cada).", "The project is too large to send (up to 12 files and 20k characters each).");
+  add("ide.err.caminho_invalido", "Há um nome de arquivo inválido no projeto.", "There is an invalid file name in the project.");
+  add("ide.err.http_402", "Você atingiu o limite de perguntas de hoje.", "You’ve reached today’s question limit.");
+  add("ide.err.http_429", "Muitas solicitações. Aguarde um instante.", "Too many requests. Please wait a moment.");
+  add("ide.err.timeout", "A resposta demorou demais.", "The response took too long.");
+  add("ide.err.network", "Sem conexão com o servidor.", "No connection to the server.");
+
+  /* ═══ V5.5.0 — checkout dentro do ORION ═══ */
+  add("chk.title", "Assinar {name}", "Subscribe to {name}");
+  add("chk.back", "Voltar aos planos", "Back to plans");
+  add("chk.method", "Forma de pagamento", "Payment method");
+  add("chk.card", "Cartão", "Card");
+  add("chk.pix", "Pix", "Pix");
+  add("chk.features", "Principais recursos", "Key features");
+  add("chk.today", "A pagar hoje", "Due today");
+  add("chk.renews", "Renova por {p}/mês. Cancele quando quiser.", "Renews at {p}/month. Cancel anytime.");
+  add("chk.pixOnce", "Pagamento único: libera o plano por {d} dias e não renova sozinho.", "One-time payment: unlocks the plan for {d} days and does not renew on its own.");
+  add("chk.secure", "O pagamento é processado pelo Mercado Pago. O ORION não vê nem guarda os dados do seu cartão.", "Payment is processed by Mercado Pago. ORION never sees or stores your card details.");
+  add("chk.loading", "Carregando o pagamento…", "Loading payment…");
+  add("chk.sdkFail", "Não foi possível carregar o formulário de pagamento.", "Couldn’t load the payment form.");
+  add("chk.redirect", "Pagar no site do Mercado Pago", "Pay on the Mercado Pago site");
+  add("chk.pixGen", "Gerar QR Code do Pix", "Generate Pix QR code");
+  add("chk.pixScan", "Escaneie com o app do seu banco ou copie o código Pix.", "Scan with your bank app or copy the Pix code.");
+  add("chk.pixCopy", "Copiar código", "Copy code");
+  add("chk.pixCopied", "Copiado", "Copied");
+  add("chk.pixWait", "Aguardando o pagamento…", "Waiting for payment…");
+  add("chk.pixExpired", "O Pix expirou ou não foi aprovado. Gere um novo.", "The Pix expired or wasn’t approved. Generate a new one.");
+  add("chk.okTitle", "Tudo certo!", "All set!");
+  add("chk.okText", "{name} está ativo na sua conta.", "{name} is active on your account.");
+  add("chk.pending", "Estamos confirmando o pagamento. Pode levar alguns minutos; o plano ativa sozinho.", "We’re confirming the payment. It may take a few minutes; the plan activates on its own.");
+  add("chk.done", "Concluir", "Done");
+  add("chk.err.generic", "Não foi possível concluir o pagamento. Tente de novo.", "Couldn’t complete the payment. Please try again.");
+  add("chk.err.card_refused", "O cartão foi recusado. Confira os dados ou tente outro cartão.", "The card was declined. Check the details or try another card.");
+  add("chk.err.card_token_invalid", "Não foi possível ler os dados do cartão. Tente de novo.", "Couldn’t read the card details. Please try again.");
+  add("chk.err.plan_downgrade_blocked", "Você já tem um plano maior. Esse Pix não é necessário.", "You already have a higher plan. This Pix isn’t needed.");
+  add("chk.err.payment_not_found", "Pagamento não encontrado.", "Payment not found.");
+
+  D.langs = LANGS;
+  D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
+  return D;
+})();
