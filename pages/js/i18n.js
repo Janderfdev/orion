@@ -11,7 +11,7 @@ window.ORION_I18N = (() => {
   const same = (key, v) => add(key, v, v, v, v, v, v);
 
   same('online', 'ORION ONLINE');
-  add("version", "VERSÃO V5.2.0", "VERSION V5.2.0", "VERSIÓN V5.2.0", "VERSION V5.2.0", "VERSION V5.2.0", "VERSIONE V5.2.0");
+  add("version", "VERSÃO V5.5.0", "VERSION V5.5.0", "VERSIÓN V5.5.0", "VERSION V5.5.0", "VERSION V5.5.0", "VERSIONE V5.5.0");
   add('status.listening', 'Ouvindo…', 'Listening…', 'Escuchando…', 'J’écoute…', 'Ich höre zu…', 'In ascolto…');
   add('status.processing', 'Processando…', 'Processing…', 'Procesando…', 'Traitement…', 'Verarbeitung…', 'Elaborazione…');
   add('status.responding', 'Respondendo…', 'Responding…', 'Respondiendo…', 'Réponse…', 'Antwort…', 'Risposta…');
@@ -83,13 +83,13 @@ window.ORION_I18N = (() => {
   add('set.nomodel', 'Sem modelo', 'No model', 'Sin modelo', 'Aucun modèle', 'Kein Modell', 'Nessun modello');
   add('set.unavail', 'Indisponível', 'Unavailable', 'No disponible', 'Indisponible', 'Nicht verfügbar', 'Non disponibile');
 
-  add('code.aria', 'ORION CODE e ORION API', 'ORION CODE and ORION API', 'ORION CODE y ORION API', 'ORION CODE et ORION API', 'ORION CODE und ORION API', 'ORION CODE e ORION API');
-  same('code.title', 'ORION CODE · ORION API');
+  add('code.aria', 'Espaço de Trabalho', 'Workspace', 'Espacio de trabajo', 'Espace de travail', 'Arbeitsbereich', 'Spazio di lavoro');
+  add('code.title', 'Espaço de Trabalho', 'Workspace', 'Espacio de trabajo', 'Espace de travail', 'Arbeitsbereich', 'Spazio di lavoro');
   add('code.soon', 'Em breve', 'Coming soon', 'Próximamente', 'Bientôt', 'Demnächst', 'Prossimamente');
   add('code.codeDesc', 'Um assistente de programação: lê o seu projeto, propõe mudanças e só aplica o que você aprovar.', 'A programming assistant: it reads your project, proposes changes and only applies what you approve.', 'Un asistente de programación: lee tu proyecto, propone cambios y solo aplica lo que apruebes.', 'Un assistant de programmation : il lit votre projet, propose des modifications et n’applique que ce que vous approuvez.', 'Ein Programmierassistent: Er liest dein Projekt, schlägt Änderungen vor und wendet nur an, was du genehmigst.', 'Un assistente di programmazione: legge il tuo progetto, propone modifiche e applica solo ciò che approvi.');
   add('code.apiDesc', 'Use a inteligência do ORION nos seus próprios apps, com chave de API e limites por plano.', 'Use ORION’s intelligence in your own apps, with an API key and limits per plan.', 'Usa la inteligencia de ORION en tus propias apps, con clave de API y límites por plan.', 'Utilisez l’intelligence d’ORION dans vos propres applications, avec une clé d’API et des limites selon le forfait.', 'Nutze die Intelligenz von ORION in deinen eigenen Apps – mit API-Schlüssel und Limits je nach Tarif.', 'Usa l’intelligenza di ORION nelle tue app, con chiave API e limiti per piano.');
   add('code.planned', 'Previsto: {v}', 'Planned: {v}', 'Previsto: {v}', 'Prévu : {v}', 'Geplant: {v}', 'Previsto: {v}');
-  add('code.note', 'O ORION CODE ainda não está disponível. Versões e datas podem mudar.', 'ORION CODE isn’t available yet. Versions and dates may change.');
+  add('code.note', 'O ORION CODE lê, explica e propõe mudanças, e só altera seus arquivos depois da sua aprovação. Ele não executa código.', 'ORION CODE reads, explains and proposes changes, and only edits your files after you approve. It does not run code.');
   add('code.close', 'Fechar', 'Close', 'Cerrar', 'Fermer', 'Schließen', 'Chiudi');
 
   same('theme.indigo', 'Cosmic Indigo'); same('theme.midnight', 'Dark Blue'); same('theme.purple', 'Deep Purple');
@@ -376,6 +376,66 @@ window.ORION_I18N = (() => {
   add("api.others", "Outras chaves", "Other keys");
   add("api.addKey", "Adicionar chave", "Add a key");
   add("api.firstKey", "Crie sua primeira chave para começar.", "Create your first key to get started.");
+
+  /* ═══ V5.5.0 — Espaço de Trabalho · Mercado · ORION CODE · ORION ULTRA (demais idiomas caem para o inglês) ═══ */
+  add("code.codeOpen", "Abrir o ORION CODE", "Open ORION CODE");
+  add("code.proOnly", "PRO e ULTRA", "PRO and ULTRA");
+  add("plans.badge.ultra", "Máximo", "Maximum");
+  add("plans.tag.ultra", "A maior capacidade do ORION, com a maior cota no ORION API.", "ORION’s highest capacity, with the biggest ORION API quota.");
+  add("mkt.aria", "Mercado", "Market");
+  add("mkt.title", "Mercado", "Market");
+  add("mkt.sub", "Acompanhe índices, ações e notícias financeiras", "Follow indices, stocks and financial news");
+  add("mkt.demoBadge", "Demonstrativo", "Demo");
+  add("mkt.demo", "Dados demonstrativos: os ativos abaixo são fictícios e não representam o mercado real. Ainda não há uma fonte de cotações conectada.", "Demo data: the assets below are fictional and do not represent the real market. No quotes source is connected yet.");
+  add("mkt.source", "Fonte: {s} · atualizado {t}", "Source: {s} · updated {t}");
+  add("mkt.tab.overview", "Visão geral", "Overview"); add("mkt.tab.stocks", "Ações", "Stocks");
+  add("mkt.tab.indices", "Índices", "Indices"); add("mkt.tab.news", "Notícias", "News");
+  add("mkt.search", "Pesquisar ativo", "Search asset");
+  add("mkt.noMatch", "Nenhum ativo encontrado.", "No asset found.");
+  add("mkt.gainers", "Maiores altas", "Top gainers"); add("mkt.losers", "Maiores baixas", "Top losers");
+  add("mkt.chartOf", "Histórico de {n}", "History of {n}");
+  add("mkt.chartNote", "Série de exemplo, sem datas reais.", "Sample series, without real dates.");
+  add("mkt.newsNote", "Notícias reais de Economia e Negócios, como publicadas pelas fontes.", "Real Economy and Business news, as published by the sources.");
+  add("mkt.newsEmpty", "Sem notícias financeiras agora.", "No financial news right now.");
+  add("mkt.error", "Não foi possível carregar o Mercado agora.", "Couldn’t load the Market right now.");
+  add("mkt.err.generic", "Não foi possível carregar o Mercado agora.", "Couldn’t load the Market right now.");
+  add("mkt.retry", "Tentar de novo", "Try again");
+  add("ide.title", "ORION CODE", "ORION CODE");
+  add("ide.sub", "Editor, projeto e assistente de programação", "Editor, project and programming assistant");
+  add("ide.locked", "O ORION CODE faz parte dos planos PRO e ULTRA.", "ORION CODE is part of the PRO and ULTRA plans.");
+  add("ide.seePlans", "Ver planos", "See plans");
+  add("ide.files", "Arquivos", "Files"); add("ide.newFile", "Novo arquivo", "New file"); add("ide.filePh", "nome.ext ou pasta/nome.ext", "name.ext or folder/name.ext");
+  add("ide.open", "Abrir do computador", "Open from computer"); add("ide.download", "Baixar arquivo", "Download file");
+  add("ide.delete", "Excluir arquivo", "Delete file"); add("ide.deleteSure", "Clique de novo para excluir", "Click again to delete");
+  add("ide.empty", "Crie ou abra um arquivo para começar.", "Create or open a file to start.");
+  add("ide.editor", "Editor de código", "Code editor");
+  add("ide.saved", "Salvo neste navegador", "Saved in this browser");
+  add("ide.noRun", "O ORION CODE não executa código: ele lê, explica e propõe mudanças. O projeto fica neste navegador.", "ORION CODE does not run code: it reads, explains and proposes changes. The project stays in this browser.");
+  add("ide.ask", "Peça ajuda ao ORION CODE", "Ask ORION CODE for help"); add("ide.send", "Enviar", "Send");
+  add("ide.q.explain", "Explique este código", "Explain this code"); add("ide.q.improve", "Sugira melhorias", "Suggest improvements"); add("ide.q.bugs", "Procure possíveis erros", "Look for possible errors");
+  add("ide.p.explain", "Explique o arquivo aberto no editor.", "Explain the file open in the editor.");
+  add("ide.p.improve", "Sugira melhorias para o arquivo aberto e proponha as alterações.", "Suggest improvements for the open file and propose the changes.");
+  add("ide.p.bugs", "Procure possíveis erros no arquivo aberto. Se tiver certeza de uma correção, proponha-a.", "Look for possible errors in the open file. If you are sure of a fix, propose it.");
+  add("ide.thinking", "Lendo o projeto…", "Reading the project…");
+  add("ide.issues", "Possíveis problemas", "Possible issues");
+  add("ide.proposed", "Alterações propostas — nada foi alterado ainda", "Proposed changes — nothing has been changed yet");
+  add("ide.noChanges", "Sem alterações propostas.", "No changes proposed.");
+  add("ide.dropped", "{n} alteração(ões) inválida(s) foi(ram) descartada(s).", "{n} invalid change(s) were discarded.");
+  add("ide.create", "Criar arquivo", "Create file"); add("ide.update", "Alterar arquivo", "Edit file");
+  add("ide.approve", "Aprovar e aplicar", "Approve and apply"); add("ide.reject", "Rejeitar", "Reject");
+  add("ide.applied", "Aplicado", "Applied"); add("ide.rejected", "Rejeitado", "Rejected");
+  add("ide.stale", "O arquivo mudou depois da proposta. Peça de novo antes de aplicar.", "The file changed after the proposal. Ask again before applying.");
+  add("ide.noRoom", "O projeto atingiu o limite de arquivos.", "The project reached the file limit.");
+  add("ide.diffSame", "Sem diferença de conteúdo.", "No difference in content.");
+  add("ide.diffBig", "Arquivo grande demais para mostrar a diferença linha a linha.", "File too large to show a line-by-line diff.");
+  add("ide.err.generic", "Não foi possível consultar o ORION CODE agora.", "Couldn’t reach ORION CODE right now.");
+  add("ide.err.code_locked", "O ORION CODE faz parte dos planos PRO e ULTRA.", "ORION CODE is part of the PRO and ULTRA plans.");
+  add("ide.err.projeto_grande", "O projeto é grande demais para enviar (até 12 arquivos e 20 mil caracteres cada).", "The project is too large to send (up to 12 files and 20k characters each).");
+  add("ide.err.caminho_invalido", "Há um nome de arquivo inválido no projeto.", "There is an invalid file name in the project.");
+  add("ide.err.http_402", "Você atingiu o limite de perguntas de hoje.", "You’ve reached today’s question limit.");
+  add("ide.err.http_429", "Muitas solicitações. Aguarde um instante.", "Too many requests. Please wait a moment.");
+  add("ide.err.timeout", "A resposta demorou demais.", "The response took too long.");
+  add("ide.err.network", "Sem conexão com o servidor.", "No connection to the server.");
 
   D.langs = LANGS;
   D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
