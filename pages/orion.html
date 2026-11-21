@@ -39,7 +39,7 @@ try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.docu
   --card:rgba(var(--act),.96); --card-solid:var(--surface);
   --panel-bg:rgba(6,6,12,.98); --ask-bg:rgba(7,7,14,.84); --track-b:#0C0C16;
   /* módulos: tamanho do painel em que a Orb se transforma */
-  --mod-s:clamp(10px,3vw,40px); --mod-t:78px; --mod-b:92px; --mod-r:30px; --arc-gap:9px;
+  --mod-s:clamp(10px,3vw,40px); --mod-t:78px; --mod-b:40px; --mod-r:30px; --arc-gap:9px;
 }
 /* Dark Blue (azul escuro / preto) */
 :root[data-theme="midnight"]{
@@ -310,7 +310,7 @@ body.module-open .ask, body.module-open .cap{ opacity:0 !important; pointer-even
 /* Desktop: o painel fica entre a logo e a dock (os cantos ficam livres) e ocupa quase toda a altura.
    Telas menores: quase tela cheia, com folga para o cabeçalho e a dock. */
 @media (min-width:1100px){
-  :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:92px; --mod-r:36px; --arc-gap:12px; }
+  :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:28px; --mod-r:36px; --arc-gap:12px; }
 }
 body:is(.chat-answer,.cap-fade){ --mod-b:140px; }   /* a resposta termina acima da barra de pergunta, que fica acima do dock */
 @media (max-width:760px){ body:is(.chat-answer,.cap-fade){ --mod-b:140px; } }
@@ -705,7 +705,7 @@ body.calm .vs-voice, body.calm .vscreen, body.calm .settings-card{ transition:no
 @keyframes splitMenuIn{ from{ opacity:0; transform:translateY(-4px); } }
 .split-item{ height:38px; padding:0 14px; border:0; border-radius:11px; background:transparent; color:var(--fg); font:500 13px var(--font); text-align:left; cursor:pointer; transition:background .2s ease; }
 .split-item:hover, .split-item:focus-visible{ background:rgba(var(--act-hi),.9); outline:none; }
-body.split-view{ --mod-s:28px; --mod-t:78px; --mod-b:92px; --mod-r:30px; }
+body.split-view{ --mod-s:28px; --mod-t:78px; --mod-b:40px; --mod-r:30px; }
 body.split-view .orb.module{ opacity:0; transition:opacity .3s ease; }
 body.split-view .orb-zone .orb-arc{ opacity:0; }
 body.split-view [data-split]{ pointer-events:none !important; }
@@ -830,6 +830,17 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
 .v55-tv .tradingview-widget-copyright a{ color:var(--accent-soft); text-decoration:none; }
 .v55-tv .tradingview-widget-copyright a:hover{ text-decoration:underline; }
 .v55-tv.tape{ height:78px; } .v55-tv.mid{ height:480px; } .v55-tv.chart{ height:clamp(420px,62vh,640px); } .v55-tv.tall{ height:clamp(480px,64vh,660px); }
+
+/* ═══════ V5.5.0: com um painel aberto o dock vira uma barrinha (como a dos iPhones), centralizada embaixo; passar o mouse, tocar ou focar nela traz o dock de volta ═══════ */
+.dock-bar{ position:fixed; left:50%; bottom:9px; transform:translateX(-50%); z-index:41; width:140px; height:5px; padding:0; border:0; border-radius:999px; cursor:pointer;
+  background:rgba(var(--w),.5); opacity:0; visibility:hidden; transition:opacity .3s ease, width .25s ease, background .2s ease, visibility 0s linear .3s; }
+.dock-bar::before{ content:""; position:absolute; inset:-18px -32px; }   /* área de toque maior que a barra */
+.dock-bar:hover, .dock-bar:focus-visible{ width:164px; background:rgba(var(--w),.8); outline:none; }
+body.module-open .dock-bar{ opacity:1; visibility:visible; transition:opacity .3s ease, width .25s ease, background .2s ease; }
+body.module-open.dock-peek .dock-bar{ opacity:0; visibility:hidden; transition:opacity .2s ease, visibility 0s linear .2s; }
+.dock{ transition:opacity .28s ease, transform .32s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+body.module-open:not(.dock-peek) .dock{ opacity:0; visibility:hidden; pointer-events:none; transform:translateX(-50%) translateY(18px) scale(.9); transition:opacity .22s ease, transform .3s ease, visibility 0s linear .3s; }
+@media (prefers-reduced-motion:reduce){ .dock-bar, .dock{ transition:none !important; } }
 </style>
 </head>
 <body>
@@ -958,6 +969,7 @@ body:not(.split-view) [data-swap-btn], body:not(.split-view) .split-handle{ disp
   <button class="dock-btn" id="newsBtn" aria-label="Resumo do Dia" aria-pressed="false" title="Resumo do Dia" data-i18n-aria="news.title"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13a1 1 0 0 1 1 1v13H6a2 2 0 0 1-2-2V5z"/><path d="M18 9h2a1 1 0 0 1 1 1v7a2 2 0 0 1-2 2h-1"/><path d="M8 9h6M8 13h6M8 16h3"/></svg></button>
   <button class="dock-btn" id="gearBtn" aria-label="Configurações" title="Configurações (Ctrl + ,)" data-i18n-aria="gear.aria"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
+<button class="dock-bar" id="dockBar" type="button" aria-label="Mostrar o dock" data-i18n-aria="dock.show"></button>
 <div class="version-tag" id="versionTag" data-i18n="version" hidden>VERSÃO V5.5.0</div>
 
 
@@ -1010,12 +1022,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=17"></script>
+<script src="js/i18n.js?c=18"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=17"></script>
+<script defer src="js/app.js?c=18"></script>
 <script defer src="js/orion-v5.js?c=12"></script>
-<script defer src="js/orion-v52.js?c=20"></script>
+<script defer src="js/orion-v52.js?c=21"></script>
 </body>
 </html>
