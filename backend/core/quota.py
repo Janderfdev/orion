@@ -1,4 +1,4 @@
-"""Cota diária de perguntas por plano (free / plus / pro).
+"""Cota diária de perguntas por plano (free / plus / pro / ultra).
 
 Diferente da memória (store.py), que usa o token do PRÓPRIO usuário, a cota é gravada com a
 credencial de SERVIDOR (service account do Firebase): assim o usuário não consegue zerar o
@@ -7,14 +7,14 @@ coleções `usage` e `plans` para os clientes (a service account ignora as regra
 
 Firestore:
   usage/{uid}  →  day (texto "AAAA-MM-DD", horário de Brasília), count (inteiro)
-  plans/{uid}  →  plan ("free" | "plus" | "pro"), until (opcional, "AAAA-MM-DD")
+  plans/{uid}  →  plan ("free" | "plus" | "pro" | "ultra"), until (opcional, "AAAA-MM-DD")
   Sem documento em `plans`, o usuário é "free". Para testar um plano, crie o documento à mão no console.
 
 Variáveis do Render:
   FIREBASE_SERVICE_ACCOUNT   conteúdo COMPLETO do JSON da service account (nunca vai para o GitHub)
-  ORION_LIMIT_FREE (10) · ORION_LIMIT_PLUS (100) · ORION_LIMIT_PRO (500)   (ver billing/plans.py)
+  ORION_LIMIT_FREE (10) · ORION_LIMIT_PLUS (100) · ORION_LIMIT_PRO (500) · ORION_LIMIT_ULTRA (1500)   (ver billing/plans.py)
   ORION_OWNER_EMAIL          e-mail da conta do PROPRIETÁRIO (V5.2.0). Essa conta ganha o papel "owner" e, sem documento em `plans`,
-                             usa o plano PRO (o mais alto da V5.2.0). Para testar FREE ou PLUS, crie plans/{uid} à mão: ele vale primeiro.
+                             usa o plano ULTRA (o mais alto da V5.5.0). Para testar FREE ou PLUS, crie plans/{uid} à mão: ele vale primeiro.
                              O papel é decidido AQUI, no servidor, pelo e-mail do TOKEN do Firebase; o site não declara nada.
                              Exige e-mail verificado (ORION_OWNER_ALLOW_UNVERIFIED=1 aceita contas de e-mail e senha sem verificação).
   FIREBASE_PROJECT_ID        padrão: orion-ai-b8d39
@@ -38,8 +38,7 @@ PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "orion-ai-b8d39")
 LIMITS = plans.daily_limits()   # V5.2.0: o catálogo (billing/plans.py) é a fonte única; free/plus/pro
 OWNER_EMAIL = os.getenv("ORION_OWNER_EMAIL", "").strip().lower()
 OWNER_ALLOW_UNVERIFIED = os.getenv("ORION_OWNER_ALLOW_UNVERIFIED", "0") == "1"
-OWNER_PLAN = "pro"   # o proprietário usa tudo o que existe (o PRO é o mais alto lançado na V5.2.0). O ORION ULTRA já está INCLUÍDO na conta dele
-                     # (o site mostra isso no cartão do ULTRA); quando o ULTRA existir de verdade (V5.5.0), troque para "ultra" aqui.
+OWNER_PLAN = "ultra"   # V5.5.0: o proprietário usa tudo o que existe; o ULTRA já está incluído na conta dele.
 PLAN_TTL = 300   # segundos: de quanto em quanto tempo o plano é relido (mudanças manuais valem sem reiniciar)
 TIMEOUT = 6
 _DOCS = f"projects/{PROJECT_ID}/databases/(default)/documents"
@@ -166,7 +165,7 @@ class Quota:
             return
         try:
             f = self._get(f"plans/{quote(uid, safe='')}")
-            if f is None:                           # sem documento: proprietário = PRO, os demais = free
+            if f is None:                           # sem documento: proprietário = ULTRA, os demais = free
                 st["plan"] = OWNER_PLAN if owner else "free"
                 return
             plan = f.get("plan", {}).get("stringValue", "free")
