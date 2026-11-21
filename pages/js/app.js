@@ -1136,7 +1136,7 @@ const API = (() => {
   askForm.addEventListener('submit', e => { e.preventDefault(); submit(askInput.value, 'text'); });
 
   document.addEventListener('pointerdown', e => {
-    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #taskBtn, #gearBtn, #newsBtn, #settingsPanel, #codePanel, #taskPanel, #planPanel, #apiPanel, #newsPanel, #voiceScreen')) closePanel();
+    if (panelOpen && !e.target.closest('#orb, #capBox, #askForm, #chatBtn, #codeBtn, #taskBtn, #gearBtn, #newsBtn, #marketBtn, #settingsPanel, #codePanel, #taskPanel, #planPanel, #apiPanel, #newsPanel, #marketPanel, #idePanel, #voiceScreen')) closePanel();
   });
   orbEl.addEventListener('pointerenter', () => { if (panelOpen) clearTimeout(holdTimer); });
   orbEl.addEventListener('pointerleave', () => { if (panelOpen && !speaking && hasAnswer) scheduleHold(5000); });
@@ -1182,7 +1182,7 @@ const API = (() => {
   orbZone.addEventListener('mouseleave', () => { try { ORB.setHover(false); } catch (_) {} });
   document.addEventListener('keydown', e => {
     if (vs.isOpen()) return;
-    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open, #taskPanel.open, #planPanel.open, #apiPanel.open, #newsPanel.open');
+    const settingsOpen = !!document.querySelector('#settingsPanel.open, #codePanel.open, #taskPanel.open, #planPanel.open, #apiPanel.open, #newsPanel.open, #marketPanel.open, #idePanel.open');
     if (e.key === 'Escape' && !settingsOpen) { if (panelOpen) closePanel(); else if (chatOpen) setChat(false); }
     else if (e.code === 'Space' && !e.target.matches('input,textarea,button,select')) { e.preventDefault(); activate(); }
     else if (e.key === '/' && !e.target.matches('input,textarea,select') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setChat(true); }
@@ -1327,7 +1327,7 @@ const API = (() => {
     exprEnabled: () => ttsOn === true,
   };
 
-  /* ── botão </> : aviso sobre ORION CODE e ORION API (ainda não existem); mesmo tamanho do painel de configurações ── */
+  /* ── botão do Espaço de Trabalho (V5.5.0): reúne ORION CODE e ORION API; mesmo tamanho do painel de configurações ── */
   const codeInfo = (() => {
     let panel = null, open = false;
     function build() {
@@ -1345,10 +1345,11 @@ const API = (() => {
               <button id="apiOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('code.apiOpen')}</button>
             </div>
             <div class="code-card">
-              <span class="code-badge">${t('code.soon')}</span>
+              <span class="code-badge ok">${t('code.available')}</span>
               <h3>ORION CODE</h3>
               <p>${t('code.codeDesc')}</p>
-              <span class="code-ver">${t('code.planned', { v: 'V5.5.0' })}</span>
+              <span class="code-ver">${t('code.proOnly')}</span>
+              <button id="codeOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('code.codeOpen')}</button>
             </div>
           </div>
           <p class="code-note">${t('code.note')}</p>
@@ -1357,6 +1358,7 @@ const API = (() => {
       document.body.appendChild(panel);
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#codeClose').addEventListener('click', () => setOpen(false));
+      panel.querySelector('#codeOpen').addEventListener('click', () => { if (window.ORION_CODE) window.ORION_CODE.open(); });   // V5.5.0: o painel do ORION CODE fecha este (Esc) e abre
       panel.querySelector('#apiOpen').addEventListener('click', () => { if (window.ORION_API_PANEL) window.ORION_API_PANEL.open(); });   // V5.2.0: o painel do ORION API fecha este (Esc) e abre
     }
     function setOpen(on) {
