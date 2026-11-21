@@ -274,7 +274,7 @@ async def ask(body: AskIn, authorization: str = Header(default="")):
 
 
 class CheckoutIn(BaseModel):
-    plan: Literal["plus", "pro"]               # o preço NÃO vem do site: o servidor usa o do catálogo
+    plan: Literal["plus", "pro", "ultra"]             # o preço NÃO vem do site: o servidor usa o do catálogo
 
 
 def _billing_http(e: "billing_service.BillingError") -> HTTPException:
