@@ -3,6 +3,8 @@
 Variáveis do Render:
   ORION_MP_ACCESS_TOKEN      Access Token da aplicação. "TEST-..." = ambiente de testes; "APP_USR-..." = produção.
   ORION_MP_WEBHOOK_SECRET    "assinatura secreta" mostrada no painel do Mercado Pago, em Webhooks.
+  ORION_MP_PUBLIC_KEY        (V5.5.0) "Public Key" da aplicação (TEST-... ou APP_USR-...). Sem ela, o checkout dentro do ORION (cartão) fica
+                             desligado e o site volta ao checkout por redirecionamento. Pix só precisa do Access Token.
   ORION_MP_TEST_PAYER_EMAIL  (só vale com token TEST-) e-mail do COMPRADOR DE TESTE: em testes o Mercado Pago só aceita
                              usuários de teste como pagador.
 
@@ -15,7 +17,7 @@ Documentação usada (conferida em 09/11/2026):
 NÃO CONFIRMADO ATÉ HOJE (precisa de credenciais de teste): nomes exatos dos campos de GET /authorized_payments/{id}.
 O código lê esses campos de forma defensiva (.get) e ignora o que não entender; veja docs/BILLING.md, seção "Verificar".
 """
-import hashlib, hmac, logging, os, re
+import datetime as dt, hashlib, hmac, logging, os, re
 from decimal import Decimal, InvalidOperation
 
 import requests
@@ -66,6 +68,10 @@ class MercadoPago(PaymentProvider):
         override = os.getenv("ORION_MP_TEST_PAYER_EMAIL", "").strip()
         return override if (self.test_mode and override) else real_email
 
+    def public_key(self) -> str:
+        """Chave PÚBLICA (feita para ficar no navegador): inicia o formulário de cartão do Mercado Pago, que gera um token de uso único."""
+        return os.getenv("ORION_MP_PUBLIC_KEY", "").strip()
+
     # ── HTTP ──
     def _call(self, method: str, path: str, body: dict | None = None, idem: str | None = None) -> dict:
         headers = {"Authorization": "Bearer " + self._token, "Content-Type": "application/json"}
@@ -100,6 +106,33 @@ class MercadoPago(PaymentProvider):
         if not sid or not _CHECKOUT_HOST.match(url):
             raise ProviderError("resposta do Mercado Pago sem página de pagamento válida")
         return {"id": _safe_id(sid), "checkout_url": url}
+
+    def create_card_subscription(self, *, email, reason, amount_cents, external_reference, back_url, card_token, idempotency_key):
+        """V5.5.0: assinatura mensal paga com o TOKEN do cartão (gerado no navegador pelo formulário do Mercado Pago; o ORION nunca vê o cartão).
+        Documentação: POST /preapproval com card_token_id e status "authorized" (assinatura sem plano associado)."""
+        body = {
+            "reason": reason[:200], "external_reference": external_reference[:256], "payer_email": email, "back_url": back_url,
+            "card_token_id": str(card_token), "status": "authorized",
+            "auto_recurring": {"frequency": 1, "frequency_type": "months", "currency_id": "BRL",
+                               "transaction_amount": float(Decimal(amount_cents) / 100)},
+        }
+        d = self._call("POST", "/preapproval", body, idem=idempotency_key)
+        if not d.get("id"):
+            raise ProviderError("resposta do Mercado Pago sem identificador da assinatura")
+        status = str(d.get("status") or "").lower()
+        return {"id": _safe_id(d["id"]), "status": status if status in _STATUS else "other"}
+
+    def create_pix_payment(self, *, email, description, amount_cents, external_reference, idempotency_key, expires_minutes=30):
+        """V5.5.0: pagamento avulso por Pix (POST /v1/payments). Devolve o código copia-e-cola e o QR (imagem em base64)."""
+        exp = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=expires_minutes)).strftime("%Y-%m-%dT%H:%M:%S.000+00:00")
+        body = {"transaction_amount": float(Decimal(amount_cents) / 100), "description": description[:200], "payment_method_id": "pix",
+                "payer": {"email": email}, "external_reference": external_reference[:256], "date_of_expiration": exp}
+        d = self._call("POST", "/v1/payments", body, idem=idempotency_key)
+        td = ((d.get("point_of_interaction") or {}).get("transaction_data") or {}) if isinstance(d.get("point_of_interaction"), dict) else {}
+        code = str(td.get("qr_code") or "")
+        if not d.get("id") or not code:
+            raise ProviderError("resposta do Mercado Pago sem código Pix")
+        return {"id": _safe_id(d["id"]), "qr_code": code[:1000], "qr_code_base64": str(td.get("qr_code_base64") or "")[:80000], "expires": exp}
 
     def get_subscription(self, sub_id):
         d = self._call("GET", "/preapproval/" + _safe_id(sub_id))
