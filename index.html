@@ -143,6 +143,10 @@ section{padding:80px 0;border-top:1px solid rgba(255,255,255,.06);}
 .final .cta{justify-content:center;}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align:center;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
 @media (prefers-reduced-motion:reduce){body{animation:none;}.sky .star{animation:none;}html{scroll-behavior:auto;}.btn,.lang-btn,.lang-list li,.card{transition:none;}}
+footer .legal{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 22px;margin-bottom:14px;}
+footer .legal a{color:var(--muted);text-decoration:none;transition:color .2s ease;}
+footer .legal a:hover{color:#fff;}
+footer span{display:block;}
 </style>
 </head>
 <body>
@@ -293,7 +297,10 @@ footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align
   </section>
 </main>
 
-<footer data-t="foot">ORION AI · beta V5.2.0 · Lançamento oficial sem data prevista · Inteligência além dos limites.</footer>
+<footer>
+  <nav class="legal" aria-label="Legal"><a href="privacy.html" data-t="lg1">Política de Privacidade</a><a href="terms.html" data-t="lg2">Termos de Serviço</a></nav>
+  <span data-t="foot">ORION AI · beta V5.2.0 · Lançamento oficial sem data prevista · Inteligência além dos limites.</span>
+</footer>
 
 <script>
 /* Idioma da landing: o texto em português é o padrão do HTML; aqui ficam English, Español, Français, Deutsch e Italiano.
@@ -485,6 +492,8 @@ A('v7t',
   ' c’è un limite giornaliero di domande e di voce per account, e l’accesso può essere limitato agli account autorizzati.');
 A('fh', 'Ready to talk to ORION?', '¿Listo para hablar con ORION?', 'Prêt à discuter avec ORION ?', 'Bereit, mit ORION zu sprechen?', 'Pronto a parlare con ORION?');
 A('fp', 'Sign in or create your account in seconds.', 'Entra o crea tu cuenta en unos segundos.', 'Connectez-vous ou créez votre compte en quelques secondes.', 'Melde dich an oder erstelle in wenigen Sekunden dein Konto.', 'Accedi o crea il tuo account in pochi secondi.');
+A('lg1', 'Privacy Policy', 'Política de Privacidad', 'Politique de confidentialité', 'Datenschutzerklärung', 'Informativa sulla privacy');
+A('lg2', 'Terms of Service', 'Términos de Servicio', 'Conditions d’utilisation', 'Nutzungsbedingungen', 'Termini di Servizio');
 A('foot',
   'ORION AI · beta V5.0 · Official launch date not set · Intelligence beyond limits.',
   'ORION AI · beta V5.0 · Lanzamiento oficial sin fecha prevista · Inteligencia más allá de los límites.',
