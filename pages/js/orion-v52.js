@@ -819,9 +819,26 @@
     });
   })();
 
-  /* ═══════════════ DOCK COMPACTO ═══════════════
-     Com um módulo aberto (body.module-open, marcado por orion-v5.js) o dock continua visível, mais compacto, no cantinho inferior
-     direito (CSS em orion.html): sem círculo e sem recolher. O orion-split.js informa a quantidade de abas por ORION_DOCK.setTabs(n). */
+  /* ═══════════════ DOCK / BARRINHA ═══════════════
+     Com um painel aberto (body.module-open, marcado por orion-v5.js) o dock some e fica só a barrinha centralizada (#dockBar, CSS em orion.html).
+     Mouse sobre a barra, toque, clique ou foco por teclado trazem o dock de volta (body.dock-peek); ele recolhe sozinho ao tirar o mouse,
+     ao tocar fora, ao apertar Esc ou ao escolher uma ferramenta. O orion-split.js informa a quantidade de abas por ORION_DOCK.setTabs(n). */
+  (function dockBar() {
+    const bar = $('dockBar'), dock = document.querySelector('.dock');
+    if (!bar || !dock) return;
+    let timer = 0;
+    const peek = on => { clearTimeout(timer); document.body.classList.toggle('dock-peek', !!on); };
+    const later = () => { clearTimeout(timer); timer = setTimeout(() => { if (!dock.matches(':hover') && !dock.contains(document.activeElement)) peek(false); }, 1100); };
+    bar.addEventListener('mouseenter', () => peek(true));
+    bar.addEventListener('click', () => peek(true));   // no toque, o mouseenter simulado e o clique chegam juntos: só abre, nunca alterna
+    bar.addEventListener('focus', () => { peek(true); const b = dock.querySelector('.dock-btn:not([aria-disabled])'); if (b) requestAnimationFrame(() => b.focus()); });   // teclado: o foco passa para o dock
+    dock.addEventListener('mouseleave', later); bar.addEventListener('mouseleave', later);
+    dock.addEventListener('focusout', () => setTimeout(later, 0));
+    dock.addEventListener('click', e => { if (e.target.closest && e.target.closest('.dock-btn')) setTimeout(() => peek(false), 120); });
+    document.addEventListener('pointerdown', e => { if (document.body.classList.contains('dock-peek') && !dock.contains(e.target) && e.target !== bar) peek(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') peek(false); });
+    new MutationObserver(() => { if (!document.body.classList.contains('module-open')) peek(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  })();
   window.ORION_DOCK = { setTabs: n => { n = Math.max(0, Number(n) | 0); document.body.dataset.tabs = n >= 3 ? '3+' : String(n); } };
 
   /* ── exposição e retorno do pagamento ── */
