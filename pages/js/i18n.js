@@ -384,12 +384,14 @@ window.ORION_I18N = (() => {
   add("plans.tag.ultra", "A maior capacidade do ORION, com a maior cota no ORION API.", "ORION’s highest capacity, with the biggest ORION API quota.");
   add("mkt.aria", "Mercado", "Market");
   add("mkt.title", "Mercado", "Market");
-  add("mkt.sub", "Acompanhe índices, ações e notícias financeiras", "Follow indices, stocks and financial news");
+  add("mkt.sub", "Cotações, gráficos e notícias do mercado financeiro", "Quotes, charts and financial market news");
+  add("mkt.credit", "Cotações e gráficos por TradingView. Alguns mercados podem ter atraso.", "Quotes and charts by TradingView. Some markets may be delayed.");
+  add("mkt.tvFail", "Não foi possível carregar os dados do TradingView. Verifique a conexão ou se algum bloqueador de conteúdo está ativo.", "Couldn’t load TradingView data. Check your connection or any content blocker.");
   add("mkt.demoBadge", "Demonstrativo", "Demo");
   add("mkt.demo", "Dados demonstrativos: os ativos abaixo são fictícios e não representam o mercado real. Ainda não há uma fonte de cotações conectada.", "Demo data: the assets below are fictional and do not represent the real market. No quotes source is connected yet.");
   add("mkt.source", "Fonte: {s} · atualizado {t}", "Source: {s} · updated {t}");
   add("mkt.tab.overview", "Visão geral", "Overview"); add("mkt.tab.stocks", "Ações", "Stocks");
-  add("mkt.tab.indices", "Índices", "Indices"); add("mkt.tab.news", "Notícias", "News");
+  add("mkt.tab.chart", "Gráfico", "Chart"); add("mkt.tab.news", "Notícias", "News");
   add("mkt.search", "Pesquisar ativo", "Search asset");
   add("mkt.noMatch", "Nenhum ativo encontrado.", "No asset found.");
   add("mkt.gainers", "Maiores altas", "Top gainers"); add("mkt.losers", "Maiores baixas", "Top losers");
