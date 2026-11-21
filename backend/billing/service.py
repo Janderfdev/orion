@@ -7,7 +7,11 @@ Princípios:
      sem renovação o plano vence sozinho (core/quota.py já trata "until"). Cancelar não corta na hora: vale até o fim do período pago.
   4. Tudo é idempotente: o mesmo webhook chegando duas vezes não duplica nada (histórico é criado uma única vez).
 
-Variáveis: ORION_BILLING_GRACE_DAYS (3), ORION_BILLING_RETURN_URL (página para onde o Mercado Pago devolve o usuário).
+Variáveis: ORION_BILLING_GRACE_DAYS (3), ORION_BILLING_RETURN_URL (página para onde o Mercado Pago devolve o usuário),
+ORION_PIX_DAYS (31: quanto o plano dura depois de um pagamento por Pix, que é avulso e NÃO renova sozinho).
+
+V5.5.0: checkout DENTRO do ORION. Cartão: o navegador gera um token de uso único com o formulário do Mercado Pago e o servidor cria a assinatura com ele
+(subscribe_card). Pix: pagamento avulso (create_pix / pix_status); o plano só é concedido depois de o provedor confirmar valor e aprovação.
 """
 import datetime as dt, logging, os, re, secrets, time
 from collections import deque
@@ -21,6 +25,8 @@ log = logging.getLogger("orion.billing")
 
 RETURN_URL = os.getenv("ORION_BILLING_RETURN_URL", "https://janderfdev.github.io/orion/pages/orion.html?checkout=return")
 GRACE_DAYS = int(os.getenv("ORION_BILLING_GRACE_DAYS", "3"))
+PIX_DAYS = int(os.getenv("ORION_PIX_DAYS", "31"))
+_PAY_ID = re.compile(r"^[0-9]{1,20}$")
 MAX_CHECKOUTS_PER_HOUR = 5
 _DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
@@ -57,6 +63,24 @@ class Billing:
     def configured(self) -> bool:
         return bool(self.provider.configured() and self.store.enabled)
 
+    def _rate_ok(self, uid: str):
+        """Limite de tentativas de checkout por hora (compartilhado por redirecionamento, cartão e Pix). Devolve (fila, agora)."""
+        now = time.time()
+        q = self._recent.setdefault(uid, deque())
+        while q and q[0] < now - 3600:
+            q.popleft()
+        if len(q) >= MAX_CHECKOUTS_PER_HOUR:
+            raise BillingError(429, "too_many_checkouts")
+        return q, now
+
+    def _buyable(self, email: str, plan_id):
+        plan = plans.PLANS.get(plan_id) if isinstance(plan_id, str) else None
+        if plan is None or not plan.purchasable:
+            raise BillingError(400, "plan_unavailable")
+        if not email:
+            raise BillingError(400, "email_required")
+        return plan
+
     def _need(self) -> None:
         if not self.configured:
             raise BillingError(503, "billing_unavailable")
@@ -88,12 +112,7 @@ class Billing:
             raise BillingError(400, "plan_unavailable")
         if not email:
             raise BillingError(400, "email_required")
-        now = time.time()
-        q = self._recent.setdefault(uid, deque())
-        while q and q[0] < now - 3600:
-            q.popleft()
-        if len(q) >= MAX_CHECKOUTS_PER_HOUR:
-            raise BillingError(429, "too_many_checkouts")
+        q, now = self._rate_ok(uid)
         cur = self.me(uid)
         if cur["plan"] == plan.id and cur["subscription"] == "authorized":
             raise BillingError(409, "already_subscribed")
@@ -110,6 +129,108 @@ class Billing:
         # guardamos O QUE o usuário vai pagar; o webhook só vale se o provedor confirmar exatamente isto
         self.store.set_index("pre_" + made["id"], {"uid": uid, "plan": plan.id, "amount_cents": plan.price_cents, "ref": ref})
         return {"checkout_url": made["checkout_url"], "plan": plan.id}
+
+    # ── V5.5.0: checkout dentro do ORION ──
+    def config(self) -> dict:
+        """O que o site precisa para montar o checkout: a chave PÚBLICA do Mercado Pago (se houver) e quais métodos estão ligados."""
+        pk = self.provider.public_key() if hasattr(self.provider, "public_key") else ""
+        ok = self.configured
+        return {"enabled": ok, "public_key": pk or None, "card": bool(ok and pk), "pix": bool(ok and hasattr(self.provider, "create_pix_payment")),
+                "test_mode": bool(getattr(self.provider, "test_mode", False)), "pix_days": PIX_DAYS}
+
+    def subscribe_card(self, uid: str, email: str, plan_id: str, card_token: str) -> dict:
+        """Assinatura mensal com o token do cartão. O plano só muda depois de CONSULTAR o provedor (mesma regra do webhook)."""
+        self._need()
+        plan = self._buyable(email, plan_id)
+        if not isinstance(card_token, str) or not 8 <= len(card_token) <= 200 or not re.match(r"^[A-Za-z0-9_\-]+$", card_token):
+            raise BillingError(400, "card_token_invalid")
+        q, now = self._rate_ok(uid)
+        cur = self.me(uid)
+        if cur["plan"] == plan.id and cur["subscription"] == "authorized":
+            raise BillingError(409, "already_subscribed")
+        ref = f"orion-{uid[:24]}-{secrets.token_hex(4)}"
+        try:
+            made = self.provider.create_card_subscription(
+                email=self.provider.payer_email(email), reason=f"{plan.name} — assinatura mensal", amount_cents=plan.price_cents,
+                external_reference=ref, back_url=RETURN_URL, card_token=card_token, idempotency_key=ref)
+        except ProviderError as e:
+            log.warning("cartão: o provedor recusou a assinatura (%s)", getattr(e, "status", None))
+            raise BillingError(402 if getattr(e, "status", None) in (400, 402) else 502, "card_refused" if getattr(e, "status", None) in (400, 402) else "provider_error")
+        q.append(now)
+        self.store.set_index("pre_" + made["id"], {"uid": uid, "plan": plan.id, "amount_cents": plan.price_cents, "ref": ref})
+        try:
+            self._sync(made["id"])                 # ativa já, se o provedor confirmar; senão o webhook conclui
+        except ProviderError:
+            log.exception("cartão: não consegui confirmar a assinatura agora (o webhook conclui)")
+        active = self.me(uid)["plan"] == plan.id
+        return {"plan": plan.id, "status": "active" if active else "pending"}
+
+    def create_pix(self, uid: str, email: str, plan_id: str) -> dict:
+        """Pagamento avulso por Pix: libera o plano por PIX_DAYS dias depois da confirmação. Não renova sozinho."""
+        self._need()
+        plan = self._buyable(email, plan_id)
+        if not hasattr(self.provider, "create_pix_payment"):
+            raise BillingError(503, "billing_unavailable")
+        q, now = self._rate_ok(uid)
+        cur = self.me(uid)
+        if cur["subscription"] == "authorized" and cur["plan"] != plans.DEFAULT:
+            raise BillingError(409, "already_subscribed")                     # com assinatura ativa, não duplicamos a cobrança
+        if plans.get(cur["plan"]).rank > plan.rank:
+            raise BillingError(409, "plan_downgrade_blocked")                 # Pix de um plano menor não rebaixa quem já tem um maior
+        ref = f"orionpix-{uid[:24]}-{secrets.token_hex(4)}"
+        try:
+            made = self.provider.create_pix_payment(email=self.provider.payer_email(email), description=f"{plan.name} — {PIX_DAYS} dias",
+                                                    amount_cents=plan.price_cents, external_reference=ref, idempotency_key=ref)
+        except ProviderError:
+            log.exception("pix: o provedor recusou a criação do pagamento")
+            raise BillingError(502, "provider_error")
+        q.append(now)
+        self.store.set_index("pix_" + made["id"], {"uid": uid, "plan": plan.id, "amount_cents": plan.price_cents, "ref": ref})
+        return {"payment_id": made["id"], "qr_code": made["qr_code"], "qr_code_base64": made["qr_code_base64"], "expires": made["expires"],
+                "amount_cents": plan.price_cents, "plan": plan.id, "days": PIX_DAYS}
+
+    def pix_status(self, uid: str, payment_id: str) -> dict:
+        """O site pergunta de tempos em tempos. Só o dono do pagamento vê; quem confirma é SEMPRE o provedor."""
+        self._need()
+        if not isinstance(payment_id, str) or not _PAY_ID.match(payment_id):
+            raise BillingError(404, "payment_not_found")
+        idx = self.store.get_index("pix_" + payment_id)
+        if not idx or idx.get("uid") != uid:
+            raise BillingError(404, "payment_not_found")
+        try:
+            status = self._apply_pix(payment_id, idx)
+        except ProviderError:
+            status = "pending"
+        return {"status": status, "plan": idx["plan"]}
+
+    def _apply_pix(self, payment_id: str, idx: dict) -> str:
+        """Lê o pagamento NO PROVEDOR. Aprovado com o valor certo → concede o plano (uma única vez). Devolve approved | pending | failed."""
+        pay = self.provider.get_payment(payment_id)
+        st = pay["status"]
+        if st in ("pending", "in_process", "authorized", ""):
+            return "pending"
+        if st != "approved":
+            return "failed"                                              # rejected, cancelled, expired, refunded…
+        if pay["amount_cents"] != idx["amount_cents"]:
+            log.error("pix: valor diverge do checkout (esperado %s, veio %s): ignorado", idx["amount_cents"], pay["amount_cents"])
+            return "failed"
+        uid, plan_id = idx["uid"], idx["plan"]
+        today = self._today()
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        first = self.store.add_tx(uid, f"pix_{payment_id}", {"kind": "charge", "status": "approved", "amount_cents": pay["amount_cents"] or 0,
+                                                             "currency": "BRL", "plan": plan_id, "ref": idx.get("ref") or "", "ts": now})
+        if first:                                                         # idempotente: o mesmo Pix aprovado não estende duas vezes
+            cur = self.store.get_plan(uid) or {}
+            base = today
+            if cur.get("plan") == plan_id:                               # renovar o mesmo plano soma ao tempo que ainda resta
+                old = _iso_date(str(cur.get("until") or ""))
+                if old and old > today:
+                    base = old
+            until = (base + dt.timedelta(days=PIX_DAYS)).isoformat()
+            self.store.set_plan(uid, plan_id, until)
+            self.store.set_index("pay_" + payment_id, {"uid": uid, "sub": "", "plan": plan_id})
+            self._changed(uid)
+        return "approved"
 
     # ── cancelar ──
     def cancel(self, uid: str) -> dict:
@@ -161,6 +282,18 @@ class Billing:
 
     def _payment(self, payment_id: str) -> bool:
         """Só reembolso/estorno: o plano é retirado. Pagamento que nunca registramos é ignorado (sem dono conhecido)."""
+        pix = self.store.get_index("pix_" + payment_id)
+        if pix:                                                          # V5.5.0: pagamento por Pix feito dentro do ORION
+            pay = self.provider.get_payment(payment_id)
+            if pay["status"] in ("refunded", "charged_back"):
+                uid = pix["uid"]
+                self._tx(uid, f"refund_{payment_id}", "refund", pay["status"], pay["amount_cents"], pix.get("plan") or "", "")
+                cur = self.store.get_plan(uid) or {}
+                if cur.get("plan") == pix.get("plan"):
+                    self.store.set_plan(uid, plans.DEFAULT, "")
+                    self._changed(uid)
+                return True
+            return self._apply_pix(payment_id, pix) == "approved"
         pay = self.provider.get_payment(payment_id)
         if pay["status"] not in ("refunded", "charged_back"):
             return False
