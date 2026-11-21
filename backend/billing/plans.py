@@ -1,6 +1,6 @@
 """Catálogo de planos do ORION (V5.2.0) — a ÚNICA fonte de verdade sobre o que cada plano pode.
 
-Planos da V5.2.0: free < plus < pro.  (O ORION ULTRA chega na V5.5.0, junto com o ORION CODE: não existe aqui ainda.)  Tudo aqui é decidido no servidor: o navegador nunca diz qual é o plano de ninguém.
+Planos: free < plus < pro < ultra.  (V5.5.0: o ORION ULTRA entra no catálogo e o ORION CODE passa a existir, para PRO e ULTRA.)  Tudo aqui é decidido no servidor: o navegador nunca diz qual é o plano de ninguém.
 O plano de cada usuário vem do Firestore (plans/{uid}, gravado só pelo servidor; ver core/quota.py e, na próxima etapa,
 billing/service.py quando o pagamento for confirmado por webhook).
 
@@ -8,26 +8,27 @@ Números (limites, preços) NÃO são fixos no código: vêm de variáveis de am
 Eles precisam ser confirmados por você antes do lançamento. Preço sem variável = plano "ainda não à venda".
 
 Variáveis:
-  ORION_LIMIT_FREE|PLUS|PRO              perguntas por dia           (10 · 100 · 500)
-  ORION_API_MONTHLY_FREE|PLUS|PRO        requisições do ORION API por mês   (100 · 1000 · 10000)
-  ORION_API_RPM_FREE|PLUS|PRO            requisições por minuto no ORION API (3 · 10 · 30)
+  ORION_LIMIT_FREE|PLUS|PRO|ULTRA        perguntas por dia           (10 · 100 · 500 · 1500)
+  ORION_API_MONTHLY_FREE|PLUS|PRO|ULTRA  requisições do ORION API por mês   (100 · 1000 · 10000 · 50000)
+  ORION_API_RPM_FREE|PLUS|PRO|ULTRA      requisições por minuto no ORION API (3 · 10 · 30 · 60)
   ORION_PRICE_PLUS|PRO                   preço mensal em CENTAVOS de real (ex.: 1990). Vazio = sem preço definido
+  (ULTRA: ainda NÃO está à venda. billing/service.py e o checkout só conhecem PLUS e PRO; ver ULTRA_FOR_SALE abaixo.)
 """
 import os
 from dataclasses import dataclass
 
-ORDER = ("free", "plus", "pro")
+ORDER = ("free", "plus", "pro", "ultra")
 DEFAULT = "free"
 
 # Recursos que existem como NOME de permissão. RELEASED = os que já funcionam nesta versão.
-# Um recurso fora de RELEASED nunca é concedido nem anunciado (o ORION CODE e o ULTRA são V5.5.0).
+# Um recurso fora de RELEASED nunca é concedido nem anunciado.
+ULTRA_FOR_SALE = False   # V5.5.0: o ULTRA existe no catálogo, mas só é vendido depois de o checkout (billing/) ser estendido e testado para ele
 FEATURES = ("chat", "images_basic", "images_advanced", "history", "voices_4", "api", "multitask", "advanced_analysis",
             "orion_code")
-RELEASED = frozenset({"chat", "history", "voices_4", "api"})
+RELEASED = frozenset({"chat", "history", "voices_4", "api", "orion_code"})   # V5.5.0: orion_code (PRO e ULTRA)
 # Só entra em RELEASED o que o ORION faz DE VERDADE e o servidor controla por plano. Ficam de fora, de propósito:
 #   images_basic / images_advanced  o ORION mostra fotos de fontes (Wikipédia/Wikimedia) em respostas, mas ainda NÃO gera imagens
 #   multitask / advanced_analysis   sem diferença real entre planos hoje
-#   orion_code                      V5.5.0
 # Quando um deles passar a existir de verdade, basta incluí-lo aqui (os planos que já têm o direito passam a recebê-lo).
 
 
@@ -65,6 +66,7 @@ def _build() -> dict:
     base = {"chat", "images_basic", "history", "api"}        # o FREE tem ORION API, com cota reduzida
     plus = base | {"images_advanced", "voices_4"}
     pro = plus | {"multitask", "advanced_analysis", "orion_code"}
+    ultra = pro                                              # V5.5.0: o ULTRA parte do PRO; só ganha direitos aqui quando o servidor os entregar de verdade
     return {
         "free":  Plan("free", "ORION FREE", 0, _int("ORION_LIMIT_FREE", 10), (1,),
                       _int("ORION_API_MONTHLY_FREE", 100), _int("ORION_API_RPM_FREE", 3), None, frozenset(base), api_max_keys=1),
@@ -74,6 +76,9 @@ def _build() -> dict:
         "pro":   Plan("pro", "ORION PRO", 2, _int("ORION_LIMIT_PRO", 500), (1, 2, 3, 4),
                       _int("ORION_API_MONTHLY_PRO", 10000), _int("ORION_API_RPM_PRO", 30),
                       _price("ORION_PRICE_PRO"), frozenset(pro), api_max_keys=5),
+        "ultra": Plan("ultra", "ORION ULTRA", 3, _int("ORION_LIMIT_ULTRA", 1500), (1, 2, 3, 4),
+                      _int("ORION_API_MONTHLY_ULTRA", 50000), _int("ORION_API_RPM_ULTRA", 60),
+                      _price("ORION_PRICE_ULTRA") if ULTRA_FOR_SALE else None, frozenset(ultra), api_max_keys=10),
     }
 
 
