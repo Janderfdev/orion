@@ -4,6 +4,7 @@ Rodar local:  uvicorn main:app --reload
 Anexos (V5.0): POST /ask aceita "image" {mime, data(base64)} e "file" {name, text}; inválidos → 422 "anexo:<código>" sem gastar cota.
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
 V5.2.0 (Resumo do Dia): GET /news/daily?refresh=1
+V5.5.0 (Mercado): GET /market/overview (dados demonstrativos até existir uma fonte real) · (ORION CODE): POST /code/assist (só PRO e ULTRA; propõe, nunca altera arquivos)
 V5.2.0 (ORION API): POST /v1/chat · GET /v1/models · GET /v1/usage (chave de API) · GET|POST /api/keys · POST /api/keys/{id}/revoke|rotate · GET /api/usage (login)
 V5.2.0 (planos e assinaturas): GET /plan · GET /plans · GET /billing/me · POST /billing/checkout · POST /billing/cancel · POST /billing/webhook/mercadopago
 Variáveis:
@@ -50,9 +51,10 @@ from api.service import ApiService
 from api.store import ApiStore
 from auth.firebase import verify
 from billing import plans, service as billing_service
-from core import attachments, images
+from core import attachments, code_assist, images
 from core.orchestrator import Orchestrator
 from core.quota import Quota, PROJECT_ID as FIREBASE_PROJECT
+from market.service import MarketService
 from memory.store import Memory
 from news.service import NewsService, NewsUnavailable
 from providers.registry import Registry
@@ -488,6 +490,70 @@ async def news_daily(refresh: bool = False, authorization: str = Header(default=
         return await asyncio.to_thread(news.get, refresh)
     except NewsUnavailable:
         raise HTTPException(503, "news:unavailable")
+
+
+# ── V5.5.0: Mercado ──
+market = MarketService()
+
+
+@app.get("/market/overview")
+async def market_overview(authorization: str = Header(default="")):
+    """Visão geral do mercado. Sem fonte de cotações conectada, devolve dados DEMONSTRATIVOS com demo=true (ver market/service.py)."""
+    await _auth(authorization)
+    return await asyncio.to_thread(market.overview)
+
+
+# ── V5.5.0: ORION CODE ──
+class CodeFileIn(BaseModel):
+    path: str = Field(min_length=1, max_length=120)
+    content: str = Field(default="", max_length=code_assist.MAX_FILE_CHARS)
+
+
+class CodeIn(BaseModel):
+    request: str = Field(min_length=1, max_length=code_assist.MAX_REQUEST)
+    files: list[CodeFileIn] = Field(default_factory=list, max_length=code_assist.MAX_FILES)
+    active: str = Field(default="", max_length=120)
+    model: str | None = Field(default=None, max_length=80)
+
+
+@app.post("/code/assist")
+async def code_assist_route(body: CodeIn, authorization: str = Header(default="")):
+    """Assistente do ORION CODE. Só PRO e ULTRA. Devolve explicação, problemas e ALTERAÇÕES PROPOSTAS: o servidor nunca altera nem executa nada;
+    o site pede a aprovação da pessoa antes de mexer em qualquer arquivo. Cada pedido gasta uma pergunta da cota diária."""
+    uid, _ = await _auth(authorization, count=True)
+    plan = (await asyncio.to_thread(quota.status, uid))["plan"]
+    if not plans.can(plan, "orion_code"):
+        raise HTTPException(403, "plan:code_locked")
+    if not registry.models():
+        raise HTTPException(503, "Nenhum modelo configurado no servidor.")
+    try:
+        files = code_assist.check_files([f.model_dump() for f in body.files])
+        active = code_assist.clean_path(body.active) if body.active else ""
+    except code_assist.CodeError as e:
+        raise HTTPException(422, f"code:{e}")
+    wanted = body.model
+    if wanted and registry.has(wanted) and not registry.allowed(plan, wanted):
+        wanted = registry.default_for(plan)
+    model_id, provider = registry.get(wanted or registry.default_for(plan))
+    if not provider:
+        raise HTTPException(400, "Modelo indisponível.")
+    q = await asyncio.to_thread(quota.consume, uid)
+    if not q["ok"]:
+        raise HTTPException(402, "Limite diário de perguntas atingido.")
+    try:
+        raw = await asyncio.wait_for(provider.generate(code_assist.SYSTEM, [{"role": "user", "content": code_assist.build_prompt(body.request, files, active)}], None, None), timeout=60)
+    except Exception as e:
+        await asyncio.to_thread(quota.refund, uid)
+        log.exception("Falha no ORION CODE")
+        status = getattr(e, "status_code", None)
+        if status == 429:
+            raise HTTPException(429, "O modelo atingiu o limite de uso agora.")
+        if status in (403, 404):
+            raise HTTPException(503, "Modelo indisponível para esta chave.")
+        raise HTTPException(502, "Falha ao consultar o modelo.")
+    out = code_assist.parse_reply(raw)
+    out.update({"model": model_id, "quota": {"used": q["used"], "limit": q["limit"], "plan": q["plan"]}})
+    return out
 
 
 @app.post("/memory/clear")
