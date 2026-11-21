@@ -839,6 +839,25 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape') peek(false); });
     new MutationObserver(() => { if (!document.body.classList.contains('module-open')) peek(false); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   })();
+  /* ── dock ⇄ barra do chat (V5.5.0): a barra do chat cresce a partir do dock e o dock fica escondido enquanto o chat está em uso ── */
+  (function chatBar() {
+    const dock = document.querySelector('.dock'), form = $('askForm'), close = $('askClose'), chat = $('chatBtn');
+    if (!dock || !form) return;
+    const measure = () => { const w = dock.offsetWidth; if (w > 0) document.documentElement.style.setProperty('--dock-w', w + 'px'); };   // a barra fechada tem a largura exata do dock
+    measure(); addEventListener('resize', measure); addEventListener('load', measure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    if (close && chat) {
+      close.addEventListener('click', () => chat.click());   // fecha o chat (mesmo caminho do botão do dock e da tecla Esc)
+      new MutationObserver(() => { close.tabIndex = form.classList.contains('open') ? 0 : -1; }).observe(form, { attributes: true, attributeFilter: ['class'] });
+    }
+    let was = document.body.classList.contains('chat-open'), t = 0;
+    new MutationObserver(() => {   // ao fechar o chat, o dock espera a barra encolher para voltar
+      const now = document.body.classList.contains('chat-open');
+      if (was && !now) { document.body.classList.add('chat-closing'); clearTimeout(t); t = setTimeout(() => document.body.classList.remove('chat-closing'), 600); }
+      was = now;
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  })();
+
   window.ORION_DOCK = { setTabs: n => { n = Math.max(0, Number(n) | 0); document.body.dataset.tabs = n >= 3 ? '3+' : String(n); } };
 
   /* ── exposição e retorno do pagamento ── */
