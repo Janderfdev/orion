@@ -1,160 +1,148 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Privacidade | ORION AI</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      padding: 40px 20px;
-      background: #0b0d12;
-      color: #e8eaf0;
-      font-family: Arial, sans-serif;
-      line-height: 1.7;
-    }
-
-    main {
-      max-width: 850px;
-      margin: auto;
-    }
-
-    h1, h2 {
-      color: #ffffff;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      margin-bottom: 8px;
-    }
-
-    h2 {
-      margin-top: 32px;
-      font-size: 1.25rem;
-    }
-
-    p, li {
-      color: #b9c0ce;
-    }
-
-    a {
-      color: #83b8ff;
-    }
-
-    .brand {
-      color: #83b8ff;
-      letter-spacing: 3px;
-      font-weight: bold;
-    }
-
-    .date {
-      color: #8993a4;
-      font-size: 0.9rem;
-    }
-
-    footer {
-      margin-top: 50px;
-      padding-top: 20px;
-      border-top: 1px solid #292e39;
-      color: #8993a4;
-      font-size: 0.85rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Como o ORION AI trata as informações dos usuários.">
+<title>Política de Privacidade | ORION AI</title>
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{--font:'Sora',-apple-system,'Helvetica Neue',sans-serif;--mono:'Space Grotesk','Inter',sans-serif;
+  --bg:#000;--surface:#0D1020;--blue-dark:#080912;--active:#17153A;--active-hover:#1F1D4A;--line:#29243A;--accent:#7770B8;--accent-soft:#A9A6C9;
+  --text:#F4F2FF;--muted:#929BAA;--faint:#7D8697;--r:20px;}
+html{scroll-behavior:smooth;scroll-padding-top:92px;color-scheme:dark;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.7;overflow-x:hidden;animation:pageIn .45s ease both;}
+@keyframes pageIn{from{opacity:0;}to{opacity:1;}}
+a{color:var(--accent-soft);text-underline-offset:3px;text-decoration-color:rgba(169,166,201,.4);transition:color .2s ease;}
+a:hover{color:#fff;}
+.bg-arcs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.bg-arcs::before,.bg-arcs::after{content:"";position:absolute;left:50%;top:30%;border:1px solid rgba(119,112,184,.10);border-radius:50%;transform:translate(-50%,-50%) rotate(-24deg) scaleY(.78);}
+.bg-arcs::before{width:min(1500px,150vw);height:min(1500px,150vw);}
+.bg-arcs::after{width:min(1000px,100vw);height:min(1000px,100vw);border-color:rgba(119,112,184,.07);transform:translate(-50%,-50%) rotate(18deg) scaleY(.7);}
+.glow{position:absolute;left:50%;top:-180px;width:min(760px,90vw);height:360px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(78,72,150,.28),rgba(78,72,150,0) 70%);filter:blur(10px);pointer-events:none;}
+main,.topbar,footer{position:relative;z-index:1;}
+.wrap{width:min(1080px,100% - 40px);margin:0 auto;}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.05);}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;height:68px;}
+.top img{height:28px;width:auto;display:block;}
+.nav{display:flex;align-items:center;gap:6px;}
+.nav a{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:10px 14px;border-radius:999px;transition:color .2s ease,background .2s ease;}
+.nav a:hover{color:#fff;background:rgba(255,255,255,.05);}
+.nav a[aria-current="page"]{color:#fff;background:var(--active);box-shadow:inset 0 0 0 1px rgba(78,72,150,.4);}
+@media (max-width:560px){.top img{height:22px;}.nav a{padding:9px 10px;font-size:11px;letter-spacing:.08em;}}
+.hero{position:relative;padding:72px 0 40px;text-align:center;}
+.eyebrow{display:inline-block;font:500 11px var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--accent-soft);padding:7px 16px;border:1px solid var(--line);border-radius:999px;background:rgba(13,16,32,.6);}
+h1{margin-top:22px;font-size:clamp(32px,6vw,56px);font-weight:600;line-height:1.1;letter-spacing:-.02em;background:linear-gradient(180deg,#fff,#B9B5E6);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.date{display:inline-flex;align-items:center;gap:8px;margin-top:20px;font:500 12px var(--mono);letter-spacing:.08em;color:var(--faint);}
+.date::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+.intro{max-width:680px;margin:26px auto 0;color:var(--muted);font-size:15px;}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;align-items:start;padding:24px 0 72px;}
+.toc{position:sticky;top:92px;padding:18px 14px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,rgba(13,16,32,.55),rgba(13,16,32,.7));max-height:calc(100vh - 116px);overflow:auto;}
+.toc b{display:block;padding:0 10px 10px;font:500 10.5px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--faint);}
+.toc a{display:flex;gap:10px;padding:8px 10px;border-radius:12px;font-size:12.5px;line-height:1.4;color:var(--muted);text-decoration:none;transition:background .2s ease,color .2s ease;}
+.toc a:hover{background:rgba(255,255,255,.05);color:#fff;}
+.toc a span{font:500 11px var(--mono);color:var(--accent);padding-top:1px;}
+@media (max-width:900px){.layout{grid-template-columns:1fr;}.toc{display:none;}}
+.sections{display:flex;flex-direction:column;gap:16px;}
+.card{background:linear-gradient(180deg,rgba(13,16,32,.55),rgba(13,16,32,.7));border:1px solid var(--line);border-radius:var(--r);padding:28px 28px 30px;transition:border-color .25s ease;}
+.card:hover{border-color:rgba(119,112,184,.4);}
+.card h2{display:flex;align-items:center;gap:14px;font-size:clamp(17px,2.4vw,21px);font-weight:600;line-height:1.3;color:#fff;margin-bottom:14px;}
+.num{flex:none;display:inline-grid;place-items:center;min-width:38px;height:38px;padding:0 8px;border-radius:12px;font:600 13px var(--mono);letter-spacing:.04em;color:var(--accent-soft);background:var(--active);border:1px solid rgba(78,72,150,.4);}
+.card p,.card li{color:var(--muted);font-size:14.5px;}
+.card p+p,.card p+ul,.card ul+p{margin-top:12px;}
+.card ul{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.card li{position:relative;padding-left:22px;}
+.card li::before{content:"";position:absolute;left:4px;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px rgba(119,112,184,.7);}
+.card strong{color:var(--accent-soft);font-weight:600;overflow-wrap:anywhere;}
+footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 0 44px;text-align:center;font:500 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);}
+footer nav{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 22px;margin-bottom:14px;}
+footer a{color:var(--muted);text-decoration:none;}
+footer a:hover{color:#fff;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}html{scroll-behavior:auto;}}
+@media print{body{background:#fff;color:#111;}.bg-arcs,.glow,.topbar,.toc,footer nav{display:none;}h1{background:none;color:#111;-webkit-text-fill-color:#111;}.card{background:none;border-color:#ccc;break-inside:avoid;}.card h2,.card strong{color:#111;}.card p,.card li{color:#333;}.num{background:none;color:#333;border-color:#999;}}
+</style>
 </head>
-
 <body>
-  <main>
-    <div class="brand">ORION AI</div>
+<div class="bg-arcs" aria-hidden="true"></div>
 
-    <h1>Política de Privacidade</h1>
-    <p class="date">Última atualização: 20 de novembro de 2026</p>
+<header class="topbar"><div class="wrap top">
+  <a href="index.html" aria-label="ORION AI"><img src="assets/orion_ai_wordmark.png" alt="ORION AI"></a>
+  <nav class="nav" aria-label="Documentos legais">
+    <a href="terms.html">Termos</a>
+    <a href="privacy.html" aria-current="page">Privacidade</a>
+  </nav>
+</div></header>
 
-    <p>
-      Esta Política de Privacidade explica como o ORION AI
-      trata as informações dos usuários durante a utilização
-      da plataforma.
-    </p>
+<main>
+  <div class="wrap">
+    <div class="hero">
+      <div class="glow" aria-hidden="true"></div>
+      <span class="eyebrow">Legal</span>
+      <h1>Política de Privacidade</h1>
+      <p class="date">Última atualização: 20 de novembro de 2026</p>
+      <p class="intro">Esta Política de Privacidade explica como o ORION AI trata as informações dos usuários durante a utilização da plataforma.</p>
+    </div>
 
-    <h2>1. Informações coletadas</h2>
-    <p>
-      Dependendo dos recursos utilizados, o ORION AI poderá
-      tratar informações de cadastro, como nome e endereço
-      de e-mail, além das informações necessárias para
-      disponibilizar suas funcionalidades.
-    </p>
+    <div class="layout">
+      <nav class="toc" aria-label="Neste documento"><b>Neste documento</b><a href="#s1"><span>01</span>Informações coletadas</a><a href="#s2"><span>02</span>Login com Google</a><a href="#s3"><span>03</span>Utilização das informações</a><a href="#s4"><span>04</span>Serviços de terceiros</a><a href="#s5"><span>05</span>Armazenamento e segurança</a><a href="#s6"><span>06</span>Compartilhamento de informações</a><a href="#s7"><span>07</span>Direitos dos usuários</a><a href="#s8"><span>08</span>Retenção e exclusão de dados</a><a href="#s9"><span>09</span>Alterações nesta política</a><a href="#s10"><span>10</span>Contato</a></nav>
+      <div class="sections">
+      <section class="card" id="s1">
+        <h2><span class="num">01</span><span>Informações coletadas</span></h2>
+        <p> Dependendo dos recursos utilizados, o ORION AI poderá tratar informações de cadastro, como nome e endereço de e-mail, além das informações necessárias para disponibilizar suas funcionalidades. </p>
+      </section>
+      <section class="card" id="s2">
+        <h2><span class="num">02</span><span>Login com Google</span></h2>
+        <p> O ORION AI disponibiliza autenticação por meio da conta Google. As informações efetivamente acessadas dependem das permissões solicitadas durante o processo de login. </p>
+      </section>
+      <section class="card" id="s3">
+        <h2><span class="num">03</span><span>Utilização das informações</span></h2>
+        <p> As informações poderão ser utilizadas para autenticar usuários, disponibilizar funcionalidades, manter a segurança da plataforma e melhorar a experiência de uso. </p>
+      </section>
+      <section class="card" id="s4">
+        <h2><span class="num">04</span><span>Serviços de terceiros</span></h2>
+        <p> A plataforma poderá utilizar serviços de terceiros para autenticação, infraestrutura, processamento de informações e funcionalidades de inteligência artificial. O tratamento realizado por esses serviços também está sujeito às respectivas políticas de privacidade. </p>
+      </section>
+      <section class="card" id="s5">
+        <h2><span class="num">05</span><span>Armazenamento e segurança</span></h2>
+        <p> O ORION AI adota medidas de segurança compatíveis com sua infraestrutura para proteger as informações tratadas. Nenhum sistema pode garantir segurança absoluta. </p>
+      </section>
+      <section class="card" id="s6">
+        <h2><span class="num">06</span><span>Compartilhamento de informações</span></h2>
+        <p> As informações poderão ser compartilhadas com provedores necessários à operação da plataforma, conforme as funcionalidades utilizadas e as finalidades informadas. </p>
+      </section>
+      <section class="card" id="s7">
+        <h2><span class="num">07</span><span>Direitos dos usuários</span></h2>
+        <p> Os usuários poderão solicitar informações sobre o tratamento de seus dados, bem como exercer os direitos previstos na legislação aplicável, incluindo a LGPD. </p>
+      </section>
+      <section class="card" id="s8">
+        <h2><span class="num">08</span><span>Retenção e exclusão de dados</span></h2>
+        <p> Os prazos de retenção e os procedimentos de exclusão deverão observar as finalidades do tratamento e as obrigações legais aplicáveis. </p>
+      </section>
+      <section class="card" id="s9">
+        <h2><span class="num">09</span><span>Alterações nesta política</span></h2>
+        <p> Esta política poderá ser atualizada para refletir mudanças nas funcionalidades, nos serviços utilizados ou nas práticas de tratamento de informações. </p>
+      </section>
+      <section class="card" id="s10">
+        <h2><span class="num">10</span><span>Contato</span></h2>
+        <p> Para dúvidas ou solicitações relacionadas à privacidade, entre em contato pelo endereço: <strong><a href="mailto:janderf.dev@gmail.com">janderf.dev@gmail.com</a></strong>. </p>
+      </section>
+      </div>
+    </div>
+  </div>
+</main>
 
-    <h2>2. Login com Google</h2>
-    <p>
-      O ORION AI disponibiliza autenticação por meio da conta
-      Google. As informações efetivamente acessadas dependem
-      das permissões solicitadas durante o processo de login.
-    </p>
-
-    <h2>3. Utilização das informações</h2>
-    <p>
-      As informações poderão ser utilizadas para autenticar
-      usuários, disponibilizar funcionalidades, manter a
-      segurança da plataforma e melhorar a experiência de uso.
-    </p>
-
-    <h2>4. Serviços de terceiros</h2>
-    <p>
-      A plataforma poderá utilizar serviços de terceiros
-      para autenticação, infraestrutura, processamento de
-      informações e funcionalidades de inteligência artificial.
-      O tratamento realizado por esses serviços também está
-      sujeito às respectivas políticas de privacidade.
-    </p>
-
-    <h2>5. Armazenamento e segurança</h2>
-    <p>
-      O ORION AI adota medidas de segurança compatíveis com
-      sua infraestrutura para proteger as informações tratadas.
-      Nenhum sistema pode garantir segurança absoluta.
-    </p>
-
-    <h2>6. Compartilhamento de informações</h2>
-    <p>
-      As informações poderão ser compartilhadas com provedores
-      necessários à operação da plataforma, conforme as
-      funcionalidades utilizadas e as finalidades informadas.
-    </p>
-
-    <h2>7. Direitos dos usuários</h2>
-    <p>
-      Os usuários poderão solicitar informações sobre o
-      tratamento de seus dados, bem como exercer os direitos
-      previstos na legislação aplicável, incluindo a LGPD.
-    </p>
-
-    <h2>8. Retenção e exclusão de dados</h2>
-    <p>
-      Os prazos de retenção e os procedimentos de exclusão
-      deverão observar as finalidades do tratamento e as
-      obrigações legais aplicáveis.
-    </p>
-
-    <h2>9. Alterações nesta política</h2>
-    <p>
-      Esta política poderá ser atualizada para refletir
-      mudanças nas funcionalidades, nos serviços utilizados
-      ou nas práticas de tratamento de informações.
-    </p>
-
-    <h2>10. Contato</h2>
-    <p>
-      Para dúvidas ou solicitações relacionadas à privacidade,
-      entre em contato pelo endereço:
-      <strong>janderf.dev@gmail.com</strong>.
-    </p>
-
-    <footer>
-      © 2026 ORION AI. Todos os direitos reservados.
-    </footer>
-  </main>
+<footer>
+  <nav aria-label="ORION AI">
+    <a href="index.html">Início</a>
+    <a href="terms.html">Termos de Serviço</a>
+  </nav>
+  © 2026 ORION AI. Todos os direitos reservados.
+</footer>
 </body>
 </html>
