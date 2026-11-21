@@ -11,8 +11,8 @@ Variáveis:
   ORION_LIMIT_FREE|PLUS|PRO|ULTRA        perguntas por dia           (10 · 100 · 500 · 1500)
   ORION_API_MONTHLY_FREE|PLUS|PRO|ULTRA  requisições do ORION API por mês   (100 · 1000 · 10000 · 50000)
   ORION_API_RPM_FREE|PLUS|PRO|ULTRA      requisições por minuto no ORION API (3 · 10 · 30 · 60)
-  ORION_PRICE_PLUS|PRO                   preço mensal em CENTAVOS de real (ex.: 1990). Vazio = sem preço definido
-  (ULTRA: ainda NÃO está à venda. billing/service.py e o checkout só conhecem PLUS e PRO; ver ULTRA_FOR_SALE abaixo.)
+  ORION_PRICE_PLUS|PRO|ULTRA            preço mensal em CENTAVOS de real (ex.: 1990). Vazio = sem preço definido
+  
 """
 import os
 from dataclasses import dataclass
@@ -22,7 +22,6 @@ DEFAULT = "free"
 
 # Recursos que existem como NOME de permissão. RELEASED = os que já funcionam nesta versão.
 # Um recurso fora de RELEASED nunca é concedido nem anunciado.
-ULTRA_FOR_SALE = False   # V5.5.0: o ULTRA existe no catálogo, mas só é vendido depois de o checkout (billing/) ser estendido e testado para ele
 FEATURES = ("chat", "images_basic", "images_advanced", "history", "voices_4", "api", "multitask", "advanced_analysis",
             "orion_code")
 RELEASED = frozenset({"chat", "history", "voices_4", "api", "orion_code"})   # V5.5.0: orion_code (PRO e ULTRA)
@@ -78,7 +77,7 @@ def _build() -> dict:
                       _price("ORION_PRICE_PRO"), frozenset(pro), api_max_keys=5),
         "ultra": Plan("ultra", "ORION ULTRA", 3, _int("ORION_LIMIT_ULTRA", 1500), (1, 2, 3, 4),
                       _int("ORION_API_MONTHLY_ULTRA", 50000), _int("ORION_API_RPM_ULTRA", 60),
-                      _price("ORION_PRICE_ULTRA") if ULTRA_FOR_SALE else None, frozenset(ultra), api_max_keys=10),
+                      _price("ORION_PRICE_ULTRA"), frozenset(ultra), api_max_keys=10),
     }
 
 
