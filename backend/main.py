@@ -4,7 +4,7 @@ Rodar local:  uvicorn main:app --reload
 Anexos (V5.0): POST /ask aceita "image" {mime, data(base64)} e "file" {name, text}; inválidos → 422 "anexo:<código>" sem gastar cota.
 Rotas:  GET /health · GET /models · POST /ask · POST /speak · POST /speak/preview · GET /speak/diag · POST /memory/clear
 V5.2.0 (Resumo do Dia): GET /news/daily?refresh=1
-V5.5.0 (Mercado): GET /market/overview (dados demonstrativos até existir uma fonte real) · (ORION CODE): POST /code/assist (só PRO e ULTRA; propõe, nunca altera arquivos)
+V5.5.0 (ORION CODE): POST /code/assist (só PRO e ULTRA; propõe, nunca altera arquivos)
 V5.2.0 (ORION API): POST /v1/chat · GET /v1/models · GET /v1/usage (chave de API) · GET|POST /api/keys · POST /api/keys/{id}/revoke|rotate · GET /api/usage (login)
 V5.2.0 (planos e assinaturas): GET /plan · GET /plans · GET /billing/me · POST /billing/checkout · POST /billing/cancel · POST /billing/webhook/mercadopago
 Variáveis:
@@ -54,7 +54,6 @@ from billing import plans, service as billing_service
 from core import attachments, code_assist, images
 from core.orchestrator import Orchestrator
 from core.quota import Quota, PROJECT_ID as FIREBASE_PROJECT
-from market.service import MarketService
 from memory.store import Memory
 from news.service import NewsService, NewsUnavailable
 from providers.registry import Registry
@@ -170,7 +169,7 @@ class FileIn(BaseModel):
 class AskIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     model: str | None = Field(default=None, max_length=80)  # id vindo de GET /models
-    lang: Literal["pt", "en"] = "pt"                          # idioma da conversa (busca das imagens)
+    lang: Literal["pt", "en"] = "en"                          # idioma da conversa (busca das imagens)
     image: ImageIn | None = None                              # V5.0: UMA imagem anexada (jpeg/png/webp)
     file: FileIn | None = None                                # V5.0: UM arquivo de texto anexado
 
@@ -490,17 +489,6 @@ async def news_daily(refresh: bool = False, authorization: str = Header(default=
         return await asyncio.to_thread(news.get, refresh)
     except NewsUnavailable:
         raise HTTPException(503, "news:unavailable")
-
-
-# ── V5.5.0: Mercado ──
-market = MarketService()
-
-
-@app.get("/market/overview")
-async def market_overview(authorization: str = Header(default="")):
-    """Visão geral do mercado. Sem fonte de cotações conectada, devolve dados DEMONSTRATIVOS com demo=true (ver market/service.py)."""
-    await _auth(authorization)
-    return await asyncio.to_thread(market.overview)
 
 
 # ── V5.5.0: ORION CODE ──
