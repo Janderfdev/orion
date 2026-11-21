@@ -559,48 +559,40 @@
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
 
   /* ═══════════════ MERCADO (V5.5.0) ═══════════════
-     O site NUNCA inventa cotação: mostra o que /market/overview devolve. Enquanto o servidor responder demo=true, tudo aparece com o aviso
-     "dados demonstrativos" e o selo em cada ativo (os ativos de demonstração são fictícios). As notícias são as reais de Economia e Negócios
-     do Resumo do Dia (/news/daily). */
+     Cotações, índices, ações, gráficos históricos e pesquisa de ativos vêm dos widgets oficiais e gratuitos do TradingView (nada é calculado nem
+     inventado aqui; alguns mercados chegam com atraso, conforme o nível de dados que o TradingView oferece). As NOTÍCIAS reais de Economia e Negócios
+     vêm do Resumo do Dia (/news/daily). Só a aba aberta carrega widgets; ao trocar de aba ou fechar o painel, eles são descartados. */
   const marketBtn = $('marketBtn');
-  const SVGNS = 'http://www.w3.org/2000/svg';
-  const sgn = n => (n > 0 ? '+' : '') + new Intl.NumberFormat(LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + '%';
-  const px = n => new Intl.NumberFormat(LOCALE(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
-  const dir = n => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat');
-  /* gráfico de linha em SVG (só DOM): tamanho e rótulos simples; sem dependências */
-  function chart(series, { w = 120, hgt = 36, big = false } = {}) {
-    const s = (Array.isArray(series) ? series : []).map(Number).filter(Number.isFinite);
-    const el = document.createElementNS(SVGNS, 'svg');
-    el.setAttribute('viewBox', '0 0 ' + w + ' ' + hgt); el.setAttribute('class', 'v55-spark' + (big ? ' big' : '')); el.setAttribute('preserveAspectRatio', 'none'); el.setAttribute('aria-hidden', 'true');
-    if (s.length < 2) return el;
-    const lo = Math.min(...s), hi = Math.max(...s), span = hi - lo || 1, pad = 3;
-    const pts = s.map((v, i) => [(i / (s.length - 1)) * w, hgt - pad - ((v - lo) / span) * (hgt - pad * 2)]);
-    const line = document.createElementNS(SVGNS, 'polyline');
-    line.setAttribute('points', pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')); line.setAttribute('class', 'ln ' + dir(s[s.length - 1] - s[0]));
-    el.append(line);
-    return el;
+  const TV_LOCALE = { pt: 'br', en: 'en', es: 'es', fr: 'fr', de: 'de_DE', it: 'it' };
+  const TV_SCRIPT = n => 'https://s3.tradingview.com/external-embedding/embed-widget-' + n + '.js';
+  /* monta um widget: contêiner + script com a configuração em JSON (o formato oficial de embed) + o crédito ao TradingView */
+  function tvWidget(name, cfg, cls) {
+    const box = h('div', { class: 'v55-tv ' + cls });
+    const wrap = h('div', { class: 'tradingview-widget-container' });
+    const inner = h('div', { class: 'tradingview-widget-container__widget' });
+    const credit = h('div', { class: 'tradingview-widget-copyright' }, h('a', { href: 'https://www.tradingview.com/', target: '_blank', rel: 'noopener noreferrer' }, 'TradingView'));
+    const sc = document.createElement('script');
+    sc.type = 'text/javascript'; sc.async = true; sc.src = TV_SCRIPT(name);
+    sc.textContent = JSON.stringify(Object.assign({ locale: TV_LOCALE[LANG()] || 'en', colorTheme: 'dark', isTransparent: true }, cfg));
+    sc.onerror = () => { box.replaceChildren(h('p', { class: 'v52-sub', style: 'padding:16px' }, T('mkt.tvFail'))); };
+    wrap.append(inner, credit); wrap.append(sc); box.append(wrap);
+    return box;
   }
+  const SYM = {
+    tape: [['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['BMFBOVESPA:IBOV', 'Ibovespa'], ['FX_IDC:USDBRL', 'USD/BRL'], ['BITSTAMP:BTCUSD', 'Bitcoin'], ['OANDA:XAUUSD', 'Ouro']],
+    tabs: [
+      { title: { pt: 'Índices', en: 'Indices' }, symbols: [['BMFBOVESPA:IBOV', 'Ibovespa'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['FOREXCOM:DJI', 'Dow Jones'], ['INDEX:DEU40', 'DAX'], ['INDEX:NKY', 'Nikkei 225']] },
+      { title: { pt: 'Ações (B3)', en: 'Stocks (B3)' }, symbols: [['BMFBOVESPA:PETR4', 'Petrobras'], ['BMFBOVESPA:VALE3', 'Vale'], ['BMFBOVESPA:ITUB4', 'Itaú'], ['BMFBOVESPA:BBDC4', 'Bradesco'], ['BMFBOVESPA:BBAS3', 'Banco do Brasil'], ['BMFBOVESPA:WEGE3', 'WEG']] },
+      { title: { pt: 'Câmbio e commodities', en: 'FX and commodities' }, symbols: [['FX_IDC:USDBRL', 'USD/BRL'], ['FX_IDC:EURBRL', 'EUR/BRL'], ['FX:EURUSD', 'EUR/USD'], ['OANDA:XAUUSD', 'Ouro'], ['TVC:USOIL', 'Petróleo WTI'], ['BITSTAMP:BTCUSD', 'Bitcoin']] },
+    ],
+  };
   const marketPanel = makePanel({
     id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn,
     build: async ctx => {
       const { body, sub, alive } = ctx;
-      let ov = null, news = null, tab = 'overview', query = '', picked = null;
+      let tab = 'overview', news = null, newsLoaded = false;
+      const lg = LANG() === 'pt' ? 'pt' : 'en';
       sub(T('mkt.sub'));
-      const all = () => ov ? [...(ov.indices || []).map(x => Object.assign({ kind: 'index' }, x)), ...[...(ov.gainers || []), ...(ov.losers || [])].map(x => Object.assign({ kind: 'stock' }, x))] : [];
-      const match = a => { const q = query.trim().toLowerCase(); return !q || String(a.name).toLowerCase().includes(q) || String(a.symbol).toLowerCase().includes(q); };
-      const demo = () => !!(ov && ov.demo !== false);
-
-      const assetCard = a => h('button', { class: 'v55-asset', type: 'button', 'aria-pressed': String(picked && picked.symbol === a.symbol), onclick: () => { picked = a; draw(); } },
-        h('div', { class: 'top' }, h('span', { class: 'sym' }, String(a.symbol)), demo() ? h('span', { class: 'v52-soon' }, T('mkt.demoBadge')) : null),
-        h('b', {}, px(a.value)), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct)), chart(a.series));
-      const rankList = (title, list) => h('div', { class: 'v52-box' }, h('h3', {}, title),
-        list.length ? h('ul', { class: 'v55-rank' }, list.map(a => h('li', {}, h('button', { type: 'button', onclick: () => { picked = Object.assign({ kind: 'stock' }, a); draw(); } }, h('span', {}, String(a.symbol)), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct)))))) : h('p', { class: 'v52-sub' }, '—'));
-      const bigChart = () => {
-        const a = picked || (ov.indices || [])[0];
-        if (!a) return null;
-        return h('div', { class: 'v52-box' }, h('div', { class: 'v52-row' }, h('h3', {}, T('mkt.chartOf', { n: a.name })), h('span', { class: 'chg ' + dir(a.change_pct) }, sgn(a.change_pct))),
-          chart(a.series, { w: 600, hgt: 160, big: true }), h('p', { class: 'v52-note' }, demo() ? T('mkt.chartNote') : ''));
-      };
       const newsList = n => {
         const items = (n || []).slice(0, 8);
         if (!items.length) return h('div', { class: 'v52-center' }, T('mkt.newsEmpty'));
@@ -610,40 +602,29 @@
             it.summary ? h('p', {}, String(it.summary)) : null, h('div', { class: 'v52-meta' }, h('span', {}, String(it.source || '')), h('span', {}, fmtWhen(it.published))));
         }));
       };
-
-      function draw() {
-        if (!ov) return;
-        const idx = (ov.indices || []).filter(match), stk = [...(ov.gainers || []), ...(ov.losers || [])].filter(match);
-        const search = h('input', { class: 'v52-input', type: 'search', maxlength: 40, value: query, placeholder: T('mkt.search'), 'aria-label': T('mkt.search'),
-          oninput: e => { query = e.target.value; const pos = e.target.selectionStart; draw(); const n = body.querySelector('.v52-input'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } } });
-        const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'indices', 'news'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { tab = k; draw(); } }, T('mkt.tab.' + k))));
-        let main;
-        if (tab === 'news') main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))];
-        else if (tab === 'indices') main = idx.length ? [h('div', { class: 'v55-assets' }, idx.map(assetCard)), bigChart()] : [h('div', { class: 'v52-center' }, T('mkt.noMatch'))];
-        else if (tab === 'stocks') main = stk.length ? [h('div', { class: 'v55-assets' }, stk.map(assetCard)), bigChart()] : [h('div', { class: 'v52-center' }, T('mkt.noMatch'))];
-        else main = [h('div', { class: 'v55-assets' }, idx.map(assetCard)), bigChart(),
-          h('div', { class: 'v55-two' }, rankList(T('mkt.gainers'), ov.gainers || []), rankList(T('mkt.losers'), ov.losers || [])),
-          h('div', { class: 'v52-box' }, h('h3', {}, T('mkt.tab.news')), newsList((news || []).slice(0, 3)))];
-        const stamp = !demo() && ov.source && ov.as_of ? h('p', { class: 'v52-note' }, T('mkt.source', { s: String(ov.source), t: fmtWhen(ov.as_of) })) : null;
-        body.replaceChildren(
-          demo() ? h('p', { class: 'v52-msg v55-demo', role: 'status', 'data-kind': 'err' }, T('mkt.demo')) : null,
-          h('div', { class: 'v52-row' }, tabs, search), ...main.filter(Boolean), stamp);
-      }
-      async function load() {
-        body.replaceChildren(spinner(T('plans.loading')));
-        const [o, n] = await Promise.all([call('/market/overview'), call('/news/daily')]);
+      async function loadNews() {
+        const n = await call('/news/daily');
         if (!alive()) return;
-        if (!o.ok || !o.data || !Array.isArray(o.data.indices)) {
-          body.replaceChildren(h('div', { class: 'v52-center' }, errText('mkt', o.code), h('button', { class: 'pill-btn sm', type: 'button', onclick: () => load() }, T('mkt.retry'))));
-          return;
-        }
-        ov = o.data;
+        newsLoaded = true;
         const cats = n.ok && n.data && Array.isArray(n.data.categories) ? n.data.categories : [];
         const seen = new Set();   // Economia + Negócios, mais recentes primeiro, sem repetir link
         news = cats.filter(c => c.id === 'economia' || c.id === 'negocios').flatMap(c => c.items || []).sort((a, b) => String(b.published).localeCompare(String(a.published))).filter(i => (seen.has(i.url) ? false : seen.add(i.url)));
-        draw();
       }
-      await load();
+      const content = () => {
+        if (tab === 'stocks') return [tvWidget('screener', { width: '100%', height: '100%', defaultColumn: 'overview', defaultScreen: 'most_capitalized', market: 'brazil', showToolbar: true }, 'tall')];
+        if (tab === 'chart') return [tvWidget('advanced-chart', { autosize: true, symbol: 'BMFBOVESPA:IBOV', interval: 'D', timezone: 'America/Sao_Paulo', theme: 'dark', style: '1', allow_symbol_change: true, hide_side_toolbar: false, calendar: false, backgroundColor: 'rgba(5,5,10,1)', support_host: 'https://www.tradingview.com' }, 'chart')];
+        if (tab === 'news') return [tvWidget('timeline', { feedMode: 'market', market: 'stock', displayMode: 'regular', width: '100%', height: '100%' }, 'tall'),
+          h('div', { class: 'v52-box' }, h('h3', {}, T('mkt.tab.news')), newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote')))];
+        return [tvWidget('ticker-tape', { symbols: SYM.tape.map(([p, d]) => ({ proName: p, title: d })), showSymbolLogo: true, displayMode: 'adaptive' }, 'tape'),
+          tvWidget('market-overview', { dateRange: '12M', showChart: true, showSymbolLogo: true, showFloatingTooltip: false, width: '100%', height: '100%',
+            tabs: SYM.tabs.map(t => ({ title: t.title[lg], originalTitle: t.title.en, symbols: t.symbols.map(([s, d]) => ({ s, d })) })) }, 'mid')];
+      };
+      async function draw() {
+        if (tab === 'news' && !newsLoaded) { body.replaceChildren(spinner(T('plans.loading'))); await loadNews(); if (!alive()) return; }
+        const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'chart', 'news'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { if (tab !== k) { tab = k; draw(); } } }, T('mkt.tab.' + k))));
+        body.replaceChildren(tabs, ...content(), h('p', { class: 'v52-note' }, T('mkt.credit')));
+      }
+      await draw();
     },
   });
   if (marketBtn) marketBtn.addEventListener('click', () => { if (marketPanel.isOpen()) marketPanel.close(); else marketPanel.open(); });
