@@ -441,6 +441,36 @@ window.ORION_I18N = (() => {
   add("ide.err.timeout", "A resposta demorou demais.", "The response took too long.");
   add("ide.err.network", "Sem conexão com o servidor.", "No connection to the server.");
 
+  /* ═══ V5.5.0 — checkout dentro do ORION ═══ */
+  add("chk.title", "Assinar {name}", "Subscribe to {name}");
+  add("chk.back", "Voltar aos planos", "Back to plans");
+  add("chk.method", "Forma de pagamento", "Payment method");
+  add("chk.card", "Cartão", "Card");
+  add("chk.pix", "Pix", "Pix");
+  add("chk.features", "Principais recursos", "Key features");
+  add("chk.today", "A pagar hoje", "Due today");
+  add("chk.renews", "Renova por {p}/mês. Cancele quando quiser.", "Renews at {p}/month. Cancel anytime.");
+  add("chk.pixOnce", "Pagamento único: libera o plano por {d} dias e não renova sozinho.", "One-time payment: unlocks the plan for {d} days and does not renew on its own.");
+  add("chk.secure", "O pagamento é processado pelo Mercado Pago. O ORION não vê nem guarda os dados do seu cartão.", "Payment is processed by Mercado Pago. ORION never sees or stores your card details.");
+  add("chk.loading", "Carregando o pagamento…", "Loading payment…");
+  add("chk.sdkFail", "Não foi possível carregar o formulário de pagamento.", "Couldn’t load the payment form.");
+  add("chk.redirect", "Pagar no site do Mercado Pago", "Pay on the Mercado Pago site");
+  add("chk.pixGen", "Gerar QR Code do Pix", "Generate Pix QR code");
+  add("chk.pixScan", "Escaneie com o app do seu banco ou copie o código Pix.", "Scan with your bank app or copy the Pix code.");
+  add("chk.pixCopy", "Copiar código", "Copy code");
+  add("chk.pixCopied", "Copiado", "Copied");
+  add("chk.pixWait", "Aguardando o pagamento…", "Waiting for payment…");
+  add("chk.pixExpired", "O Pix expirou ou não foi aprovado. Gere um novo.", "The Pix expired or wasn’t approved. Generate a new one.");
+  add("chk.okTitle", "Tudo certo!", "All set!");
+  add("chk.okText", "{name} está ativo na sua conta.", "{name} is active on your account.");
+  add("chk.pending", "Estamos confirmando o pagamento. Pode levar alguns minutos; o plano ativa sozinho.", "We’re confirming the payment. It may take a few minutes; the plan activates on its own.");
+  add("chk.done", "Concluir", "Done");
+  add("chk.err.generic", "Não foi possível concluir o pagamento. Tente de novo.", "Couldn’t complete the payment. Please try again.");
+  add("chk.err.card_refused", "O cartão foi recusado. Confira os dados ou tente outro cartão.", "The card was declined. Check the details or try another card.");
+  add("chk.err.card_token_invalid", "Não foi possível ler os dados do cartão. Tente de novo.", "Couldn’t read the card details. Please try again.");
+  add("chk.err.plan_downgrade_blocked", "Você já tem um plano maior. Esse Pix não é necessário.", "You already have a higher plan. This Pix isn’t needed.");
+  add("chk.err.payment_not_found", "Pagamento não encontrado.", "Payment not found.");
+
   D.langs = LANGS;
   D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
   return D;
