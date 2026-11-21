@@ -741,9 +741,9 @@ const API = (() => {
     ui: 'en',               // idioma OFICIAL: inglês (EUA) · idioma ÚNICO (interface + reconhecimento de fala + prévia): pt · en · es · fr · de · it
     slot: 1, pace: 1, expr: 0.5,
   }, stored);
-  if (stored.v !== 2 && stored.v !== 3) prefs.ui = 'en';   // preferências da beta antiga: volta ao idioma oficial (inglês)
-  if (stored.v !== 3) prefs.wake = true;                    // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
-  prefs.v = 3;
+  if (stored.v !== 4) prefs.ui = 'en';                       // V5.5.0: inglês (EUA) é o idioma oficial: todos voltam a ele uma vez; depois vale a escolha da pessoa
+  if (stored.v !== 3 && stored.v !== 4) prefs.wake = true;   // V4.5.0: "Hey ORION" ligado por padrão (depois disso vale a escolha da pessoa)
+  prefs.v = 4;
   delete prefs.used;
   delete prefs.lang;
   prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'en';
