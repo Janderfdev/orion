@@ -224,14 +224,22 @@ body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }
 .answer-source[hidden]{ display:none; }
 
 /* ═══════ campo de pergunta ═══════ */
-.ask{
-  position:absolute; left:50%; z-index:5; bottom:76px; width:min(660px, 90vw); height:52px; padding:0 6px;
+.ask{   /* V5.5.0: a barra do chat ocupa o lugar do dock: ao abrir, ela cresce a partir da largura do dock (--dock-w, medida por orion-v52.js) e os ícones do dock somem */
+  position:absolute; left:50%; z-index:5; bottom:var(--corner,14px); width:var(--dock-w,280px); height:52px; padding:0 6px;
   display:flex; align-items:center; gap:4px; border-radius:999px; background:var(--ask-bg); border:1px solid var(--line);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-  opacity:0; visibility:hidden; pointer-events:none; transform:translate(-50%, 70vh) scale(.92);
-  transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease, border-color .25s ease, box-shadow .25s ease, visibility 0s linear .9s;
+  opacity:0; visibility:hidden; pointer-events:none; transform:translateX(-50%);
+  transition:width .5s cubic-bezier(.2,.8,.2,1), opacity .18s ease .3s, border-color .25s ease, box-shadow .25s ease, visibility 0s linear .5s;
 }
-.ask.open{ opacity:1; visibility:visible; pointer-events:auto; transform:translate(-50%, 0) scale(1); transition:transform .9s cubic-bezier(.16,.9,.24,1.06), opacity .5s ease .08s, border-color .25s ease, box-shadow .25s ease, visibility 0s; }
+.ask.open{ width:min(660px, 90vw); opacity:1; visibility:visible; pointer-events:auto; transition:width .55s cubic-bezier(.2,.8,.2,1), opacity .12s ease, border-color .25s ease, box-shadow .25s ease, visibility 0s; }
+.ask > *{ opacity:0; transition:opacity .12s ease; }
+.ask.open > *{ opacity:1; transition:opacity .28s ease .22s; }
+.ask-close{ width:38px; height:38px; border-radius:50%; border:0; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center; color:rgba(var(--w),.62); background:transparent; transition:color .2s ease, background .2s ease; }
+.ask-close:hover{ color:var(--fg); background:rgba(var(--act-hi),.8); }
+.ask-close:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+/* com o chat em uso o dock fica escondido (a barra ocupa o lugar dele); ao fechar o chat o dock volta logo depois que a barra encolhe */
+body.chat-open .dock{ opacity:0; visibility:hidden; pointer-events:none; transform:translateX(-50%) scale(.96); transition:opacity .14s ease, transform .2s ease, visibility 0s linear .14s; }
+body.chat-closing .dock{ transition-delay:.22s, .22s, 0s; }
 .ask:focus-within{ border-color:rgba(var(--acc),.6); box-shadow:0 0 0 3px rgba(var(--act-hi),.8); }
 .ask-input{ flex:1; min-width:0; height:100%; padding-left:8px; background:none; border:0; outline:none; color:var(--fg); font:500 14px var(--font); letter-spacing:.03em; }
 .ask-input::placeholder{ color:rgba(var(--w),.45); }
@@ -254,13 +262,11 @@ body.chat-open .orb-zone:not(.panel-open){ transform:scale(.78); }
 .attach-del{ width:22px; height:22px; flex:none; border-radius:50%; border:0; cursor:pointer; color:rgba(var(--w),.65); background:rgba(var(--w),.08); font:600 14px/1 var(--font); transition:background .2s ease, color .2s ease; }
 .attach-del:hover{ background:rgba(var(--w),.18); color:var(--fg); }
 .attach-del:disabled{ opacity:.4; cursor:default; }
-@media (max-width:760px){ .ask{ bottom:76px; } }
 .siri{   /* a luz que aparece quando o chat abre: só em volta da barra de pergunta (mesma largura e posição de .ask) */
-  position:fixed; left:50%; bottom:76px; width:min(660px, 90vw); height:52px; border-radius:999px; z-index:4; pointer-events:none; opacity:0; transform:translateX(-50%) scale(.96);
+  position:fixed; left:50%; bottom:var(--corner,14px); width:min(660px, 90vw); height:52px; border-radius:999px; z-index:4; pointer-events:none; opacity:0; transform:translateX(-50%) scale(.96);
   box-shadow:0 0 0 1px rgba(var(--acc),.5), 0 0 22px 4px rgba(var(--act-hi),.85), 0 0 56px 10px rgba(var(--act),.5);
 }
-@media (max-width:760px){ .siri{ bottom:76px; } }
-.siri.play{ animation:siri 1.7s cubic-bezier(.2,.75,.2,1) forwards; }
+.siri.play{ animation:siri 1.7s cubic-bezier(.2,.75,.2,1) .3s forwards; }
 @keyframes siri{ 0%{ opacity:0; transform:translateX(-50%) scale(.96); } 35%{ opacity:1; transform:translateX(-50%) scale(1.02); } 100%{ opacity:0; transform:translateX(-50%) scale(1.05); } }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -312,8 +318,8 @@ body.module-open .ask, body.module-open .cap{ opacity:0 !important; pointer-even
 @media (min-width:1100px){
   :root{ --mod-s:max(232px,17vw); --mod-t:28px; --mod-b:28px; --mod-r:36px; --arc-gap:12px; }
 }
-body:is(.chat-answer,.cap-fade){ --mod-b:140px; }   /* a resposta termina acima da barra de pergunta, que fica acima do dock */
-@media (max-width:760px){ body:is(.chat-answer,.cap-fade){ --mod-b:140px; } }
+body:is(.chat-answer,.cap-fade){ --mod-b:92px; }   /* a resposta termina acima da barra do chat, que agora ocupa o lugar do dock */
+@media (max-width:760px){ body:is(.chat-answer,.cap-fade){ --mod-b:92px; } }
 .stage{ transition:padding .6s cubic-bezier(.16,.9,.24,1); }
 .stage:has(.orb.module), body.module-open .stage{ padding-bottom:calc(var(--mod-b) - var(--mod-t)); }   /* a Orb (e o arco) sobem para ficar centrados no painel: vale para a resposta do chat e para todos os módulos, já que a margem de baixo é maior que a de cima (dock) */
 body.module-open #chatBtn{ opacity:.35; cursor:default; }   /* o chat não é ativado dentro dos módulos */
@@ -911,6 +917,9 @@ body.module-open:not(.dock-peek) .dock{ opacity:0; visibility:hidden; pointer-ev
     <button class="ask-send" id="askSend" type="submit" aria-label="Enviar" tabindex="-1" data-i18n-aria="send.aria">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </button>
+    <button class="ask-close" id="askClose" type="button" aria-label="Fechar o chat" title="Fechar o chat" tabindex="-1" data-i18n-aria="ask.close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </form>
 
   <div class="hint">
@@ -1022,12 +1031,12 @@ window.ORION_SIGNOUT = async () => {
 };
 </script>
 <script src="../seasonal-logo.js"></script>
-<script src="js/i18n.js?c=18"></script>
+<script src="js/i18n.js?c=19"></script>
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
 <script defer src="js/app.js?c=18"></script>
 <script defer src="js/orion-v5.js?c=12"></script>
-<script defer src="js/orion-v52.js?c=21"></script>
+<script defer src="js/orion-v52.js?c=22"></script>
 </body>
 </html>
