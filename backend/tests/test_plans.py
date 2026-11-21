@@ -1,4 +1,4 @@
-"""Testes do catálogo de planos V5.2.0 e da integração com a cota (sem rede)."""
+"""Testes do catálogo de planos (V5.2.0, atualizado na V5.5.0 com o ULTRA) e da integração com a cota (sem rede)."""
 import importlib
 
 import pytest
@@ -8,13 +8,13 @@ from billing import plans
 
 # ── catálogo ──
 def test_order_and_ranks():
-    assert plans.ORDER == ("free", "plus", "pro")                 # o ULTRA é da V5.5.0: não existe na V5.2.0
-    assert [plans.PLANS[i].rank for i in plans.ORDER] == [0, 1, 2]
-    assert "ultra" not in plans.PLANS and plans.get("ultra").id == "free"   # plano que não existe = free
+    assert plans.ORDER == ("free", "plus", "pro", "ultra")        # V5.5.0: o ULTRA entra no catálogo
+    assert [plans.PLANS[i].rank for i in plans.ORDER] == [0, 1, 2, 3]
+    assert plans.get("ultra").id == "ultra" and plans.get("inexistente").id == "free"
 
 
 def test_unknown_or_bad_plan_is_free():
-    for bad in (None, "", "   ", "admin", "ultra", "PRO ", 5, ["pro"], {"plan": "pro"}):
+    for bad in (None, "", "   ", "admin", "supremo", "PRO ", 5, ["pro"], {"plan": "pro"}):
         got = plans.get(bad).id
         assert got in ("free", "pro"), bad          # "PRO " é normalizado de propósito; o resto vira free
         if bad != "PRO ":
@@ -24,7 +24,7 @@ def test_unknown_or_bad_plan_is_free():
 
 def test_daily_limits_grow_with_plan():
     lim = plans.daily_limits()
-    assert lim["free"] < lim["plus"] < lim["pro"]
+    assert lim["free"] < lim["plus"] < lim["pro"] < lim["ultra"]
 
 
 def test_each_plan_includes_the_previous_one():
@@ -48,25 +48,29 @@ def test_every_plan_has_api_with_growing_quota_and_keys():
     m = [plans.PLANS[p].api_monthly for p in plans.ORDER]
     r = [plans.PLANS[p].api_per_minute for p in plans.ORDER]
     k = [plans.PLANS[p].api_max_keys for p in plans.ORDER]
-    assert 0 < m[0] < m[1] < m[2] and 0 < r[0] < r[1] < r[2] and 1 == k[0] < k[1] <= k[2]
+    assert 0 < m[0] < m[1] < m[2] < m[3] and 0 < r[0] < r[1] < r[2] < r[3] and 1 == k[0] < k[1] <= k[2] <= k[3]
 
 
-def test_unreleased_features_are_never_granted():
-    # ORION CODE é V5.5.0: não antecipar versões futuras
-    for p in plans.ORDER:
-        assert not plans.can(p, "orion_code")
-    assert "orion_code" in plans.PLANS["pro"].features      # o direito existe; só não está liberado
+def test_orion_code_is_pro_and_ultra_only():
+    # V5.5.0: o ORION CODE existe de verdade, mas só PRO e ULTRA o recebem
+    assert [plans.can(p, "orion_code") for p in plans.ORDER] == [False, False, True, True]
 
 
 def test_catalog_only_claims_what_exists_today():
     # o ORION ainda não gera imagens e não tem multitarefa/análises por plano: nada disso pode aparecer como recurso do plano
     for p in plans.ORDER:
-        for f in ("images_basic", "images_advanced", "multitask", "advanced_analysis", "orion_code"):
+        for f in ("images_basic", "images_advanced", "multitask", "advanced_analysis"):
             assert not plans.can(p, f), (p, f)
     shown = {f for c in plans.public_catalog() for f in c["features"]}
-    assert shown == {"chat", "history", "voices_4", "api"}
+    assert shown == {"chat", "history", "voices_4", "api", "orion_code"}
     assert "voices_4" not in plans.public_catalog()[0]["features"]            # FREE não tem as 4 vozes
+    assert "orion_code" not in plans.public_catalog()[1]["features"]          # PLUS não tem o ORION CODE
     assert "api" in plans.public_catalog()[0]["features"]                     # mas tem ORION API (reduzido)
+
+
+def test_ultra_is_not_for_sale_yet(monkeypatch):
+    monkeypatch.setenv("ORION_PRICE_ULTRA", "9990")                            # mesmo com preço no ambiente, o ULTRA não é vendido sem o checkout dele
+    assert plans._build()["ultra"].price_cents is None and not plans.PLANS["ultra"].purchasable
 
 
 def test_unknown_feature_is_denied():
@@ -75,7 +79,7 @@ def test_unknown_feature_is_denied():
 
 def test_free_is_never_purchasable_and_no_price_means_not_for_sale(monkeypatch):
     assert not plans.PLANS["free"].purchasable
-    for v in ("ORION_PRICE_PLUS", "ORION_PRICE_PRO"):
+    for v in ("ORION_PRICE_PLUS", "ORION_PRICE_PRO", "ORION_PRICE_ULTRA"):
         monkeypatch.delenv(v, raising=False)
     fresh = plans._build()
     assert all(p.price_cents is None and not p.purchasable for p in fresh.values())
@@ -103,6 +107,7 @@ def test_limits_from_env_and_bad_values_fall_back(monkeypatch):
     fresh = plans._build()
     assert fresh["plus"].daily_questions == 250
     assert fresh["pro"].daily_questions == 500            # inválido -> padrão
+    assert fresh["ultra"].daily_questions == 1500
     assert fresh["free"].daily_questions == 0             # negativo vira 0 (nunca "ilimitado" por engano)
 
 
@@ -117,14 +122,13 @@ def test_effective_plan_expiry():
 
 
 # ── catálogo público (o site) ──
-def test_public_catalog_has_no_internal_fields_and_hides_unreleased():
+def test_public_catalog_has_no_internal_fields():
     cat = plans.public_catalog()
     assert [c["id"] for c in cat] == list(plans.ORDER)
     allowed = {"id", "name", "price_cents", "currency", "purchasable", "daily_questions", "voices", "api", "features"}
     for c in cat:
         assert set(c) == allowed
-        assert "orion_code" not in c["features"]
-    assert 0 < cat[0]["api"]["monthly"] < cat[1]["api"]["monthly"] < cat[2]["api"]["monthly"] and cat[0]["api"]["keys"] == 1
+    assert 0 < cat[0]["api"]["monthly"] < cat[1]["api"]["monthly"] < cat[2]["api"]["monthly"] < cat[3]["api"]["monthly"] and cat[0]["api"]["keys"] == 1
 
 
 # ── integração com core/quota.py ──
@@ -143,18 +147,19 @@ def _fake_quota(quota_mod, doc):
 
 
 def test_quota_limits_come_from_catalog(quota_mod):
-    assert quota_mod.LIMITS == plans.daily_limits() and "ultra" not in quota_mod.LIMITS
+    assert quota_mod.LIMITS == plans.daily_limits() and "ultra" in quota_mod.LIMITS
 
 
-def test_quota_reads_pro_plan_and_ignores_ultra(quota_mod):
+def test_quota_reads_pro_and_ultra_plans(quota_mod):
     qt = _fake_quota(quota_mod, {"plan": {"stringValue": "pro"}})
     st = {"plan": "free", "plan_at": 0.0}
     qt._refresh_plan("u", st, "2026-11-09")
     assert st["plan"] == "pro"
-    qt = _fake_quota(quota_mod, {"plan": {"stringValue": "ultra"}})   # ULTRA só na V5.5.0: documento antigo/manual vira free
-    st = {"plan": "pro", "plan_at": 0.0}
+    qt = _fake_quota(quota_mod, {"plan": {"stringValue": "ultra"}})
+    st = {"plan": "free", "plan_at": 0.0}
     qt._refresh_plan("u", st, "2026-11-09")
-    assert st["plan"] == "free"
+    assert st["plan"] == "ultra"
+    assert quota_mod.OWNER_PLAN == "ultra"
 
 
 def test_quota_expired_or_unknown_plan_is_free(quota_mod):
