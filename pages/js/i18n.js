@@ -346,6 +346,7 @@ window.ORION_I18N = (() => {
   add("news.say.intro", "Resumo do dia, {d}.", "Daily brief, {d}.");
   add("news.say.foreign", "Uma manchete em outro idioma:", "A headline in another language:");
   add("news.say.dev", "Ainda em desenvolvimento.", "Still developing.");
+  add("ask.close", "Fechar o chat", "Close chat", "Cerrar el chat", "Fermer le chat", "Chat schließen", "Chiudi la chat");
   add("dock.show", "Mostrar a barra de botões", "Show the button bar");
   add("split.open", "Abrir ao lado", "Open side by side", "Abrir al lado", "Ouvrir côte à côte", "Daneben öffnen", "Apri affiancato");
   add("split.swap", "Trocar de lado", "Swap sides", "Intercambiar lados", "Échanger les côtés", "Seiten tauschen", "Scambia i lati");
