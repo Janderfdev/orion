@@ -748,13 +748,22 @@ const API = (() => {
   delete prefs.lang;
   prefs.ui = I18N.langs.includes(prefs.ui) ? prefs.ui : 'en';
   prefs.voice = true;                       // as respostas sempre são faladas (a opção saiu das configurações)
-  delete prefs.calm;
+  prefs.calm = !!prefs.calm;                 // V5.5.0: "Reduzir efeitos" (Configurações › Aparência)
+  prefs.tips = prefs.tips !== false;         // nomes dos recursos ao passar o mouse no dock
+  prefs.autohide = !!prefs.autohide;         // recolher o dock em barrinha com um painel aberto
+  prefs.dockPos = prefs.dockPos === 'left' ? 'left' : 'right';
   prefs.slot = [1, 2, 3, 4].includes(prefs.slot) ? prefs.slot : 1;
   prefs.pace = clamp(Number.isFinite(+prefs.pace) ? +prefs.pace : 1, 0, 1.5);   // Ritmo: 0.0× a 1.50×
   prefs.expr = clamp(Number.isFinite(+prefs.expr) ? +prefs.expr : 0.5, 0, 1);
   prefs.theme = ['indigo', 'midnight', 'purple'].includes(prefs.theme) ? prefs.theme : 'indigo';   // 'preto'/'nebulosa' antigos viram índigo
   const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (_) {} };
   savePrefs();
+  const applyLook = () => {                  // V5.5.0: aparência e dock (classes no <body>; o CSS está em orion.html)
+    const b = document.body.classList;
+    b.toggle('calm', !!prefs.calm); b.toggle('no-tips', prefs.tips === false);
+    b.toggle('dock-autohide', !!prefs.autohide); b.toggle('dock-left', prefs.dockPos === 'left');
+  };
+  applyLook();
 
   I18N.set(prefs.ui); I18N.apply();
   try { ORB.init(); } catch (err) { console.error('[ORION] ORB.init failed:', err); }
@@ -1351,6 +1360,12 @@ const API = (() => {
               <span class="code-ver">${t('code.proOnly')}</span>
               <button id="codeOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('code.codeOpen')}</button>
             </div>
+            <div class="code-card">
+              <span class="code-badge ok">${t('code.available')}</span>
+              <h3>${t('wk.task')}</h3>
+              <p>${t('wk.taskD')}</p>
+              <button id="taskOpen" class="pill-btn primary block" type="button" style="margin-top:auto">${t('wk.taskOpen')}</button>
+            </div>
           </div>
           <p class="code-note">${t('code.note')}</p>
           <div class="code-foot"><button id="codeClose" class="pill-btn primary block" type="button">${t('code.close')}</button></div>
@@ -1358,6 +1373,7 @@ const API = (() => {
       document.body.appendChild(panel);
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#codeClose').addEventListener('click', () => setOpen(false));
+      panel.querySelector('#taskOpen').addEventListener('click', () => { const b = document.getElementById('taskBtn'); if (b) b.click(); });   // V5.5.0: a Multitarefa agora abre por aqui (o botão fica escondido no DOM)
       panel.querySelector('#codeOpen').addEventListener('click', () => { if (window.ORION_CODE) window.ORION_CODE.open(); });   // V5.5.0: o painel do ORION CODE fecha este (Esc) e abre
       panel.querySelector('#apiOpen').addEventListener('click', () => { if (window.ORION_API_PANEL) window.ORION_API_PANEL.open(); });   // V5.2.0: o painel do ORION API fecha este (Esc) e abre
     }
@@ -1420,6 +1436,10 @@ const API = (() => {
       panel.querySelector('#avatarDel').hidden = !av;
       panel.querySelector('#setPlan').textContent = quota ? quota.plan.toUpperCase() + ' · ' + quota.used + '/' + quota.limit : '—';
       panel.querySelector('#toggleSound').setAttribute('aria-checked', String(!!prefs.sound));
+      panel.querySelector('#toggleCalm').setAttribute('aria-checked', String(!!prefs.calm));
+      panel.querySelector('#toggleTips').setAttribute('aria-checked', String(prefs.tips !== false));
+      panel.querySelector('#toggleAutohide').setAttribute('aria-checked', String(!!prefs.autohide));
+      panel.querySelector('#dockPos').value = prefs.dockPos;
       const tw = panel.querySelector('#toggleWake');
       tw.setAttribute('aria-checked', String(wakeOn()));
       tw.disabled = !VOICE.isAvailable;
@@ -1440,6 +1460,9 @@ const API = (() => {
       }
       panel.querySelector('#uiSelect').value = prefs.ui;
     }
+
+    const SET_CATS = [['general'], ['look'], ['ai'], ['notif'], ['privacy'], ['dock'], ['about']];
+    let setCat = 'general';
 
     function build() {
       panel = document.createElement('div');
@@ -1468,14 +1491,42 @@ const API = (() => {
               </div>
             </aside>
             <div class="set-list">
-              <div class="set-row"><span class="ico">${IC.model}</span><div><h3>${t('set.model')}</h3><p>${t('set.modelD')}</p></div><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
-              <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
-              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
+              <div class="v52-tabs set-tabs" id="setTabs" role="tablist" aria-label="${t('set.title')}">${SET_CATS.map(([k]) => `<button class="v52-tab" type="button" role="tab" data-cat="${k}" aria-selected="${k === setCat}">${t('set.cat.' + k)}</button>`).join('')}</div>
+              <section class="set-cat" data-cat="general">
               <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.ui')}</h3><p>${t('set.uiD')}</p></div><select id="uiSelect" class="settings-select" aria-label="${t('set.ui')}">${I18N.langs.map(l => `<option value="${l}">${t('lang.' + l)}</option>`).join('')}</select></div>
+              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.sound')}</h3><p>${t('set.soundD')}</p></div><button id="toggleSound" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.sound')}"></button></div>
               <div class="set-row set-group"><span class="ico">${IC.gestures}</span><div><h3>${t('set.gestures')}</h3><p>${t('set.gesturesD')}</p></div></div>
               <div class="set-row set-sub"><span class="ico">${IC.wake}</span><div><h3>${t('set.gWake')}</h3><p>${t('set.wakeD')}</p></div><button id="toggleWake" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="Hey ORION"></button></div>
               <div class="set-row set-sub"><span class="ico">${IC.clap}</span><div><h3>${t('set.gClap')}</h3><p>${t('set.gClapD')}</p></div><button id="toggleClap" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="${t('set.gClap')}"></button></div>
+              </section>
+              <section class="set-cat" data-cat="look" hidden>
               <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.theme')}</h3><p>${t('set.themeD')}</p></div><div class="theme-swatches" id="themeSwatches" role="radiogroup" aria-label="${t('set.theme')}">${THEMES.map(k => `<button type="button" class="sw sw-${k}" role="radio" aria-checked="false" data-k="${k}" aria-label="${t('theme.' + k)}" title="${t('theme.' + k)}"></button>`).join('')}</div></div>
+              <div class="set-row"><span class="ico">${IC.theme}</span><div><h3>${t('set.calm')}</h3><p>${t('set.calmD')}</p></div><button id="toggleCalm" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="${t('set.calm')}"></button></div>
+              </section>
+              <section class="set-cat" data-cat="ai" hidden>
+              <div class="set-row"><span class="ico">${IC.model}</span><div><h3>${t('set.model')}</h3><p>${t('set.modelD')}</p></div><select id="modelSelect" class="settings-select" aria-label="${t('set.model')}"></select></div>
+              <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.voice')}</h3><p>${t('set.voiceD')}</p></div><button id="openVoice" class="pill-btn" type="button">${t('set.open')}</button></div>
+              </section>
+              <section class="set-cat" data-cat="notif" hidden>
+                <p class="set-empty">${t('set.notifEmpty')}</p>
+              </section>
+              <section class="set-cat" data-cat="privacy" hidden>
+              <div class="set-row"><span class="ico">${IC.voice}</span><div><h3>${t('set.mic')}</h3><p>${t('set.micD')}</p></div><span class="set-val" id="micState">—</span></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.privacyLink')}</h3><p>${t('set.privacyD')}</p></div><a class="set-link" href="../privacy.html" target="_blank" rel="noopener">${t('set.open')}</a></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.termsLink')}</h3><p>${t('set.termsD')}</p></div><a class="set-link" href="../terms.html" target="_blank" rel="noopener">${t('set.open')}</a></div>
+              <div class="set-row"><span class="ico">${IC.out}</span><div><h3>${t('set.sessions')}</h3><p>${t('set.sessionsD')}</p></div><button id="sessionOut" class="pill-btn" type="button">${t('set.signout')}</button></div>
+              </section>
+              <section class="set-cat" data-cat="dock" hidden>
+              <div class="set-row"><span class="ico">${IC.gestures}</span><div><h3>${t('set.dockPos')}</h3><p>${t('set.dockPosD')}</p></div><select id="dockPos" class="settings-select" aria-label="${t('set.dockPos')}"><option value="right">${t('set.dockRight')}</option><option value="left">${t('set.dockLeft')}</option></select></div>
+              <div class="set-row"><span class="ico">${IC.sound}</span><div><h3>${t('set.tips')}</h3><p>${t('set.tipsD')}</p></div><button id="toggleTips" class="pill-switch" type="button" role="switch" aria-checked="true" aria-label="${t('set.tips')}"></button></div>
+              <div class="set-row"><span class="ico">${IC.gestures}</span><div><h3>${t('set.autohide')}</h3><p>${t('set.autohideD')}</p></div><button id="toggleAutohide" class="pill-switch" type="button" role="switch" aria-checked="false" aria-label="${t('set.autohide')}"></button></div>
+              </section>
+              <section class="set-cat" data-cat="about" hidden>
+              <div class="set-row"><span class="ico">${IC.star}</span><div><h3>${t('set.version')}</h3><p>${t('set.versionD')}</p></div><span class="set-val">V5.5.0</span></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.platform')}</h3><p>${t('set.platformD')}</p></div><span class="set-val">ORION AI</span></div>
+              <div class="set-row"><span class="ico">${IC.wake}</span><div><h3>${t('set.update')}</h3><p>${t('set.updateD')}</p></div><button id="reloadApp" class="pill-btn" type="button">${t('set.reload')}</button></div>
+              <div class="set-row"><span class="ico">${IC.globe}</span><div><h3>${t('set.docs')}</h3><p>${t('set.docsD')}</p></div><a class="set-link" href="https://github.com/Janderfdev/orion/tree/main/docs" target="_blank" rel="noopener">${t('set.open')}</a></div>
+              </section>
             </div>
           </div>
           <div class="set-foot">
@@ -1500,6 +1551,26 @@ const API = (() => {
       });
       panel.querySelector('#avatarDel').addEventListener('click', () => { AVATAR.clear(); aMsg.hidden = true; sync(); });
       panel.querySelector('#openVoice').addEventListener('click', () => { setOpen(false); vs.show(); });
+      /* V5.5.0: categorias, aparência, dock e privacidade (cada controle muda algo real) */
+      const showCat = k => {
+        setCat = k;
+        panel.querySelectorAll('.set-cat').forEach(sec => { sec.hidden = sec.dataset.cat !== k; });
+        panel.querySelectorAll('#setTabs .v52-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.cat === k)));
+        const body = panel.querySelector('.set-body'); if (body) body.scrollTop = 0;
+      };
+      panel.querySelector('#setTabs').addEventListener('click', e => { const b = e.target.closest('.v52-tab'); if (b) showCat(b.dataset.cat); });
+      showCat(setCat);
+      const flip = (id, key, inv) => panel.querySelector(id).addEventListener('click', () => { prefs[key] = !prefs[key]; savePrefs(); applyLook(); sync(); });
+      flip('#toggleCalm', 'calm'); flip('#toggleAutohide', 'autohide');
+      panel.querySelector('#toggleTips').addEventListener('click', () => { prefs.tips = prefs.tips === false; savePrefs(); applyLook(); sync(); });
+      panel.querySelector('#dockPos').addEventListener('change', e => { prefs.dockPos = e.target.value === 'left' ? 'left' : 'right'; savePrefs(); applyLook(); });
+      panel.querySelector('#sessionOut').addEventListener('click', () => panel.querySelector('#signOutBtn').click());
+      panel.querySelector('#reloadApp').addEventListener('click', () => window.location.reload());
+      (async () => {                                     // estado REAL da permissão do microfone (somente leitura; muda nas configurações do navegador)
+        const el = panel.querySelector('#micState');
+        try { const p = await navigator.permissions.query({ name: 'microphone' }); const show = () => { el.textContent = t('set.perm.' + (['granted', 'denied', 'prompt'].includes(p.state) ? p.state : 'unknown')); }; show(); p.onchange = show; }
+        catch (_) { el.textContent = t('set.perm.unknown'); }
+      })();
       panel.querySelector('#toggleSound').addEventListener('click', () => { prefs.sound = !prefs.sound; savePrefs(); sync(); if (prefs.sound) sfx('activate'); });
       panel.querySelector('#toggleWake').addEventListener('click', () => {
         if (!VOICE.isAvailable) return;
