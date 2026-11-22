@@ -526,6 +526,9 @@ window.ORION_I18N = (() => {
   add("set.docs", "Documentação", "Documentation");
   add("set.docsD", "Guia da ORION API e da plataforma.", "ORION API and platform guide.");
 
+  add("mkt.openTv", "Ver no TradingView", "Open on TradingView");
+  add("mkt.loading", "Carregando cotação…", "Loading quote…");
+
   D.langs = LANGS;
   D.locales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT' };
   return D;
