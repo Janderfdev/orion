@@ -4,10 +4,10 @@
 
 ### **A digital presence inspired by the Orion Constellation.**
 
-**“The future begins with curiosity.”**
+**“Inteligência além dos limites.”**
 
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/Version-5.2.0-4B287D?style=for-the-badge)](#-version-history)
+[![Version](https://img.shields.io/badge/Version-5.5.0-4B287D?style=for-the-badge)](#-version-history)
 [![Status](https://img.shields.io/badge/Status-Beta-FF9800?style=for-the-badge)](#-current-status)
 [![Launch](https://img.shields.io/badge/Public%20Launch-Coming%20Soon-4B282D?style=for-the-badge)](#-public-launch--coming-soon)
 [![License](https://img.shields.io/badge/License-MIT-1B5E20?style=for-the-badge)](LICENSE)
@@ -244,30 +244,29 @@ API keys and other secrets must remain protected on the backend and must never b
 
 # 📍 Current Status
 
-**Current version: V5.2.0 — Beta**
+**Current version: V5.5.0 — ORION EXPANSION (in development)**
 
-ORION AI is in active development, evolving from its foundational interface and model integration toward a more structured system for orchestration, tools and future platform capabilities.
-
-Version 5.0 marks an important architectural milestone in the project's evolution toward **ORION AI Platform**.
+ORION AI is currently in the **Expansion** phase. V5.5.0 focuses on bringing the platform's main capabilities into a more coherent product experience, improving navigation and establishing a consistent visual language across its environments.
 
 The current development priorities are:
 
-- Consolidating the core architecture.
-- Improving reliability and error handling.
-- Separating model-provider logic from application behavior.
-- Establishing the foundations for agent orchestration and tool integration.
-- Maintaining secure handling of credentials and requests.
-- Preparing the project for future API, memory, vision and voice capabilities.
+- Unifying the visual design and interaction patterns across the platform.
+- Organizing the dock around four main areas: Chat, Workspace, Market and Settings.
+- Bringing ORION Code, ORION API and Multitasking together inside Workspace.
+- Bringing market information and the Daily Brief together inside Market.
+- Improving Settings while preserving the existing account and preference experience.
+- Continuing development of ORION Ultra and the developer experience.
+- Improving reliability, responsiveness, accessibility and security.
 
-ORION AI remains a work in progress. Features described as planned, experimental or under development should not be assumed to be fully available in the current Beta.
+ORION AI remains in Beta and V5.5.0 is under development. Features described as planned, experimental or in progress should not be assumed to be fully available until implementation and testing are complete.
 
 Feedback and testing are valuable, but the project may still contain bugs, incomplete functionality or breaking changes.
 
 ---
 
-## What V5.2.0 adds
+## Existing platform foundations
 
-- **Plans — ORION FREE, PLUS and PRO.** One catalog (`backend/billing/plans.py`) decides what each plan can do; limits and prices come from server settings, never from the browser. ORION ULTRA and ORION CODE are planned for V5.5.0.
+- **Plans — ORION FREE, PLUS and PRO.** One catalog (`backend/billing/plans.py`) decides what each plan can do; limits and prices come from server settings, never from the browser. ORION ULTRA and ORION CODE are part of the V5.5.0 expansion scope; availability depends on implementation and testing.
 - **Subscriptions with Mercado Pago.** Checkout, webhook with signature validation, renewals, declined payments, cancellation, refunds and payment history. A plan is activated only after the server confirms the payment with the provider. Card data never reaches ORION. See [`docs/BILLING.md`](docs/BILLING.md).
 - **ORION API.** Available on every plan (FREE with a reduced quota and one key; PLUS and PRO with more). API keys (shown once, stored only as a hash), rotation and revocation, per-minute limits, monthly quota, standardized errors and `POST /v1/chat` on top of ORION Core. See [`docs/API.md`](docs/API.md).
 - **Daily Brief.** News by category from public RSS feeds of recognized outlets: headlines, snippets, dates and links come from the sources themselves; repeated stories are merged; nothing is written by the model.
@@ -288,8 +287,8 @@ The roadmap represents the intended direction of development. Milestones and fea
 | Milestone | Focus |
 |---|---|
 | **V5.0** | ORION Core and agent architecture foundations |
-| **V5.2.0** | Plans, subscriptions, ORION API and Daily Brief *(this release)* |
-| **V5.5.0** | ORION CODE and an initial developer preview |
+| **V5.2.0** | Plans, subscriptions, ORION API and Daily Brief *(previous milestone)* |
+| **V5.5.0** | ORION EXPANSION: unified interface, four main environments, Workspace, Market, ORION Ultra and developer tools *(current phase; in development)* |
 | **V6.0** | Memory System and personalization |
 | **V7.0** | Vision Layer for supported images and documents |
 | **V8.0** | Voice and integration of core capabilities |
@@ -347,8 +346,8 @@ See [`LICENSE`](LICENSE) for the applicable terms.
 
 **A digital presence. An evolving intelligence. A platform for what comes next.**
 
-*“The future begins with curiosity.”*
+*“Inteligência além dos limites.”*
 
-**Beta development · Target public launch: Coming Soon**
+**V5.5.0 · ORION EXPANSION · Beta development · Public launch: Coming Soon**
 
 </div>
