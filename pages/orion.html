@@ -5,7 +5,7 @@
 <script src="../standby.js" data-mount></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>ORION AI</title>
-<meta name="theme-color" content="#08080D">
+<meta name="theme-color" content="#000000">
 <script>
 /* V5.0: tema salvo neste navegador (só em orion.html): indigo (padrão) · midnight (Dark Blue) · purple (Deep Purple). Aplicado antes de pintar a tela. */
 try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.documentElement.dataset.theme=['indigo','midnight','purple'].indexOf(s.theme)>-1?s.theme:'indigo'}catch(e){document.documentElement.dataset.theme='indigo'}
@@ -28,16 +28,16 @@ try{var s=JSON.parse(localStorage.getItem('orion_settings')||'{}');document.docu
   --halo:calc(var(--orb) * 1.9);
   --core-a:#3A3678; --core-b:#1C1A40; --core-c:#6A63B0;
   color-scheme:dark;
-  --bg:#08080D; --fg:#E6E1F2; --fg2:#8E89A8; --w:230,225,242;   /* V5.5.0: identidade unificada: fundo #08080D · superfícies #111019 · destaque #7652FF · texto #E6E1F2 */
+  --bg:#000000; --fg:#E6E1F2; --fg2:#8E89A8; --w:230,225,242;   /* V5.5.0: identidade unificada: fundo preto absoluto #000000 · superfícies #111019 · destaque #7652FF · texto #E6E1F2 */
   --ok:#22C55E; --err:#EF4444; --danger:#EF4444;
   --r-lg:24px; --r-md:16px; --ease:cubic-bezier(.16,.9,.24,1);
   --orb-mid:rgba(0,0,0,.88); --orb-end:rgba(0,0,0,.96); --orb-inset:rgba(0,0,0,.7);
-  --surface:#111019; --surface2:#0B0A12; --line:#1F1C30;
+  --surface:#111019; --surface2:#000000; --line:#1F1C30;
   --active:#1E1946; --active-hover:#28205C;
   --acc:118,82,255; --act:17,16,25; --act-hi:34,26,80;
   --accent:#7652FF; --accent-soft:#A592FF; --accent-text:#D2CBF6;
   --card:rgba(var(--act),.96); --card-solid:var(--surface);
-  --panel-bg:rgba(10,9,16,.98); --ask-bg:rgba(17,16,25,.84); --track-b:#0F0E17;
+  --panel-bg:rgba(0,0,0,.98); --ask-bg:rgba(17,16,25,.84); --track-b:#0A0910;
   /* módulos: tamanho do painel em que a Orb se transforma */
   --mod-s:clamp(10px,3vw,40px); --mod-t:78px; --mod-b:78px; --mod-r:30px; --arc-gap:9px;
 }
@@ -901,12 +901,16 @@ body.dock-left .dock-btn:first-child[data-tip]:hover::after, body.dock-left .doc
 .v55-chips{ display:flex; flex-wrap:wrap; gap:8px; }
 .v55-daily{ min-height:200px; }
 /* ═══════ V5.5.0 — Configurações: categorias (mesmas abas dos outros painéis) ═══════ */
-.set-tabs{ position:sticky; top:0; z-index:3; display:flex; flex-wrap:wrap; gap:8px; padding:0 0 14px; margin-bottom:4px; background:linear-gradient(180deg,var(--card-solid) 78%,rgba(0,0,0,0)); }
-.set-cat[hidden]{ display:none; }
+.set-cat-title{ margin:0; padding:26px 6px 10px; font:600 11px var(--font-mono); letter-spacing:.22em; text-transform:uppercase; color:var(--accent-soft); border-bottom:1px solid var(--line); }
+.set-cat:first-child .set-cat-title{ padding-top:2px; }
 .set-cat{ display:flex; flex-direction:column; }
 .set-empty{ padding:22px 6px; font-size:13px; line-height:1.7; color:var(--fg2); }
 .set-link{ color:var(--accent-soft); text-decoration:none; font:600 12px var(--font); letter-spacing:.06em; } .set-link:hover{ color:#fff; }
 .set-val{ font:500 12px var(--font-mono); letter-spacing:.06em; color:var(--fg2); text-align:right; }
+
+.v55-ph{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; height:100%; padding:14px; text-align:center; font:500 12px var(--font); color:var(--fg2); }
+.v55-ph a{ color:var(--accent-soft); font-weight:600; text-decoration:none; } .v55-ph a:hover{ color:#fff; }
+.v55-ph small{ font:500 10.5px var(--font-mono); color:var(--faint,#7F7A96); }
 </style>
 </head>
 <body>
@@ -1097,8 +1101,8 @@ window.ORION_SIGNOUT = async () => {
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=19"></script>
+<script defer src="js/app.js?c=20"></script>
 <script defer src="js/orion-v5.js?c=12"></script>
-<script defer src="js/orion-v52.js?c=24"></script>
+<script defer src="js/orion-v52.js?c=25"></script>
 </body>
 </html>
