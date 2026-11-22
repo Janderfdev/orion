@@ -715,21 +715,23 @@
      fundo transparente e as cores/fonte da marca por variáveis CSS (.v55-tvscope em orion.html). Nada é calculado nem inventado aqui; alguns mercados chegam
      com atraso, conforme o nível de dados do TradingView. Notícias e Resumo do Dia vêm das fontes RSS reais (/news/daily). */
   const marketBtn = $('marketBtn');
-  const TV_PATH = { pt: 'br', en: 'en', es: 'es', fr: 'fr', de: 'de_DE', it: 'it' };   // pasta de idioma do script; se não existir, cai para inglês
   const tvScripts = new Map();
-  function tvLoad(tag) {                                  // carrega o script do widget uma única vez
+  /* Script oficial de cada widget (formato da documentação do TradingView): <script type="module" src="https://www.tradingview-widget.com/w/en/<tag>.js">.
+     Usamos só a pasta "en", a documentada; o idioma da interface do widget é do TradingView. Se falhar, o motivo vai para o console e cada cartão mostra um link. */
+  function tvLoad(tag) {
     if (tvScripts.has(tag)) return tvScripts.get(tag);
-    const load = loc => new Promise((res, rej) => {
+    const p = new Promise((res, rej) => {
+      if (window.customElements && customElements.get(tag)) return res();
       const s = document.createElement('script');
-      s.type = 'module'; s.src = 'https://www.tradingview-widget.com/w/' + loc + '/' + tag + '.js';
-      s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('tv')); };
+      s.type = 'module'; s.src = 'https://www.tradingview-widget.com/w/en/' + tag + '.js';
+      s.onload = () => res();
+      s.onerror = () => { s.remove(); console.warn('[ORION] não carregou o widget do TradingView:', s.src); rej(new Error(tag)); };
       document.head.appendChild(s);
     });
-    const loc = TV_PATH[LANG()] || 'en';
-    const p = loc === 'en' ? load('en') : load(loc).catch(() => load('en'));
     tvScripts.set(tag, p); p.catch(() => tvScripts.delete(tag));
     return p;
   }
+  const tvSite = sym => 'https://www.tradingview.com/symbols/' + String(sym).replace(':', '-') + '/';
   const SYM_RE = /^[A-Za-z0-9_.\-]{1,20}:[A-Za-z0-9_.!\-\/]{1,30}$/;
   const SET = {
     indices: ['BMFBOVESPA:IBOV', 'FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD'],
@@ -738,8 +740,10 @@
     tape: ['FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD', 'BMFBOVESPA:IBOV', 'FX_IDC:USDBRL', 'BITSTAMP:BTCUSD', 'OANDA:XAUUSD'],
     chips: [['IBOV', 'BMFBOVESPA:IBOV'], ['USD/BRL', 'FX_IDC:USDBRL'], ['PETR4', 'BMFBOVESPA:PETR4'], ['VALE3', 'BMFBOVESPA:VALE3'], ['S&P 500', 'FOREXCOM:SPXUSD'], ['Bitcoin', 'BITSTAMP:BTCUSD']],
   };
-  const tvEl = (tag, attrs) => { const el = document.createElement(tag); el.setAttribute('theme', 'dark'); el.setAttribute('transparent', ''); Object.keys(attrs || {}).forEach(k => el.setAttribute(k, attrs[k])); return el; };
-  const tvChart = (sym, big) => h('div', { class: 'v55-tvcard' + (big ? ' big' : '') }, tvEl('tv-mini-chart', { symbol: sym }));
+  /* o conteúdo DENTRO do elemento é um aviso que o widget substitui quando carrega (recurso documentado); se o script falhar, o aviso continua útil */
+  const tvEl = (tag, attrs, placeholder) => { const el = document.createElement(tag); el.setAttribute('theme', 'dark'); el.setAttribute('transparent', ''); Object.keys(attrs || {}).forEach(k => el.setAttribute(k, attrs[k])); if (placeholder) el.append(placeholder); return el; };
+  const tvChart = (sym, big) => h('div', { class: 'v55-tvcard' + (big ? ' big' : '') }, tvEl('tv-mini-chart', { symbol: sym },
+    h('div', { class: 'v55-ph' }, h('span', {}, String(sym).split(':')[1] || sym), h('a', { href: tvSite(sym), target: '_blank', rel: 'noopener noreferrer' }, T('mkt.openTv')), h('small', {}, T('mkt.loading')))));
 
   const marketPanel = makePanel({
     id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn, onClose: () => stopBrief(),
@@ -799,7 +803,7 @@
         else if (tab === 'charts') main = chartsView();
         else if (tab === 'news') main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))];
         else if (tab === 'daily') main = dailyView();
-        else main = [h('div', { class: 'v55-tvtape' }, tvEl('tv-ticker-tape', { symbols: SET.tape.join(',') })), section('indices', SET.indices), section('fx', SET.fx)];
+        else main = [h('div', { class: 'v55-tvtape' }, tvEl('tv-ticker-tape', { symbols: SET.tape.join(',') }, h('div', { class: 'v55-ph' }, h('small', {}, T('mkt.loading'))))), section('indices', SET.indices), section('fx', SET.fx)];
         const wrap = h('div', { class: 'v55-tvscope' }, ...main, needsTv ? credit() : null);
         body.replaceChildren(h('div', { class: 'v52-row' }, tabs), wrap);
         if (needsTv) {                                         // carrega só o que a aba usa
