@@ -643,9 +643,7 @@
     return used ? parts.join(' ') : '';
   }
   const stopBrief = () => { if (briefSpeaking && window.ORION_APP && window.ORION_APP.stopSpeak) window.ORION_APP.stopSpeak(); briefSpeaking = false; };
-  const newsPanel = makePanel({
-    id: 'newsPanel', title: () => T('news.title'), icon: ICON.news, opener: newsBtn, onClose: () => stopBrief(),
-    build: async ctx => {
+  const newsBuild = async ctx => {
       const { body, sub, alive } = ctx;
       let data = null, active = null, busy = false;
 
@@ -701,54 +699,59 @@
         const r = await call('/news/daily' + (refresh ? '?refresh=true' : ''), { timeout: 40000 });
         busy = false;
         if (!alive()) return;
-        if (r.ok && r.data && Array.isArray(r.data.categories)) { const first = !data; data = r.data; draw(); if (first && !refresh) startListen(); return; }   // ao abrir, o ORION lê o resumo
+        if (r.ok && r.data && Array.isArray(r.data.categories)) { const first = !data; data = r.data; draw(); if (first && !refresh && !ctx.quiet) startListen(); return; }   // ao abrir o painel do Resumo do Dia, o ORION lê o resumo (dentro do Mercado ele fica quieto até você pedir)
         if (data) { draw(); return; }
         sub('');
         body.replaceChildren(h('div', { class: 'v52-center' }, T('news.error'), h('button', { class: 'pill-btn sm', type: 'button', onclick: () => load(false) }, T('news.refresh'))));
       }
       sub('');
       await load(false);
-    },
-  });
+    };
+  const newsPanel = makePanel({ id: 'newsPanel', title: () => T('news.title'), icon: ICON.news, opener: newsBtn, onClose: () => stopBrief(), build: newsBuild });
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
 
   /* ═══════════════ MERCADO (V5.5.0) ═══════════════
-     Cotações, índices, ações, gráficos históricos e pesquisa de ativos vêm dos widgets oficiais e gratuitos do TradingView (nada é calculado nem
-     inventado aqui; alguns mercados chegam com atraso, conforme o nível de dados que o TradingView oferece). As NOTÍCIAS reais de Economia e Negócios
-     vêm do Resumo do Dia (/news/daily). Só a aba aberta carrega widgets; ao trocar de aba ou fechar o painel, eles são descartados. */
+     Cotações e gráficos vêm dos widgets oficiais do TradingView no formato NOVO (Web Components: <tv-ticker-tape>, <tv-mini-chart>), que aceitam tema escuro,
+     fundo transparente e as cores/fonte da marca por variáveis CSS (.v55-tvscope em orion.html). Nada é calculado nem inventado aqui; alguns mercados chegam
+     com atraso, conforme o nível de dados do TradingView. Notícias e Resumo do Dia vêm das fontes RSS reais (/news/daily). */
   const marketBtn = $('marketBtn');
-  const TV_LOCALE = { pt: 'br', en: 'en', es: 'es', fr: 'fr', de: 'de_DE', it: 'it' };
-  const TV_SCRIPT = n => 'https://s3.tradingview.com/external-embedding/embed-widget-' + n + '.js';
-  /* monta um widget: contêiner + script com a configuração em JSON (o formato oficial de embed) + o crédito ao TradingView */
-  function tvWidget(name, cfg, cls) {
-    const box = h('div', { class: 'v55-tv ' + cls });
-    const wrap = h('div', { class: 'tradingview-widget-container' });
-    const inner = h('div', { class: 'tradingview-widget-container__widget' });
-    const credit = h('div', { class: 'tradingview-widget-copyright' }, h('a', { href: 'https://www.tradingview.com/', target: '_blank', rel: 'noopener noreferrer' }, 'TradingView'));
-    const sc = document.createElement('script');
-    sc.type = 'text/javascript'; sc.async = true; sc.src = TV_SCRIPT(name);
-    sc.textContent = JSON.stringify(Object.assign({ locale: TV_LOCALE[LANG()] || 'en', colorTheme: 'dark', isTransparent: true }, cfg));
-    sc.onerror = () => { box.replaceChildren(h('p', { class: 'v52-sub', style: 'padding:16px' }, T('mkt.tvFail'))); };
-    wrap.append(inner, credit); wrap.append(sc); box.append(wrap);
-    return box;
+  const TV_PATH = { pt: 'br', en: 'en', es: 'es', fr: 'fr', de: 'de_DE', it: 'it' };   // pasta de idioma do script; se não existir, cai para inglês
+  const tvScripts = new Map();
+  function tvLoad(tag) {                                  // carrega o script do widget uma única vez
+    if (tvScripts.has(tag)) return tvScripts.get(tag);
+    const load = loc => new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.type = 'module'; s.src = 'https://www.tradingview-widget.com/w/' + loc + '/' + tag + '.js';
+      s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('tv')); };
+      document.head.appendChild(s);
+    });
+    const loc = TV_PATH[LANG()] || 'en';
+    const p = loc === 'en' ? load('en') : load(loc).catch(() => load('en'));
+    tvScripts.set(tag, p); p.catch(() => tvScripts.delete(tag));
+    return p;
   }
-  const SYM = {
-    tape: [['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['BMFBOVESPA:IBOV', 'Ibovespa'], ['FX_IDC:USDBRL', 'USD/BRL'], ['BITSTAMP:BTCUSD', 'Bitcoin'], ['OANDA:XAUUSD', 'Ouro']],
-    tabs: [
-      { title: { pt: 'Índices', en: 'Indices' }, symbols: [['BMFBOVESPA:IBOV', 'Ibovespa'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['FOREXCOM:DJI', 'Dow Jones'], ['INDEX:DEU40', 'DAX'], ['INDEX:NKY', 'Nikkei 225']] },
-      { title: { pt: 'Ações (B3)', en: 'Stocks (B3)' }, symbols: [['BMFBOVESPA:PETR4', 'Petrobras'], ['BMFBOVESPA:VALE3', 'Vale'], ['BMFBOVESPA:ITUB4', 'Itaú'], ['BMFBOVESPA:BBDC4', 'Bradesco'], ['BMFBOVESPA:BBAS3', 'Banco do Brasil'], ['BMFBOVESPA:WEGE3', 'WEG']] },
-      { title: { pt: 'Câmbio e commodities', en: 'FX and commodities' }, symbols: [['FX_IDC:USDBRL', 'USD/BRL'], ['FX_IDC:EURBRL', 'EUR/BRL'], ['FX:EURUSD', 'EUR/USD'], ['OANDA:XAUUSD', 'Ouro'], ['TVC:USOIL', 'Petróleo WTI'], ['BITSTAMP:BTCUSD', 'Bitcoin']] },
-    ],
+  const SYM_RE = /^[A-Za-z0-9_.\-]{1,20}:[A-Za-z0-9_.!\-\/]{1,30}$/;
+  const SET = {
+    indices: ['BMFBOVESPA:IBOV', 'FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD'],
+    fx: ['FX_IDC:USDBRL', 'BITSTAMP:BTCUSD', 'OANDA:XAUUSD'],
+    stocks: ['BMFBOVESPA:PETR4', 'BMFBOVESPA:VALE3', 'BMFBOVESPA:ITUB4', 'BMFBOVESPA:BBDC4', 'BMFBOVESPA:BBAS3', 'BMFBOVESPA:WEGE3', 'BMFBOVESPA:ABEV3', 'BMFBOVESPA:MGLU3', 'BMFBOVESPA:B3SA3'],
+    tape: ['FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD', 'BMFBOVESPA:IBOV', 'FX_IDC:USDBRL', 'BITSTAMP:BTCUSD', 'OANDA:XAUUSD'],
+    chips: [['IBOV', 'BMFBOVESPA:IBOV'], ['USD/BRL', 'FX_IDC:USDBRL'], ['PETR4', 'BMFBOVESPA:PETR4'], ['VALE3', 'BMFBOVESPA:VALE3'], ['S&P 500', 'FOREXCOM:SPXUSD'], ['Bitcoin', 'BITSTAMP:BTCUSD']],
   };
+  const tvEl = (tag, attrs) => { const el = document.createElement(tag); el.setAttribute('theme', 'dark'); el.setAttribute('transparent', ''); Object.keys(attrs || {}).forEach(k => el.setAttribute(k, attrs[k])); return el; };
+  const tvChart = (sym, big) => h('div', { class: 'v55-tvcard' + (big ? ' big' : '') }, tvEl('tv-mini-chart', { symbol: sym }));
+
   const marketPanel = makePanel({
-    id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn,
+    id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn, onClose: () => stopBrief(),
     build: async ctx => {
       const { body, sub, alive } = ctx;
-      let tab = 'overview', news = null, newsLoaded = false;
-      const lg = LANG() === 'pt' ? 'pt' : 'en';
+      let tab = 'overview', news = null, newsLoaded = false, symbol = 'BMFBOVESPA:IBOV', symMsg = '';
       sub(T('mkt.sub'));
+      const tvFail = () => h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('mkt.tvFail'));
+      const credit = () => h('p', { class: 'v52-note' }, T('mkt.credit'));
+      const section = (key, syms) => h('div', { class: 'v55-sec' }, h('h3', {}, T('mkt.sec.' + key)), h('div', { class: 'v55-tvgrid' }, syms.map(s => tvChart(s))));
       const newsList = n => {
-        const items = (n || []).slice(0, 8);
+        const items = (n || []).slice(0, 10);
         if (!items.length) return h('div', { class: 'v52-center' }, T('mkt.newsEmpty'));
         return h('ul', { class: 'v52-news' }, items.map(it => {
           const href = safeHref(it.url);
@@ -761,22 +764,48 @@
         if (!alive()) return;
         newsLoaded = true;
         const cats = n.ok && n.data && Array.isArray(n.data.categories) ? n.data.categories : [];
-        const seen = new Set();   // Economia + Negócios, mais recentes primeiro, sem repetir link
+        const seen = new Set();
         news = cats.filter(c => c.id === 'economia' || c.id === 'negocios').flatMap(c => c.items || []).sort((a, b) => String(b.published).localeCompare(String(a.published))).filter(i => (seen.has(i.url) ? false : seen.add(i.url)));
       }
-      const content = () => {
-        if (tab === 'stocks') return [tvWidget('screener', { width: '100%', height: '100%', defaultColumn: 'overview', defaultScreen: 'most_capitalized', market: 'brazil', showToolbar: true }, 'tall')];
-        if (tab === 'chart') return [tvWidget('advanced-chart', { autosize: true, symbol: 'BMFBOVESPA:IBOV', interval: 'D', timezone: 'America/Sao_Paulo', theme: 'dark', style: '1', allow_symbol_change: true, hide_side_toolbar: false, calendar: false, backgroundColor: 'rgba(5,5,10,1)', support_host: 'https://www.tradingview.com' }, 'chart')];
-        if (tab === 'news') return [tvWidget('timeline', { feedMode: 'market', market: 'stock', displayMode: 'regular', width: '100%', height: '100%' }, 'tall'),
-          h('div', { class: 'v52-box' }, h('h3', {}, T('mkt.tab.news')), newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote')))];
-        return [tvWidget('ticker-tape', { symbols: SYM.tape.map(([p, d]) => ({ proName: p, title: d })), showSymbolLogo: true, displayMode: 'adaptive' }, 'tape'),
-          tvWidget('market-overview', { dateRange: '12M', showChart: true, showSymbolLogo: true, showFloatingTooltip: false, width: '100%', height: '100%',
-            tabs: SYM.tabs.map(t => ({ title: t.title[lg], originalTitle: t.title.en, symbols: t.symbols.map(([s, d]) => ({ s, d })) })) }, 'mid')];
-      };
+
+      function chartsView() {
+        const input = h('input', { class: 'v52-input', type: 'text', maxlength: 51, value: symbol, placeholder: T('mkt.search'), 'aria-label': T('mkt.search'), spellcheck: 'false', autocapitalize: 'characters' });
+        const msg = h('p', { class: 'v52-note' }, symMsg || T('mkt.symHint'));
+        const holder = h('div', {}, tvChart(symbol, true));
+        const apply = v => {
+          v = String(v || '').trim().toUpperCase();
+          if (!SYM_RE.test(v)) { msg.textContent = T('mkt.symBad'); msg.dataset.kind = 'err'; return; }
+          delete msg.dataset.kind; msg.textContent = T('mkt.symHint'); symbol = v; input.value = v;
+          holder.replaceChildren(tvChart(symbol, true));
+        };
+        const form = h('form', { class: 'v52-form', onsubmit: e => { e.preventDefault(); apply(input.value); } }, input, h('button', { class: 'pill-btn sm', type: 'submit' }, T('mkt.go')));
+        const chips = h('div', { class: 'v55-chips' }, SET.chips.map(([label, s]) => h('button', { class: 'pill-btn sm', type: 'button', onclick: () => apply(s) }, label)));
+        return [form, chips, msg, holder];
+      }
+
+      function dailyView() {
+        const host = h('div', { class: 'v55-daily' });
+        newsBuild({ body: host, sub: () => { }, alive, quiet: true });   // o mesmo Resumo do Dia, sem ler em voz alta ao abrir a aba
+        return [host];
+      }
+
       async function draw() {
+        stopBrief();
         if (tab === 'news' && !newsLoaded) { body.replaceChildren(spinner(T('plans.loading'))); await loadNews(); if (!alive()) return; }
-        const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'chart', 'news'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { if (tab !== k) { tab = k; draw(); } } }, T('mkt.tab.' + k))));
-        body.replaceChildren(tabs, ...content(), h('p', { class: 'v52-note' }, T('mkt.credit')));
+        const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'charts', 'news', 'daily'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { if (tab !== k) { tab = k; draw(); } } }, T('mkt.tab.' + k))));
+        let main;
+        const needsTv = tab === 'overview' || tab === 'stocks' || tab === 'charts';
+        if (tab === 'stocks') main = [section('stocks', SET.stocks)];
+        else if (tab === 'charts') main = chartsView();
+        else if (tab === 'news') main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))];
+        else if (tab === 'daily') main = dailyView();
+        else main = [h('div', { class: 'v55-tvtape' }, tvEl('tv-ticker-tape', { symbols: SET.tape.join(',') })), section('indices', SET.indices), section('fx', SET.fx)];
+        const wrap = h('div', { class: 'v55-tvscope' }, ...main, needsTv ? credit() : null);
+        body.replaceChildren(h('div', { class: 'v52-row' }, tabs), wrap);
+        if (needsTv) {                                         // carrega só o que a aba usa
+          const tags = tab === 'overview' ? ['tv-ticker-tape', 'tv-mini-chart'] : ['tv-mini-chart'];
+          Promise.all(tags.map(tvLoad)).catch(() => { if (alive()) wrap.prepend(tvFail()); });
+        }
       }
       await draw();
     },
