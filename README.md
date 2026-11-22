@@ -4,7 +4,7 @@
 
 ### **A digital presence inspired by the Orion Constellation.**
 
-**“Inteligência além dos limites.”**
+**“Intelligence beyond limits.”**
 
 [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/Version-5.5.0-4B287D?style=for-the-badge)](#-version-history)
@@ -346,7 +346,7 @@ See [`LICENSE`](LICENSE) for the applicable terms.
 
 **A digital presence. An evolving intelligence. A platform for what comes next.**
 
-*“Inteligência além dos limites.”*
+*“Intelligence beyond limits.”*
 
 **V5.5.0 · ORION EXPANSION · Beta development · Public launch: Coming Soon**
 
