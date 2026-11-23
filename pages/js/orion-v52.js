@@ -711,49 +711,45 @@
   if (newsBtn) newsBtn.addEventListener('click', () => { if (newsPanel.isOpen()) newsPanel.close(); else newsPanel.open(); });
 
   /* ═══════════════ MERCADO (V5.5.0) ═══════════════
-     Cotações e gráficos vêm dos widgets oficiais do TradingView no formato NOVO (Web Components: <tv-ticker-tape>, <tv-mini-chart>), que aceitam tema escuro,
-     fundo transparente e as cores/fonte da marca por variáveis CSS (.v55-tvscope em orion.html). Nada é calculado nem inventado aqui; alguns mercados chegam
-     com atraso, conforme o nível de dados do TradingView. Notícias e Resumo do Dia vêm das fontes RSS reais (/news/daily). */
+     Cotações, índices, ações e gráficos vêm dos widgets gratuitos do TradingView (formato por script, o que já carregou nos navegadores de teste; os widgets
+     novos em Web Components devolveram 403). Nada é calculado nem inventado aqui; alguns mercados chegam com atraso, conforme o nível de dados do TradingView.
+     FUNDO BRANCO: o widget roda num iframe de documento CLARO dentro de uma página com color-scheme escuro; nesse caso o navegador pinta o quadro de branco.
+     Por isso o contêiner declara color-scheme: normal (CSS .v55-tv em orion.html) e o widget usa tema escuro com fundo transparente sobre a superfície da marca.
+     Notícias e Resumo do Dia vêm das fontes RSS reais (/news/daily). */
   const marketBtn = $('marketBtn');
-  const tvScripts = new Map();
-  /* Script oficial de cada widget (formato da documentação do TradingView): <script type="module" src="https://www.tradingview-widget.com/w/en/<tag>.js">.
-     Usamos só a pasta "en", a documentada; o idioma da interface do widget é do TradingView. Se falhar, o motivo vai para o console e cada cartão mostra um link. */
-  function tvLoad(tag) {
-    if (tvScripts.has(tag)) return tvScripts.get(tag);
-    const p = new Promise((res, rej) => {
-      if (window.customElements && customElements.get(tag)) return res();
-      const s = document.createElement('script');
-      s.type = 'module'; s.src = 'https://www.tradingview-widget.com/w/en/' + tag + '.js';
-      s.onload = () => res();
-      s.onerror = () => { s.remove(); console.warn('[ORION] não carregou o widget do TradingView:', s.src); rej(new Error(tag)); };
-      document.head.appendChild(s);
-    });
-    tvScripts.set(tag, p); p.catch(() => tvScripts.delete(tag));
-    return p;
+  const TV_LOCALE = { pt: 'br', en: 'en', es: 'es', fr: 'fr', de: 'de_DE', it: 'it' };
+  function tvWidget(name, cfg, cls) {
+    const box = h('div', { class: 'v55-tv ' + cls });
+    const wrap = h('div', { class: 'tradingview-widget-container' });
+    const inner = h('div', { class: 'tradingview-widget-container__widget' });
+    const credit = h('div', { class: 'tradingview-widget-copyright' }, h('a', { href: 'https://www.tradingview.com/', target: '_blank', rel: 'noopener noreferrer' }, 'TradingView'));
+    const sc = document.createElement('script');
+    sc.type = 'text/javascript'; sc.async = true; sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-' + name + '.js';
+    sc.textContent = JSON.stringify(Object.assign({ locale: TV_LOCALE[LANG()] || 'en', colorTheme: 'dark', isTransparent: true }, cfg));
+    sc.onerror = () => { console.warn('[ORION] não carregou o widget do TradingView:', name); box.replaceChildren(h('p', { class: 'v52-msg', 'data-kind': 'err', style: 'padding:16px' }, T('mkt.tvFail'))); };
+    wrap.append(inner, credit); wrap.append(sc); box.append(wrap);
+    return box;
   }
-  const tvSite = sym => 'https://www.tradingview.com/symbols/' + String(sym).replace(':', '-') + '/';
-  const SYM_RE = /^[A-Za-z0-9_.\-]{1,20}:[A-Za-z0-9_.!\-\/]{1,30}$/;
-  const SET = {
-    indices: ['BMFBOVESPA:IBOV', 'FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD'],
-    fx: ['FX_IDC:USDBRL', 'BITSTAMP:BTCUSD', 'OANDA:XAUUSD'],
-    stocks: ['BMFBOVESPA:PETR4', 'BMFBOVESPA:VALE3', 'BMFBOVESPA:ITUB4', 'BMFBOVESPA:BBDC4', 'BMFBOVESPA:BBAS3', 'BMFBOVESPA:WEGE3', 'BMFBOVESPA:ABEV3', 'BMFBOVESPA:MGLU3', 'BMFBOVESPA:B3SA3'],
-    tape: ['FOREXCOM:SPXUSD', 'FOREXCOM:NSXUSD', 'BMFBOVESPA:IBOV', 'FX_IDC:USDBRL', 'BITSTAMP:BTCUSD', 'OANDA:XAUUSD'],
-    chips: [['IBOV', 'BMFBOVESPA:IBOV'], ['USD/BRL', 'FX_IDC:USDBRL'], ['PETR4', 'BMFBOVESPA:PETR4'], ['VALE3', 'BMFBOVESPA:VALE3'], ['S&P 500', 'FOREXCOM:SPXUSD'], ['Bitcoin', 'BITSTAMP:BTCUSD']],
+  const SYM = {
+    tape: [['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['BMFBOVESPA:IBOV', 'Ibovespa'], ['FX_IDC:USDBRL', 'USD/BRL'], ['BITSTAMP:BTCUSD', 'Bitcoin'], ['OANDA:XAUUSD', 'Ouro']],
+    tabs: [
+      { title: { pt: 'Índices', en: 'Indices' }, symbols: [['BMFBOVESPA:IBOV', 'Ibovespa'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['FOREXCOM:DJI', 'Dow Jones'], ['INDEX:DEU40', 'DAX'], ['INDEX:NKY', 'Nikkei 225']] },
+      { title: { pt: 'Ações (B3)', en: 'Stocks (B3)' }, symbols: [['BMFBOVESPA:PETR4', 'Petrobras'], ['BMFBOVESPA:VALE3', 'Vale'], ['BMFBOVESPA:ITUB4', 'Itaú'], ['BMFBOVESPA:BBDC4', 'Bradesco'], ['BMFBOVESPA:BBAS3', 'Banco do Brasil'], ['BMFBOVESPA:WEGE3', 'WEG']] },
+      { title: { pt: 'Câmbio e commodities', en: 'FX and commodities' }, symbols: [['FX_IDC:USDBRL', 'USD/BRL'], ['FX_IDC:EURBRL', 'EUR/BRL'], ['FX:EURUSD', 'EUR/USD'], ['OANDA:XAUUSD', 'Ouro'], ['TVC:USOIL', 'Petróleo WTI'], ['BITSTAMP:BTCUSD', 'Bitcoin']] },
+    ],
+    quotes: [
+      { pt: 'Ações da B3', en: 'B3 stocks', symbols: [['BMFBOVESPA:PETR4', 'Petrobras PN'], ['BMFBOVESPA:VALE3', 'Vale ON'], ['BMFBOVESPA:ITUB4', 'Itaú PN'], ['BMFBOVESPA:BBDC4', 'Bradesco PN'], ['BMFBOVESPA:BBAS3', 'Banco do Brasil ON'], ['BMFBOVESPA:WEGE3', 'WEG ON'], ['BMFBOVESPA:ABEV3', 'Ambev ON'], ['BMFBOVESPA:MGLU3', 'Magazine Luiza ON'], ['BMFBOVESPA:B3SA3', 'B3 ON']] },
+      { pt: 'Ações dos EUA', en: 'US stocks', symbols: [['NASDAQ:AAPL', 'Apple'], ['NASDAQ:MSFT', 'Microsoft'], ['NASDAQ:NVDA', 'NVIDIA'], ['NASDAQ:GOOGL', 'Alphabet'], ['NASDAQ:AMZN', 'Amazon'], ['NASDAQ:TSLA', 'Tesla']] },
+    ],
   };
-  /* o conteúdo DENTRO do elemento é um aviso que o widget substitui quando carrega (recurso documentado); se o script falhar, o aviso continua útil */
-  const tvEl = (tag, attrs, placeholder) => { const el = document.createElement(tag); el.setAttribute('theme', 'dark'); el.setAttribute('transparent', ''); Object.keys(attrs || {}).forEach(k => el.setAttribute(k, attrs[k])); if (placeholder) el.append(placeholder); return el; };
-  const tvChart = (sym, big) => h('div', { class: 'v55-tvcard' + (big ? ' big' : '') }, tvEl('tv-mini-chart', { symbol: sym },
-    h('div', { class: 'v55-ph' }, h('span', {}, String(sym).split(':')[1] || sym), h('a', { href: tvSite(sym), target: '_blank', rel: 'noopener noreferrer' }, T('mkt.openTv')), h('small', {}, T('mkt.loading')))));
 
   const marketPanel = makePanel({
     id: 'marketPanel', title: () => T('mkt.title'), icon: ICON.chart, opener: marketBtn, onClose: () => stopBrief(),
     build: async ctx => {
       const { body, sub, alive } = ctx;
-      let tab = 'overview', news = null, newsLoaded = false, symbol = 'BMFBOVESPA:IBOV', symMsg = '';
+      let tab = 'overview', news = null, newsLoaded = false;
+      const lg = LANG() === 'pt' ? 'pt' : 'en';
       sub(T('mkt.sub'));
-      const tvFail = () => h('p', { class: 'v52-msg', 'data-kind': 'err' }, T('mkt.tvFail'));
-      const credit = () => h('p', { class: 'v52-note' }, T('mkt.credit'));
-      const section = (key, syms) => h('div', { class: 'v55-sec' }, h('h3', {}, T('mkt.sec.' + key)), h('div', { class: 'v55-tvgrid' }, syms.map(s => tvChart(s))));
       const newsList = n => {
         const items = (n || []).slice(0, 10);
         if (!items.length) return h('div', { class: 'v52-center' }, T('mkt.newsEmpty'));
@@ -771,45 +767,26 @@
         const seen = new Set();
         news = cats.filter(c => c.id === 'economia' || c.id === 'negocios').flatMap(c => c.items || []).sort((a, b) => String(b.published).localeCompare(String(a.published))).filter(i => (seen.has(i.url) ? false : seen.add(i.url)));
       }
-
-      function chartsView() {
-        const input = h('input', { class: 'v52-input', type: 'text', maxlength: 51, value: symbol, placeholder: T('mkt.search'), 'aria-label': T('mkt.search'), spellcheck: 'false', autocapitalize: 'characters' });
-        const msg = h('p', { class: 'v52-note' }, symMsg || T('mkt.symHint'));
-        const holder = h('div', {}, tvChart(symbol, true));
-        const apply = v => {
-          v = String(v || '').trim().toUpperCase();
-          if (!SYM_RE.test(v)) { msg.textContent = T('mkt.symBad'); msg.dataset.kind = 'err'; return; }
-          delete msg.dataset.kind; msg.textContent = T('mkt.symHint'); symbol = v; input.value = v;
-          holder.replaceChildren(tvChart(symbol, true));
-        };
-        const form = h('form', { class: 'v52-form', onsubmit: e => { e.preventDefault(); apply(input.value); } }, input, h('button', { class: 'pill-btn sm', type: 'submit' }, T('mkt.go')));
-        const chips = h('div', { class: 'v55-chips' }, SET.chips.map(([label, s]) => h('button', { class: 'pill-btn sm', type: 'button', onclick: () => apply(s) }, label)));
-        return [form, chips, msg, holder];
-      }
-
       function dailyView() {
         const host = h('div', { class: 'v55-daily' });
         newsBuild({ body: host, sub: () => { }, alive, quiet: true });   // o mesmo Resumo do Dia, sem ler em voz alta ao abrir a aba
         return [host];
       }
-
       async function draw() {
         stopBrief();
         if (tab === 'news' && !newsLoaded) { body.replaceChildren(spinner(T('plans.loading'))); await loadNews(); if (!alive()) return; }
         const tabs = h('div', { class: 'v52-tabs', role: 'tablist' }, ['overview', 'stocks', 'charts', 'news', 'daily'].map(k => h('button', { class: 'v52-tab', type: 'button', role: 'tab', 'aria-selected': String(k === tab), onclick: () => { if (tab !== k) { tab = k; draw(); } } }, T('mkt.tab.' + k))));
-        let main;
-        const needsTv = tab === 'overview' || tab === 'stocks' || tab === 'charts';
-        if (tab === 'stocks') main = [section('stocks', SET.stocks)];
-        else if (tab === 'charts') main = chartsView();
-        else if (tab === 'news') main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))];
-        else if (tab === 'daily') main = dailyView();
-        else main = [h('div', { class: 'v55-tvtape' }, tvEl('tv-ticker-tape', { symbols: SET.tape.join(',') }, h('div', { class: 'v55-ph' }, h('small', {}, T('mkt.loading'))))), section('indices', SET.indices), section('fx', SET.fx)];
-        const wrap = h('div', { class: 'v55-tvscope' }, ...main, needsTv ? credit() : null);
-        body.replaceChildren(h('div', { class: 'v52-row' }, tabs), wrap);
-        if (needsTv) {                                         // carrega só o que a aba usa
-          const tags = tab === 'overview' ? ['tv-ticker-tape', 'tv-mini-chart'] : ['tv-mini-chart'];
-          Promise.all(tags.map(tvLoad)).catch(() => { if (alive()) wrap.prepend(tvFail()); });
-        }
+        let main, tv = true;
+        if (tab === 'stocks') main = [tvWidget('market-quotes', { width: '100%', height: '100%', showSymbolLogo: true,
+          symbolsGroups: SYM.quotes.map(g => ({ name: g[lg], originalName: g.en, symbols: g.symbols.map(([name, displayName]) => ({ name, displayName })) })) }, 'tall')];
+        else if (tab === 'charts') main = [tvWidget('advanced-chart', { autosize: true, symbol: 'BMFBOVESPA:IBOV', interval: 'D', timezone: 'America/Sao_Paulo', theme: 'dark', style: '1',
+          allow_symbol_change: true, hide_side_toolbar: false, calendar: false, backgroundColor: 'rgba(17,16,25,1)', gridColor: 'rgba(255,255,255,0.04)', support_host: 'https://www.tradingview.com' }, 'chart')];
+        else if (tab === 'news') { tv = false; main = [newsList(news), h('p', { class: 'v52-note' }, T('mkt.newsNote'))]; }
+        else if (tab === 'daily') { tv = false; main = dailyView(); }
+        else main = [tvWidget('ticker-tape', { symbols: SYM.tape.map(([p, d]) => ({ proName: p, title: d })), showSymbolLogo: true, displayMode: 'adaptive' }, 'tape'),
+          tvWidget('market-overview', { dateRange: '12M', showChart: true, showSymbolLogo: true, showFloatingTooltip: false, width: '100%', height: '100%',
+            tabs: SYM.tabs.map(t => ({ title: t.title[lg], originalTitle: t.title.en, symbols: t.symbols.map(([s, d]) => ({ s, d })) })) }, 'mid')];
+        body.replaceChildren(h('div', { class: 'v52-row' }, tabs), ...main, tv ? h('p', { class: 'v52-note' }, T('mkt.credit')) : null);
       }
       await draw();
     },
