@@ -911,6 +911,15 @@ body.dock-left .dock-btn:first-child[data-tip]:hover::after, body.dock-left .doc
 .v55-ph{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; height:100%; padding:14px; text-align:center; font:500 12px var(--font); color:var(--fg2); }
 .v55-ph a{ color:var(--accent-soft); font-weight:600; text-decoration:none; } .v55-ph a:hover{ color:#fff; }
 .v55-ph small{ font:500 10.5px var(--font-mono); color:var(--faint,#7F7A96); }
+
+/* ═══════ V5.5.0 — Mercado: moldura dos widgets do TradingView (identidade ORION) ═══════ */
+.v55-tv{ flex:none; border-radius:var(--r-md); border:1px solid var(--line); background:var(--surface); overflow:hidden; color-scheme:normal; }   /* color-scheme: normal evita o fundo branco opaco do iframe */
+.v55-tv iframe{ color-scheme:normal; }
+.v55-tv .tradingview-widget-container{ width:100%; height:100%; color-scheme:normal; }
+.v55-tv .tradingview-widget-container__widget{ width:100%; height:calc(100% - 24px); }
+.v55-tv .tradingview-widget-copyright{ height:24px; padding:0 14px; display:flex; align-items:center; font:500 10.5px var(--font); color:rgba(var(--w),.45); }
+.v55-tv .tradingview-widget-copyright a{ color:var(--accent-soft); text-decoration:none; } .v55-tv .tradingview-widget-copyright a:hover{ text-decoration:underline; }
+.v55-tv.tape{ height:82px; } .v55-tv.mid{ height:500px; } .v55-tv.chart{ height:clamp(440px,64vh,680px); } .v55-tv.tall{ height:clamp(480px,64vh,660px); }
 </style>
 </head>
 <body>
@@ -1103,6 +1112,6 @@ window.ORION_SIGNOUT = async () => {
 <script src="js/orb-frame.js?c=8"></script>
 <script defer src="js/app.js?c=20"></script>
 <script defer src="js/orion-v5.js?c=12"></script>
-<script defer src="js/orion-v52.js?c=25"></script>
+<script defer src="js/orion-v52.js?c=26"></script>
 </body>
 </html>
