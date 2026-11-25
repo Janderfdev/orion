@@ -110,7 +110,9 @@
 
   /* ── fábrica de painéis: mesma estrutura do painel ORION CODE (settings-card + set-head) ── */
   const panels = [];
+  const REG = {};   // V5.5.0: id -> { title, icon, build, onClose }; o gerenciador de janelas (orion-wm.js) monta o MESMO conteúdo dentro de janelas
   function makePanel({ id, title, icon, opener, build, onClose }) {
+    REG[id] = { id, title, icon, build, onClose };
     let panel = null, open = false, gen = 0;
     function close(refocus = true) {
       if (!panel || !open) return;
@@ -791,8 +793,8 @@
       await draw();
     },
   });
-  if (marketBtn) marketBtn.addEventListener('click', () => { if (marketPanel.isOpen()) marketPanel.close(); else marketPanel.open(); });
-  window.ORION_MARKET = { open: () => marketPanel.open() };
+  if (marketBtn) marketBtn.addEventListener('click', () => { if (window.ORION_WM) return window.ORION_WM.toggle('market'); if (marketPanel.isOpen()) marketPanel.close(); else marketPanel.open(); });
+  window.ORION_MARKET = { open: () => (window.ORION_WM ? window.ORION_WM.open('market') : marketPanel.open()), openFull: () => marketPanel.open() };
 
   /* ═══════════════ ORION CODE (V5.5.0) ═══════════════
      O projeto fica no NAVEGADOR (localStorage, uma cópia por conta). O servidor (/code/assist) só devolve explicação, problemas e alterações
@@ -963,7 +965,7 @@
       drawAll();
     },
   });
-  window.ORION_CODE = { open: () => idePanel.open() };
+  window.ORION_CODE = { open: () => (window.ORION_WM ? window.ORION_WM.open('code') : idePanel.open()), openFull: () => idePanel.open() };
 
   /* ── nomes do dock (V5.5.0): cada botão mostra o nome da ferramenta ao passar o mouse, focar ou tocar ── */
   (function dockTips() {
@@ -1026,7 +1028,9 @@
 
   /* ── exposição e retorno do pagamento ── */
   window.ORION_PLANS = { open: arg => plansPanel.open(arg) };
-  window.ORION_API_PANEL = { open: () => apiPanel.open() };
+  window.ORION_PANELS = REG;
+  window.ORION_UI = { h, svg, ICON, T, LANG, $ };
+  window.ORION_API_PANEL = { open: () => (window.ORION_WM ? window.ORION_WM.open('api') : apiPanel.open()), openFull: () => apiPanel.open() };
   window.ORION_NEWS = { open: () => newsPanel.open() };
 
   try {
