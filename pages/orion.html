@@ -920,6 +920,71 @@ body.dock-left .dock-btn:first-child[data-tip]:hover::after, body.dock-left .doc
 .v55-tv .tradingview-widget-copyright{ height:24px; padding:0 14px; display:flex; align-items:center; font:500 10.5px var(--font); color:rgba(var(--w),.45); }
 .v55-tv .tradingview-widget-copyright a{ color:var(--accent-soft); text-decoration:none; } .v55-tv .tradingview-widget-copyright a:hover{ text-decoration:underline; }
 .v55-tv.tape{ height:82px; } .v55-tv.mid{ height:500px; } .v55-tv.chart{ height:clamp(440px,64vh,680px); } .v55-tv.tall{ height:clamp(480px,64vh,660px); }
+
+/* ═══════ V5.5.0 — Espaço de Trabalho Multitarefa: janelas (orion-wm.js) ═══════ */
+#wmLayer{ position:fixed; left:16px; right:16px; top:76px; bottom:80px; z-index:35; pointer-events:none; transition:opacity .25s ease, visibility 0s; }
+body.module-open #wmLayer, body.chat-open #wmLayer, body.chat-answer #wmLayer, body.voice-answer #wmLayer,
+body.module-open #wmBar, body.chat-open #wmBar, body.chat-answer #wmBar, body.voice-answer #wmBar{ opacity:0; visibility:hidden; pointer-events:none; transition:opacity .2s ease, visibility 0s linear .2s; }
+body.wm-active:not(.chat-open):not(.chat-answer):not(.module-open):not(.voice-answer) .orb-zone{ opacity:.28; transition:opacity .5s ease; }   /* a Orb continua presente, sem competir com as janelas */
+.wm-win{ position:absolute; display:flex; flex-direction:column; pointer-events:auto; min-width:0; border-radius:20px; overflow:hidden; background:linear-gradient(180deg,rgba(17,16,25,.97),rgba(9,8,14,.98));
+  border:1px solid var(--line); box-shadow:0 24px 70px rgba(0,0,0,.65); animation:wmIn .3s cubic-bezier(.2,.8,.2,1) both;
+  transition:opacity .22s ease, transform .22s ease, border-color .2s ease, box-shadow .25s ease; }
+.wm-win.focus{ border-color:rgba(var(--acc),.55); box-shadow:0 30px 84px rgba(0,0,0,.72), 0 0 0 1px rgba(var(--acc),.16), 0 0 48px rgba(var(--acc),.14); }
+.wm-win.min{ opacity:0; transform:translateY(14px) scale(.96); pointer-events:none; visibility:hidden; transition:opacity .2s ease, transform .2s ease, visibility 0s linear .2s; }
+@keyframes wmIn{ from{ opacity:0; transform:translateY(10px) scale(.985); } to{ opacity:1; transform:none; } }
+#wmLayer.anim .wm-win{ transition:left .38s cubic-bezier(.2,.8,.2,1), top .38s cubic-bezier(.2,.8,.2,1), width .38s cubic-bezier(.2,.8,.2,1), height .38s cubic-bezier(.2,.8,.2,1), border-color .2s ease, box-shadow .25s ease; }
+#wmLayer.dragging{ user-select:none; -webkit-user-select:none; cursor:grabbing; }
+#wmLayer.dragging .wm-win{ transition:none; animation:none; }
+#wmLayer.dragging .wm-body{ pointer-events:none; }   /* iframes (gráficos) não roubam o arrasto */
+.wm-bar{ flex:none; display:flex; align-items:center; gap:12px; height:54px; padding:0 12px 0 14px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; border-bottom:1px solid var(--line); background:rgba(255,255,255,.012); }
+.wm-bar:active{ cursor:grabbing; }
+.wm-bar:focus-visible{ outline:2px solid var(--accent); outline-offset:-3px; border-radius:20px 20px 0 0; }
+.wm-ico{ flex:none; width:34px; height:34px; border-radius:12px; display:grid; place-items:center; background:var(--active); border:1px solid rgba(var(--acc),.35); color:var(--accent-text); }
+.wm-svg{ display:grid; place-items:center; } .wm-svg svg{ width:17px; height:17px; }
+.wm-ttl{ min-width:0; display:flex; flex-direction:column; line-height:1.25; }
+.wm-ttl b{ font:600 13px var(--font); letter-spacing:.05em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wm-ttl small{ font:500 11px var(--font); color:var(--fg2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .wm-ttl small:empty{ display:none; }
+.wm-ctl{ margin-left:auto; display:flex; gap:4px; }
+.wm-btn{ width:32px; height:32px; border-radius:50%; border:0; background:transparent; color:var(--fg2); cursor:pointer; display:grid; place-items:center; transition:background .2s ease, color .2s ease; }
+.wm-btn:hover{ background:rgba(var(--act-hi),.9); color:var(--fg); } .wm-btn.x:hover{ background:rgba(248,113,113,.16); color:#F87171; } .wm-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+.wm-body{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; container-type:inline-size; container-name:mod; }
+.wm-content{ flex:1 1 auto; }
+.wm-content.wm-task{ padding:0; gap:0; }
+.wm-taskcard{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.wm-taskcard .set-head{ flex:none; padding:12px 18px; border-bottom:1px solid var(--line); }
+.wm-taskcard .set-head > .ico, .wm-taskcard .set-head > div:not(.task-actions), .wm-taskcard .set-head > .icon-btn{ display:none; }
+.wm-taskcard .task-actions{ margin-left:0; width:100%; }
+.wm-taskcard .orb-frame-body{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+.wm-rz{ position:absolute; z-index:4; touch-action:none; }
+.wm-rz-n{ top:0; left:16px; right:16px; height:6px; cursor:ns-resize; } .wm-rz-s{ bottom:0; left:16px; right:16px; height:7px; cursor:ns-resize; }
+.wm-rz-e{ right:0; top:16px; bottom:16px; width:7px; cursor:ew-resize; } .wm-rz-w{ left:0; top:16px; bottom:16px; width:7px; cursor:ew-resize; }
+.wm-rz-ne{ top:0; right:0; width:16px; height:16px; cursor:nesw-resize; } .wm-rz-nw{ top:0; left:0; width:16px; height:16px; cursor:nwse-resize; }
+.wm-rz-se{ bottom:0; right:0; width:18px; height:18px; cursor:nwse-resize; } .wm-rz-sw{ bottom:0; left:0; width:16px; height:16px; cursor:nesw-resize; }
+.wm-rz-se::after{ content:""; position:absolute; right:6px; bottom:6px; width:7px; height:7px; border-right:2px solid rgba(var(--w),.3); border-bottom:2px solid rgba(var(--w),.3); border-radius:0 0 3px 0; }
+#wmBar{ position:fixed; left:16px; bottom:16px; right:calc(var(--dock-w,192px) + 34px); z-index:36; display:flex; align-items:center; gap:10px; height:52px; padding:0 14px 0 16px; border-radius:999px;
+  background:rgba(7,7,14,.82); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); transition:opacity .25s ease, visibility 0s; max-width:max-content; }
+#wmBar[hidden]{ display:none; }
+body.dock-left #wmBar{ left:calc(var(--dock-w,192px) + 34px); right:16px; }
+.wm-state{ flex:none; display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid var(--line); font:600 11px var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--fg2); }
+.wm-dot{ width:8px; height:8px; border-radius:50%; background:#8E89A8; box-shadow:0 0 0 0 transparent; transition:background .3s ease; }
+.wm-dot[data-state="listening"]{ background:#7DD3A8; animation:wmPulse 1.6s ease-out infinite; }
+.wm-dot[data-state="processing"]{ background:var(--accent); animation:wmPulse 1s ease-out infinite; }
+.wm-dot[data-state="speaking"]{ background:var(--accent-soft); animation:wmPulse 1.3s ease-out infinite; }
+.wm-dot[data-state="error"]{ background:#F87171; }
+@keyframes wmPulse{ 0%{ box-shadow:0 0 0 0 rgba(var(--acc),.55); } 100%{ box-shadow:0 0 0 9px rgba(var(--acc),0); } }
+.wm-chips{ display:flex; gap:6px; min-width:0; overflow:hidden; }
+.wm-chip{ flex:none; display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 13px 0 10px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--fg2); font:600 11.5px var(--font); letter-spacing:.04em; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease; }
+.wm-chip:hover{ color:var(--fg); background:rgba(var(--act-hi),.5); }
+.wm-chip.on{ color:var(--fg); background:var(--active); border-color:rgba(var(--acc),.5); }
+.wm-chip.min{ opacity:.6; border-style:dashed; }
+.wm-chip svg{ width:15px; height:15px; } .wm-chip:focus-visible, .wm-tool:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+@container (max-width:0){}
+.wm-tool{ flex:none; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--fg2); cursor:pointer; display:grid; place-items:center; transition:background .2s ease, color .2s ease; }
+.wm-tool:hover:not(:disabled){ color:var(--fg); background:rgba(var(--act-hi),.8); } .wm-tool:disabled{ opacity:.4; cursor:default; }
+.wm-count{ flex:none; font:500 11px var(--font-mono); letter-spacing:.08em; color:var(--faint,#7F7A96); white-space:nowrap; }
+.wm-msg{ min-width:0; font:500 12px var(--font); color:#E8C77A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .wm-msg:empty{ display:none; }
+@media (max-width:760px){ .wm-state span.wm-statetxt, .wm-count{ display:none; } .wm-chip span{ display:none; } .wm-chip{ padding:0 10px; } #wmLayer{ left:10px; right:10px; top:70px; } }
+@media (prefers-reduced-motion:reduce){ .wm-win, .wm-dot{ animation:none !important; } #wmLayer.anim .wm-win{ transition:none; } }
 </style>
 </head>
 <body>
@@ -1110,8 +1175,9 @@ window.ORION_SIGNOUT = async () => {
 <script src="js/gestures.js?c=10"></script>
 <script src="js/orion-split.js?c=2"></script>
 <script src="js/orb-frame.js?c=8"></script>
-<script defer src="js/app.js?c=20"></script>
-<script defer src="js/orion-v5.js?c=12"></script>
-<script defer src="js/orion-v52.js?c=26"></script>
+<script defer src="js/app.js?c=21"></script>
+<script defer src="js/orion-v5.js?c=13"></script>
+<script defer src="js/orion-v52.js?c=27"></script>
+<script defer src="js/orion-wm.js?c=1"></script>
 </body>
 </html>
