@@ -243,15 +243,7 @@
     else if (fk) { const el = bodyEl.querySelector('[data-fk="' + fk.replace(/"/g, '') + '"]'); if (el) el.focus(); }
   }
 
-  const taskBtn = $('taskBtn');
-  if (!taskBtn) return;
-  const panel = OrbFrame.create({
-    id: 'taskPanel', icon: taskBtn.querySelector('svg').outerHTML, opener: taskBtn, foot: false,
-    blocked: () => { const v = $('voiceScreen'); return !!(v && v.classList.contains('open')); },
-    title: () => T().name, sub: () => T().sub, closeLabel: () => T().close,
-    // só um painel por vez: fecha Configurações / ORION CODE pelo mesmo caminho do Esc do app.js
-    beforeOpen: () => { if (document.querySelector('#settingsPanel.open, #codePanel.open, #newsPanel.open, #planPanel.open, #apiPanel.open, #marketPanel.open, #idePanel.open')) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); },
-    mount: card => {
+  function mountTasks(card) {
       tasks = load(); sel = null; tab = 'details'; showForm = false; ensureSel();
       const head = card.querySelector('.set-head'), closeBtn = head.querySelector('.icon-btn');
       countEl = h('span', { class: 'task-count' });
@@ -261,7 +253,17 @@
       const quick = h('input', { type: 'text', maxlength: 80, placeholder: T().quick, 'aria-label': T().quick });
       card.append(h('form', { class: 't-quick', onsubmit: e => { e.preventDefault(); if (create(quick.value)) quick.value = ''; } }, quick, h('button', { class: 'pill-btn sm', type: 'submit' }, T().add)));
       render();
-    },
+  }
+
+  const taskBtn = $('taskBtn');
+  if (!taskBtn) return;
+  const panel = OrbFrame.create({
+    id: 'taskPanel', icon: taskBtn.querySelector('svg').outerHTML, opener: taskBtn, foot: false,
+    blocked: () => { const v = $('voiceScreen'); return !!(v && v.classList.contains('open')); },
+    title: () => T().name, sub: () => T().sub, closeLabel: () => T().close,
+    // só um painel por vez: fecha Configurações / ORION CODE pelo mesmo caminho do Esc do app.js
+    beforeOpen: () => { if (document.querySelector('#settingsPanel.open, #codePanel.open, #newsPanel.open, #planPanel.open, #apiPanel.open, #marketPanel.open, #idePanel.open')) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); },
+    mount: card => mountTasks(card),
   });
 
   // abrir Configurações ou ORION Code enquanto a Multitarefa está aberta troca de painel (só um por vez)
@@ -272,6 +274,8 @@
   label();
   new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
   window.ORION_TASK_PANEL = panel;
+  // V5.5.0: a Multitarefa também monta dentro de uma janela do gerenciador (orion-wm.js): mesmo conteúdo, outro contêiner
+  window.ORION_TASK_APP = { mount: mountTasks, title: () => T().name, sub: () => T().sub, iconHtml: taskBtn.querySelector('svg').outerHTML };
 })();
 
 /* ═══════════════════════════════════════════════════════════════
