@@ -1373,7 +1373,7 @@ const API = (() => {
       document.body.appendChild(panel);
       panel.addEventListener('click', e => { if (e.target === panel) setOpen(false); });
       panel.querySelector('#codeClose').addEventListener('click', () => setOpen(false));
-      panel.querySelector('#taskOpen').addEventListener('click', () => { const b = document.getElementById('taskBtn'); if (b) b.click(); });   // V5.5.0: a Multitarefa agora abre por aqui (o botão fica escondido no DOM)
+      panel.querySelector('#taskOpen').addEventListener('click', () => { if (window.ORION_WM) return window.ORION_WM.open('tasks'); const b = document.getElementById('taskBtn'); if (b) b.click(); });   // V5.5.0: a Multitarefa agora abre por aqui (o botão fica escondido no DOM)
       panel.querySelector('#codeOpen').addEventListener('click', () => { if (window.ORION_CODE) window.ORION_CODE.open(); });   // V5.5.0: o painel do ORION CODE fecha este (Esc) e abre
       panel.querySelector('#apiOpen').addEventListener('click', () => { if (window.ORION_API_PANEL) window.ORION_API_PANEL.open(); });   // V5.2.0: o painel do ORION API fecha este (Esc) e abre
     }
